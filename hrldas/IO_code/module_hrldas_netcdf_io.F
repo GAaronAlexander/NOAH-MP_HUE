@@ -43,6 +43,9 @@ module module_hrldas_netcdf_io
   integer, private :: dimid_times_remember
   integer, private :: dimid_layers_remember
   integer, private :: dimid_snow_layers_remember
+  integer, private :: dimid_mosaic_layers_stan_remember ! Added by Aaron A.
+  integer, private :: dimid_mosaic_layers_soil_remember ! Added by Aaron A.
+  integer, private :: dimid_mosaic_layers_snow_remember ! Added by Aaron A.
 
   interface prepare_output_file
 #ifdef MPP_LAND
@@ -59,7 +62,6 @@ module module_hrldas_netcdf_io
      module procedure prepare_restart_file_seq
 #endif
   end interface
-
 
   interface add_to_restart
 #ifdef MPP_LAND
@@ -96,10 +98,10 @@ contains
 
     ! Check that output directory OUTDIR exists and is writable, by
     ! trying to open a test file in that directory.  Include a random
-    ! number in the test file name, to greatly reduce the chance of 
-    ! collision with existing file names.  This assumes that the 
-    ! intrinsic random_seed routine, called without argument, will seed 
-    ! the random number generator based on something like system time 
+    ! number in the test file name, to greatly reduce the chance of
+    ! collision with existing file names.  This assumes that the
+    ! intrinsic random_seed routine, called without argument, will seed
+    ! the random number generator based on something like system time
     ! or hardware noise.
 
     integer,          intent(in) :: rank
@@ -217,7 +219,7 @@ contains
   subroutine read_dim(wrfinput_flnm, ix, jx)
        implicit none
        character(len=*),   intent(in)    :: wrfinput_flnm
-       integer,            intent(out)   :: ix, jx    ! dimensions 
+       integer,            intent(out)   :: ix, jx    ! dimensions
        integer  :: ncid, dimid, ierr
        ierr = nf90_open(wrfinput_flnm, NF90_NOWRITE, ncid)
 
@@ -226,10 +228,10 @@ contains
 
        ierr = nf90_inquire_dimension(ncid, dimid, len=ix)
        call error_handler(ierr, failure="READ_HRLDAS_HDRINFO:  Problems finding dimension length for 'west_east'")
-   
+
        ierr = nf90_inq_dimid(ncid, "south_north", dimid)
        call error_handler(ierr, failure="READ_HRLDAS_HDRINFO:  Problems finding dimension 'south_north'")
-   
+
        ierr = nf90_inquire_dimension(ncid, dimid, len=jx)
        call error_handler(ierr, failure="READ_HRLDAS_HDRINFO:  Problems finding dimension length for 'south_north'")
 
@@ -276,7 +278,7 @@ contains
     integer :: i
     integer :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -347,7 +349,7 @@ contains
 
     ierr = nf90_get_att(ncid, NF90_GLOBAL, "MMINLU", llanduse)
     call error_handler(ierr, failure="READ_HRLDAS_HDRINFO:  Problems finding global attribute 'MMINLU'")
-    
+
     ! IBM XLF seems to need something like this:
     do i = 1, 256
        if (ichar(llanduse(i:i)) == 0) llanduse(i:i) = " "
@@ -427,7 +429,7 @@ contains
     real, dimension(xstart:xend,ystart:yend) :: xdum
     integer :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -520,14 +522,14 @@ contains
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: eqzwt
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: rechclim
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: riverbed
-    
+
     character(len=256) :: units
     integer :: ierr
     integer :: ncid
     real, dimension(xstart:xend,ystart:yend) :: xdum
     integer :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -575,7 +577,7 @@ contains
   subroutine read_agriculture_data(agdata_flnm,                            &
        xstart, xend,                                                      &
        ystart, yend,                                                      &
-       irfract,                                                           &   
+       irfract,                                                           &
        sifract,                                                           &
        mifract,                                                           &
        fifract)
@@ -583,9 +585,9 @@ contains
     implicit none
     character(len=*),                            intent(in)  :: agdata_flnm
     integer,                                     intent(in)  :: xstart, xend, ystart, yend
-    real,    dimension(xstart:xend,ystart:yend), intent(out) :: irfract   
-    real,    dimension(xstart:xend,ystart:yend), intent(out) :: sifract    
-    real,    dimension(xstart:xend,ystart:yend), intent(out) :: mifract    
+    real,    dimension(xstart:xend,ystart:yend), intent(out) :: irfract
+    real,    dimension(xstart:xend,ystart:yend), intent(out) :: sifract
+    real,    dimension(xstart:xend,ystart:yend), intent(out) :: mifract
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: fifract
 
     character(len=24)                                        :: name
@@ -593,7 +595,7 @@ contains
     integer                                                  :: ncid, varid
     integer                                                  :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -673,7 +675,7 @@ contains
     real,    dimension(xstart:xend,  ystart:yend), intent(out) :: planting
     real,    dimension(xstart:xend,  ystart:yend), intent(out) :: harvest
     real,    dimension(xstart:xend,  ystart:yend), intent(out) :: season_gdd
-    
+
     character(len=256) :: units
     character(len=24)  :: name
     integer :: ierr,iret
@@ -681,7 +683,7 @@ contains
     real, dimension(xstart:xend,ystart:yend,5) :: xdum
     integer :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -767,7 +769,7 @@ contains
     integer                                                  :: ncid, varid
     integer                                                  :: rank
 
-#ifdef _PARALLEL_  
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -853,7 +855,7 @@ contains
     real,    dimension(xstart:xend,ystart:yend), intent(out)       :: tdddrain
     real,    dimension(xstart:xend,ystart:yend), intent(out)       :: tdradi
     real,    dimension(xstart:xend,ystart:yend), intent(out)       :: tdspac
- 
+
     character(len=24)  :: name
     character(len=256) :: units
     integer :: ierr,iret, varid,isoil
@@ -875,7 +877,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       bexp_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -889,7 +891,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       smcdry_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -903,7 +905,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       smcwlt_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -917,7 +919,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       smcref_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -931,7 +933,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       smcmax_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -945,7 +947,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       dksat_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -959,7 +961,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       dwsat_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -973,7 +975,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       psisat_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -987,7 +989,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, xdum, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,nsoil/))
-    
+
     do isoil = 1,4
       quartz_3d(:,isoil,:) = xdum(:,:,isoil)
     end do
@@ -1001,7 +1003,7 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, refdk_2d, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
-    
+
     name = "refkdt"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
     if (iret /= 0) then
@@ -1193,7 +1195,7 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tdsmcfac, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))     
+    iret = nf90_get_var(ncid, varid, tdsmcfac, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 !
     name = "TD_DC"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1203,7 +1205,7 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tddc, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))      
+    iret = nf90_get_var(ncid, varid, tddc, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 !
     name = "TD_DCOEF"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1213,7 +1215,7 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tddcoef, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))     
+    iret = nf90_get_var(ncid, varid, tddcoef, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 !
     name = "TD_DDRAIN"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1223,7 +1225,7 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tdddrain, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/)) 
+    iret = nf90_get_var(ncid, varid, tdddrain, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 !
     name = "TD_RADI"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1233,7 +1235,7 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tdradi, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))     
+    iret = nf90_get_var(ncid, varid, tdradi, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 !
     name = "TD_SPAC"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1243,9 +1245,9 @@ contains
       stop
     endif
 
-    iret = nf90_get_var(ncid, varid, tdspac, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))     
+    iret = nf90_get_var(ncid, varid, tdspac, start=(/xstart,ystart/), count=(/xend-xstart+1,yend-ystart+1/))
 
- 
+
     ! Close the NetCDF file
     ierr = nf90_close(ncid)
     if (ierr /= 0) stop "MODULE_NOAHLSM_HRLDAS_INPUT:  read_3d_soil:  NF90_CLOSE"
@@ -1265,9 +1267,9 @@ contains
     integer,                   intent(in)  :: isice
     integer,                   intent(in)  :: iswater
     real,    dimension(xstart:xend,2*nsoil,ystart:yend), intent(out) :: soilcomp
-    
+
     real,    dimension(xstart:xend,ystart:yend,2*nsoil) :: soilcomp_in
-    
+
     character(len=24)  :: name
     character(len=256) :: units
     integer :: ierr,iret, varid,isoil
@@ -1288,11 +1290,11 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, soilcomp_in, start=(/xstart,ystart,1,1/), count=(/xend-xstart+1,yend-ystart+1,2*nsoil,1/))
-    
+
     ! Map values
 
     do isoil = 1,2*nsoil
-      
+
       soilcomp(:,isoil,:) = soilcomp_in(:,:,isoil)
 
     end do
@@ -1300,11 +1302,11 @@ contains
     ! Remove any bad values
 
     do isoil = 1,nsoil
-       
+
       where(ivgtyp /= isice .and. ivgtyp /= iswater .and. (soilcomp(:,isoil  ,:) <= 0) ) &
-          soilcomp(:,isoil,:) = 41.0 
+          soilcomp(:,isoil,:) = 41.0
       where(ivgtyp /= isice .and. ivgtyp /= iswater .and. (soilcomp(:,isoil+nsoil,:) <= 0) ) &
-          soilcomp(:,isoil+nsoil,:) = 18.0 
+          soilcomp(:,isoil+nsoil,:) = 18.0
 
     end do
 
@@ -1335,7 +1337,7 @@ contains
     character(len=256) :: units
     integer :: ierr,iret, varid,isoil
     integer :: ncid
-    
+
     soilcl1 = -999.
     soilcl2 = -999.
     soilcl3 = -999.
@@ -1356,11 +1358,11 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, soilcl1, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,1/))
-    
+
     where(soilcl1 < 0.5)  soilcl1 = 6.
     where(soilcl1 > 12.5) soilcl1 = 6.
-    where(ivgtyp == isice   ) soilcl1 = 16. 
-    where(ivgtyp == iswater ) soilcl1 = 14. 
+    where(ivgtyp == isice   ) soilcl1 = 16.
+    where(ivgtyp == iswater ) soilcl1 = 14.
 
     name = "SOILCL2"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1371,12 +1373,12 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, soilcl2, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,1/))
-    
+
     where(soilcl2 < 0.5)  soilcl2 = 6.
     where(soilcl2 > 12.5) soilcl2 = 6.
-    where(ivgtyp == isice   ) soilcl2 = 16. 
-    where(ivgtyp == iswater ) soilcl2 = 14. 
-    
+    where(ivgtyp == isice   ) soilcl2 = 16.
+    where(ivgtyp == iswater ) soilcl2 = 14.
+
 
     name = "SOILCL3"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1387,12 +1389,12 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, soilcl3, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,1/))
-    
+
     where(soilcl3 < 0.5)  soilcl3 = 6.
     where(soilcl3 > 12.5) soilcl3 = 6.
-    where(ivgtyp == isice   ) soilcl3 = 16. 
-    where(ivgtyp == iswater ) soilcl3 = 14. 
-    
+    where(ivgtyp == isice   ) soilcl3 = 16.
+    where(ivgtyp == iswater ) soilcl3 = 14.
+
 
     name = "SOILCL4"
     iret = nf90_inq_varid(ncid,  trim(name),  varid)
@@ -1403,12 +1405,12 @@ contains
     endif
 
     iret = nf90_get_var(ncid, varid, soilcl4, start=(/xstart,ystart,1/), count=(/xend-xstart+1,yend-ystart+1,1/))
-    
+
     where(soilcl4 < 0.5)  soilcl4 = 6.
     where(soilcl4 > 12.5) soilcl4 = 6.
-    where(ivgtyp == isice   ) soilcl4 = 16. 
-    where(ivgtyp == iswater ) soilcl4 = 14. 
-            
+    where(ivgtyp == isice   ) soilcl4 = 16.
+    where(ivgtyp == iswater ) soilcl4 = 14.
+
     ! Close the NetCDF file
     ierr = nf90_close(ncid)
     if (ierr /= 0) stop "MODULE_NOAHLSM_HRLDAS_INPUT:  read_soil_texture:  NF90_CLOSE"
@@ -1484,13 +1486,13 @@ contains
     ! FATAL_IF_ERROR:  an input code value:
     !      .TRUE. if an error in reading the data should stop the program.
     !      Otherwise the, IERR error flag is set, but the program continues.
-    logical, intent(in) :: fatal_if_error 
+    logical, intent(in) :: fatal_if_error
     integer, intent(out) :: ierr
 #ifdef MPP_LAND
     real:: g_array(global_nx,global_ny)
 #endif
     units = " "
-    
+
 #ifdef MPP_LAND
     if(my_id .eq. 0) then
 #endif
@@ -1565,7 +1567,7 @@ contains
     ! FATAL_IF_ERROR:  an input code value:
     !      .TRUE. if an error in reading the data should stop the program.
     !      Otherwise the, IERR error flag is set, but the program continues.
-    logical, intent(in) :: fatal_if_error 
+    logical, intent(in) :: fatal_if_error
     integer, intent(out) :: ierr
 
     integer :: iret, varid, isoil
@@ -1648,7 +1650,7 @@ contains
     integer,                                           intent(in)  :: nsoil
     real,    dimension(nsoil),                         intent(in)  :: sldpth
     character(len=*),                                  intent(in)  :: target_date
-    
+
     integer,                                           intent(out) :: ldasin_version
     real,    dimension(xstart:xend,nsoil,ystart:yend), intent(out) :: smc
     real,    dimension(xstart:xend,nsoil,ystart:yend), intent(out) :: stc
@@ -1708,7 +1710,7 @@ contains
        ldasin_version = 0
     else
        write(*,'("LDASIN TITLE attribute: ", A)') trim(titlestr)
-       ! Pull out the version number, assuming that the version is identified by vYYYYMMDD, and 
+       ! Pull out the version number, assuming that the version is identified by vYYYYMMDD, and
        ! based on a search for the string "v20".
        idx = index(trim(titlestr), "v20")
        if (idx <= 0) then
@@ -1764,23 +1766,23 @@ contains
     if (ierr_snodep /= 0) fndsnowh = .false.
 
     ! Get the interfaces from the input file (not the variable as of v3.7)
-    
+
     ierr = nf90_inq_varid(ncid,  "DZS",  varid)
     ierr = nf90_get_var(ncid, varid, values=dzs, start=(/1/), count=(/4/))
-    
+
     layer_top(1) = 0.0
     layer_bottom(1) = dzs(1)
     do isoil = 2, 4
       layer_top(isoil) = layer_bottom(isoil-1)
       layer_bottom(isoil) = layer_top(isoil) + dzs(isoil)
     end do
-	
+
     call get_netcdf_soillevel("TSLB", ncid, soildummy, units,  xstart, xend, ystart, yend, FATAL, ierr)
-    
+
     write(*, '("layer_bottom(1:4) = ", 4F9.4)') layer_bottom(1:4)
     write(*, '("layer_top(1:4)    = ", 4F9.4)') layer_top(1:4)
     write(*, '("Soil depth = ", 10F12.6)') sldpth
-    
+
     call init_interp(xstart, xend, ystart, yend, nsoil, sldpth, stc, 4, soildummy, layer_bottom(1:4), layer_top(1:4))
 
     call get_netcdf_soillevel("SMOIS", ncid, soildummy, units,  xstart, xend, ystart, yend, FATAL, ierr)
@@ -1808,7 +1810,7 @@ contains
     integer :: ierr
     integer :: rank
 
-#ifdef _PARALLEL_    
+#ifdef _PARALLEL_
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) stop "MPI_COMM_RANK"
 #else
@@ -1834,7 +1836,7 @@ contains
 
        if (dst_centerpoint(k) < src_centerpoint(1)) then
           ! If the center of the destination layer is closer to the surface than
-          ! the center of the topmost source layer, then simply set the 
+          ! the center of the topmost source layer, then simply set the
           ! value of the destination layer equal to the topmost source layer:
           if (rank == 0) then
              print'("Shallow destination layer:  Taking destination layer at ",F7.4, " from source layer at ", F7.4)', &
@@ -1846,7 +1848,7 @@ contains
 
        if (dst_centerpoint(k) > src_centerpoint(nvar)) then
           ! If the center of the destination layer is deeper than
-          ! the center of the deepest source layer, then simply set the 
+          ! the center of the deepest source layer, then simply set the
           ! value of the destination layer equal to the deepest source layer:
           if (rank == 0) then
              print'("Deep destination layer:  Taking destination layer at ",F7.4, " from source layer at ", F7.4)', &
@@ -1873,7 +1875,7 @@ contains
        ! Otherwise, do a linear interpolation
 
        ! Get ktop, the index of the top bracketing layer from the source dataset.
-       ! Which from the bottom up, will be the first source level that is closer 
+       ! Which from the bottom up, will be the first source level that is closer
        ! to the surface than the destination level
        ktop = -99999
        TOPLOOP : do kk = nvar,1,-1
@@ -1908,7 +1910,7 @@ contains
        var(:,:,k) = (src(:,ktop,:)*fraction) + (src(:,kbottom,:)*(1.0-fraction))
 
     enddo KLOOP
-     
+
   end subroutine init_interp
 
 !---------------------------------------------------------------------------------------------------------
@@ -2058,7 +2060,7 @@ contains
 
           ! Copy nextread to lastread
           lastread = nextread
-       
+
           ! Clear nextread
           call nullify_inputstruct(nextread)
        endif
@@ -2067,7 +2069,7 @@ contains
        ! If there is no last date, assume we're at the beginning of our processing
        ! and take the target_date as the first timestep, for which forcing data
        ! must be available.
-     
+
 #ifdef MPP_LAND
      call mpp_land_bcast_char(19,lastread%read_date(1:19))
 #endif
@@ -2128,12 +2130,12 @@ contains
        call get_2d_netcdf(trim(forcing_name_LW), ncid, nextread%lw,    units, xstart, xend, ystart, yend, FATAL, ierr)
        call get_2d_netcdf(trim(forcing_name_SW), ncid, nextread%sw,    units, xstart, xend, ystart, yend, FATAL, ierr)
        call get_2d_netcdf(trim(forcing_name_PR), ncid, nextread%pcp,   units, xstart, xend, ystart, yend, FATAL, ierr)
-       
+
        nextread%snow = 0.0  ! Assume zero in case not present
        call get_2d_netcdf(trim(forcing_name_SN), ncid, nextread%snow,  units, xstart, xend, ystart, yend, NOT_FATAL, ierr)
-       
+
        if(update_veg) then    ! Barlage v3.7: update only if dveg option is appropriate
-       
+
          call get_2d_netcdf("VEGFRA",  ncid, nextread%vegfra,units, xstart, xend, ystart, yend, NOT_FATAL, ierr)
          if (ierr /= 0) then
           ! print*, 'VEGFRA not found!'
@@ -2146,9 +2148,9 @@ contains
          endif
 
        endif
-	 
+
        if(update_lai) then    ! Barlage v3.7: update only if dveg option is appropriate
-	 
+
          call get_2d_netcdf("LAI",     ncid, nextread%lai,   units, xstart, xend, ystart, yend, NOT_FATAL, ierr)
          if (ierr /= 0) then
           ! print*, 'LAI not found!'
@@ -2161,7 +2163,7 @@ contains
          endif
 
        endif
-	 
+
 #ifdef MPP_LAND
        if(my_id .eq. IO_id) &
 #endif
@@ -2179,7 +2181,7 @@ contains
     if (target_date == nextread%read_date) then
        !
        ! We have advanced to the later date of our bracketing times for interpolation.
-       ! Take that data as is, no interpolation necessary, move that data into the 
+       ! Take that data as is, no interpolation necessary, move that data into the
        ! lastread structure, and return that data.
        !
 
@@ -2477,7 +2479,8 @@ contains
        ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar, iswater,  &
        mapproj, lat1, lon1, dx, dy, truelat1, truelat2, cen_lon,     &
        nsoil, nsnow, sldpth, startdate, date, spinup_loop, spinup_loops, &
-       vegtyp, soltyp)
+       vegtyp, soltyp,                                                   &
+       num_mosaic_cats)
 
     implicit none
 
@@ -2514,6 +2517,7 @@ contains
     integer,          dimension(ixpar,jxpar), intent(in) :: soltyp
     integer,          dimension(global_nx,global_ny) :: g_vegtyp
     integer,          dimension(global_nx,global_ny) :: g_soltyp
+    integer,                                  intent(in) :: num_mosaic_cats
 
 
     call write_io_int(vegtyp, g_vegtyp)
@@ -2525,7 +2529,8 @@ contains
        global_nx, global_ny, global_nx, global_ny, xstartpar, ystartpar, iswater,  &
        mapproj, lat1, lon1, dx, dy, truelat1, truelat2, cen_lon,     &
        nsoil, nsnow, sldpth, startdate, date, spinup_loop, spinup_loops, &
-       g_vegtyp, g_soltyp)
+       g_vegtyp, g_soltyp,                                               &
+       num_mosaic_cats)
     end if
 
     end subroutine prepare_output_file_mpp
@@ -2536,7 +2541,8 @@ contains
        ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar, iswater,  &
        mapproj, lat1, lon1, dx, dy, truelat1, truelat2, cen_lon,     &
        nsoil, nsnow, sldpth, startdate, date, spinup_loop, spinup_loops, &
-       vegtyp, soltyp)
+       vegtyp, soltyp,                                                   &
+       num_mosaic_cats)
     ! To prepare the output file, we create the file, write dimensions and attributes, write the time variable.
     ! At the end of this routine, the output file is out of define mode.
     implicit none
@@ -2573,11 +2579,13 @@ contains
     integer,                                  intent(in) :: spinup_loops
     integer,          dimension(ixpar,jxpar), intent(in) :: vegtyp
     integer,          dimension(ixpar,jxpar), intent(in) :: soltyp
+    integer,                                  intent(in) :: num_mosaic_cats
 
     integer :: ncid
 
     integer :: dimid_ix, dimid_jx, dimid_times, dimid_datelen, varid, n
     integer :: dimid_dum, dimid_layers, dimid_snow_layers
+    integer :: dimid_mosaic_layers1, dimid_mosaic_layers2, dimid_mosaic_layers3
     integer :: iret
     character(len=256) :: output_flnm
     character(len=19)  :: date19
@@ -2622,6 +2630,10 @@ contains
        iret = nf90_def_dim(ncid, "south_north_stag", jxfull+1, dimid_dum)
        iret = nf90_def_dim(ncid, "soil_layers_stag", nsoil, dimid_layers)
        iret = nf90_def_dim(ncid, "snow_layers", nsnow, dimid_snow_layers)
+       iret = nf90_def_dim(ncid, "mosaic_standard", num_mosaic_cats, dimid_mosaic_layers1)
+       iret = nf90_def_dim(ncid, "mosaic_soil", num_mosaic_cats*nsoil, dimid_mosaic_layers2)
+       iret = nf90_def_dim(ncid, "mosaic_snow", num_mosaic_cats*nsnow, dimid_mosaic_layers3)
+
 
        iret = nf90_put_att(ncid, NF90_GLOBAL, "TITLE", "OUTPUT FROM HRLDAS "//version)
        iret = nf90_put_att(ncid, NF90_GLOBAL, "missing_value", -1.E33)
@@ -2662,6 +2674,11 @@ contains
     dimid_times_remember = dimid_times
     dimid_layers_remember = dimid_layers
     dimid_snow_layers_remember = dimid_snow_layers
+    ! Mosaic added by Aaron A.
+    dimid_mosaic_layers_stan_remember = dimid_mosaic_layers1
+    dimid_mosaic_layers_soil_remember = dimid_mosaic_layers2
+    dimid_mosaic_layers_snow_remember = dimid_mosaic_layers3
+
     iswater_remember = iswater
 
     allocate(vegtyp_remember(ixpar,jxpar))
@@ -2724,11 +2741,11 @@ contains
 
     output_count_remember = output_count_remember + 1
     if (output_count_remember == split_output_count) then
-       output_count_remember = 0 
+       output_count_remember = 0
        ierr = nf90_close(ncid_remember)
        call error_handler(ierr, failure="Problem nf90_close for output file")
     elseif (split_output_count > 1 .and. itime == 0) then  ! treat first time different
-       output_count_remember = 0 
+       output_count_remember = 0
        ierr = nf90_close(ncid_remember)
        call error_handler(ierr, failure="Problem nf90_close for output file")
     else
@@ -2795,7 +2812,7 @@ contains
     if (define_mode_remember) then
        call make_var_att_2d ( ncid_remember , dimid_ix_remember , dimid_jx_remember , dimid_times_remember , &
             NF90_FLOAT , trim(name) , trim(description) , trim(units) )
-    else 
+    else
        ixpar = size(array,1)
        jxpar = size(array,2)
        call put_var_2d (ncid_remember , output_count_remember+1 , vegtyp_remember , iswater_remember , &
@@ -2839,13 +2856,19 @@ contains
           zdimid = dimid_layers_remember
        elseif (snow_or_soil == "SNOW") then
           zdimid = dimid_snow_layers_remember
+       elseif (snow_or_soil == "MOS1") then
+          zdimid = dimid_mosaic_layers_stan_remember
+       elseif (snow_or_soil == "MOS2") then
+          zdimid = dimid_mosaic_layers_soil_remember
+       elseif (snow_or_soil == "MOS3") then
+          zdimid = dimid_mosaic_layers_snow_remember
        else
           write(*,'("SNOW_OR_SOIL unrecognized: ", A)') adjustl(trim(snow_or_soil))
           stop "SNOW_OR_SOIL"
        endif
        call make_var_att_3d ( ncid_remember , dimid_ix_remember , dimid_jx_remember , dimid_times_remember , &
             NF90_FLOAT , zdimid, trim(name) , trim(description) , trim(units) )
-    else 
+    else
 
        ixpar = size(array,1)
        kxpar = size(array,2)
@@ -3043,17 +3066,18 @@ contains
     restart_filename_remember = " "
     iswater_remember   = -999999
     xstartpar_remember = -999999
-    
+
   end subroutine finalize_restart_file
 
 !---------------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------------
-
+! adjusted by Aaron Alexander on 23 May 2022
 #ifdef MPP_LAND
-      subroutine prepare_restart_file_mpp(outdir, version, igrid, llanduse, olddate, startdate,  &
-       ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                                    &
-       nsoil, nsnow, num_urban_layers, dx, dy, truelat1, truelat2, mapproj, lat1, lon1, cen_lon,                       &
-       iswater, vegtyp)
+      subroutine prepare_restart_file_mpp(outdir, version, igrid, llanduse, olddate, startdate,   &
+       ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                                        &
+       nsoil, nsnow, num_urban_layers, dx, dy, truelat1, truelat2, mapproj, lat1, lon1, cen_lon,  &
+       iswater, vegtyp,                                                                           &
+       num_mosaic_cats) !new addtion
 
     implicit none
 
@@ -3079,14 +3103,16 @@ contains
     integer,                               intent(in) :: iswater
     integer, dimension(ixpar,jxpar),       intent(in) :: vegtyp
     integer, dimension(global_nx,global_ny) :: gvegtyp
+    integer,                               intent(in) :: num_mosaic_cats ! Added by Aaron Alexander on 23 May 2022
 
     call write_io_int(vegtyp, gvegtyp)
     if(my_id .eq. io_id) then
       call prepare_restart_file_seq(outdir, version, igrid, llanduse, olddate, startdate,  &
        global_nx, global_ny, global_nx, global_ny, xstartpar, ystartpar,               &
        nsoil, nsnow, num_urban_layers, dx, dy, truelat1, truelat2, mapproj, lat1, lon1, cen_lon,         &
-       iswater, gvegtyp)
-    endif 
+       iswater, gvegtyp,                                                                                &
+       num_mosaic_cats)
+    endif
 
     call mpp_land_sync()
 
@@ -3096,7 +3122,8 @@ contains
   subroutine prepare_restart_file_seq(outdir, version, igrid, llanduse, olddate, startdate,  &
        ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                                    &
        nsoil, nsnow, num_urban_layers, dx, dy, truelat1, truelat2, mapproj, lat1, lon1, cen_lon,                       &
-       iswater, vegtyp)
+       iswater, vegtyp,                                                                           &
+       num_mosaic_cats) ! added by Aaron A. 23 May 2022
 
     implicit none
 #include <netcdf.inc>
@@ -3122,13 +3149,16 @@ contains
     real,                                  intent(in) :: lat1, lon1, cen_lon
     integer,                               intent(in) :: iswater
     integer, dimension(ixpar,jxpar),       intent(in) :: vegtyp
+    integer,                               intent(in) :: num_mosaic_cats ! added by Aaron A. 23 May 2022
 
     character(len=1) :: hgrid
     integer :: ncid
     character(len=256) :: output_flnm
     integer :: ierr
     integer :: varid
-    integer :: dimid_times, dimid_datelen, dimid_ix, dimid_jx, dimid_dum, dimid_layers, dimid_snow_layers, dimid_sosn_layers, dimid_urban
+    integer :: dimid_times, dimid_datelen, dimid_ix, dimid_jx, dimid_dum, dimid_layers, dimid_snow_layers, dimid_sosn_layers, dimid_urban,
+    integer :: dimid_mosaic_layers1, dimid_mosaic_layers2, dimid_mosaic_layers3, dimid_mosaic_layers4 ! added by Aaron A. 23 May 2022
+
     character(len=19) :: date19
     integer :: rank
 
@@ -3177,6 +3207,11 @@ contains
     ierr = nf90_def_dim(ncid, "snow_layers", nsnow, dimid_snow_layers)
     ierr = nf90_def_dim(ncid, "sosn_layers", nsnow+nsoil, dimid_sosn_layers)
     ierr = nf90_def_dim(ncid, "urban_layers", num_urban_layers, dimid_urban)
+    ierr = nf90_def_dim(ncid, "mosaic_layers_stan", num_mosaic_cats, dimid_mosaic_layers1) !added by Aaron A. 23 May 2022
+    ierr = nf90_def_dim(ncid, "mosaic_layers_soil", num_mosaic_cats*nsoil, dimid_mosaic_layers2) !added by Aaron A. 23 May 2022
+    ierr = nf90_def_dim(ncid, "mosaic_layers_snow", num_mosaic_cats*nsnow, dimid_mosaic_layers3) !added by Aaron A. 23 May 2022
+    ierr = nf90_def_dim(ncid, "mosaic_layers_snos", num_mosaic_cats*(nsoil+nsnow), dimid_mosaic_layers4) !added by Aaron A. 23 May 2022
+
 
     ierr = nf90_put_att(ncid, NF90_GLOBAL, "TITLE", "RESTART FILE FROM HRLDAS "//version)
     ierr = nf90_put_att(ncid, NF90_GLOBAL, "missing_value", -1.E33)
@@ -3321,7 +3356,7 @@ contains
     else
        local_description = "-"
     endif
-    
+
 #ifdef _PARALLEL_
     ierr = nf90_open_par(trim(output_flnm), NF90_WRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
 #else
@@ -3395,7 +3430,7 @@ contains
     else
        local_description = "-"
     endif
-    
+
 #ifdef _PARALLEL_
     ierr = nf90_open_par(trim(output_flnm), NF90_WRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
 #else
@@ -3480,7 +3515,7 @@ contains
     else
        local_description = "-"
     endif
-    
+
 #ifdef _PARALLEL_
     ierr = nf90_open_par(trim(output_flnm), NF90_WRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
 #else
@@ -3506,6 +3541,19 @@ contains
     else if (output_layers == "URBN") then
        ierr = nf90_inq_dimid(ncid, "urban_layers", dimid_kx)
        call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'urban_layers'")
+
+    else if (output_layers == "MOS1") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+       ierr = nf90_inq_dimid(ncid, "mosaic_layers_stan", dimid_kx)
+       call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_stan'")
+    else if (output_layers == "MOS2") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+       ierr = nf90_inq_dimid(ncid, "mosaic_layers_soil", dimid_kx)
+       call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_soil'")
+    else if (output_layers == "MOS3") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+       ierr = nf90_inq_dimid(ncid, "mosaic_layers_snow", dimid_kx)
+       call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_snow'")
+    else if (output_layers == "MOS4") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+       ierr = nf90_inq_dimid(ncid, "mosaic_layers_snos", dimid_kx)
+       call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_snos'")
     else
        stop "PANIC!"
     endif
@@ -3536,7 +3584,7 @@ contains
        olddate)
 
     ! The restart file is dimensioned by our (possibly subwindowed) grid.  Our indices
-    ! for the parallel I/O reflect the dimensions of the (possibly subwindowed) grid, 
+    ! for the parallel I/O reflect the dimensions of the (possibly subwindowed) grid,
     ! but not the full domain for which LDAS input files may be available.
 
     implicit none
@@ -3599,7 +3647,7 @@ contains
           restart_version = 0
        else
           if (rank == 0) write(*,'("RESTART TITLE attribute: ", A)') trim(titlestr)
-          ! Pull out the version number, assuming that the version is identified by vYYYYMMDD, and 
+          ! Pull out the version number, assuming that the version is identified by vYYYYMMDD, and
           ! based on a search for the string "v20".
           idx = index(trim(titlestr), "v20")
           if (idx <= 0) then
@@ -3619,7 +3667,7 @@ contains
        ! Get the time stamp from the restart file.
        ierr = nf90_inq_varid(ncid, "Times", varid)
        call error_handler(ierr, "Problem finding variable in restart file: 'Times'")
-       
+
        ierr = nf90_get_var(ncid, varid, olddate)
        call error_handler(ierr, "Problem finding variable in restart file: 'Times'")
 
@@ -3640,8 +3688,8 @@ contains
     integer,                            intent(in) :: ixfull
     integer,                            intent(in) :: jxfull
     character(len=*),                   intent(in)  :: name
-    real,             dimension(parallel_xstart:parallel_xend,jxfull), intent(out) :: array 
-    real,             dimension(global_nx,global_ny):: garray 
+    real,             dimension(parallel_xstart:parallel_xend,jxfull), intent(out) :: array
+    real,             dimension(global_nx,global_ny):: garray
     integer,          optional,         intent(out) :: return_error
       if(my_id .eq. IO_id) then
           call get_from_restart_2d_float(1, global_nx, 1, global_nx, global_ny, name, garray, return_error)
@@ -3657,8 +3705,8 @@ contains
     integer,                            intent(in) :: ixfull
     integer,                            intent(in) :: jxfull
     character(len=*),                   intent(in)  :: name
-    integer,             dimension(parallel_xstart:parallel_xend,jxfull), intent(out) :: array 
-    integer,             dimension(global_nx,global_ny):: garray 
+    integer,             dimension(parallel_xstart:parallel_xend,jxfull), intent(out) :: array
+    integer,             dimension(global_nx,global_ny):: garray
     integer,          optional,         intent(out) :: return_error
       if(my_id .eq. IO_id) then
           call get_from_restart_2d_integer(1, global_nx, 1, global_nx, global_ny, name, garray, return_error)
@@ -3681,7 +3729,7 @@ contains
 
     klevel = size(array,2)
     allocate(garray(global_nx,klevel,global_ny))
-    
+
 
       if(my_id .eq. IO_id) then
           call get_from_restart_3d(1, global_nx, 1, global_nx, global_ny, name, garray, return_error)
@@ -3768,7 +3816,7 @@ contains
 
     ierr = nf90_close(ncid)
     call error_handler(ierr, "Problem closing restart file")
-    
+
   end subroutine get_from_restart_2d_float
 
 !-----------------------------------------------------------------------------------------
@@ -3823,7 +3871,7 @@ contains
 
     ierr = nf90_close(ncid)
     call error_handler(ierr, "Problem closing restart file")
-    
+
   end subroutine get_from_restart_2d_integer
 
 !-----------------------------------------------------------------------------------------
@@ -3878,7 +3926,7 @@ contains
 
     ierr = nf90_close(ncid)
     call error_handler(ierr, "Problem closing restart file")
-    
+
   end subroutine get_from_restart_3d
 
 !-----------------------------------------------------------------------------------------

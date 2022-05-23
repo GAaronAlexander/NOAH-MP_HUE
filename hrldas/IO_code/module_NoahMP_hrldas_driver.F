@@ -711,13 +711,34 @@ module module_NoahMP_hrldas_driver
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TS_URB2D_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TS_RUL2D_mosaic
 
-  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TS_RUL2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CMR_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CHR_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CMC_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CHC_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CMGR_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CHGR_SFCDIF_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: XXXR_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: XXXB_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: XXXG_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: XXXC_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CMCR_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TGR_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: DRELR_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: DRELB_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: DRELG_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: FLXHUMR_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: FLXHUMB_URB2D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: FLXHUMG_URB2D_mosaic
+
+
 
   !urban 3d model
 
   REAL,   ALLOCATABLE, DIMENSION(:,:,:) :: TRL_URB3D_mosaic
   REAl,   ALLOCATABLE, DIMENSION(:,:,:) :: TBL_URB3D_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:) :: TGL_URB3D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:) :: TGRL_URB3D_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:) :: SMR_URB3D_mosaic
 !------------------------------------------------------------------------
 ! END OF MOSAIC VARIABLES CALLS
 !------------------------------------------------------------------------
@@ -1980,6 +2001,27 @@ IF(noahmp_mosaic_scheme == 1) THEN
   ALLOCATE ( TBL_URB3D_mosaic  (XSTART:XEND,1:NSOIL*number_mosaic_catagories, YSTART:YEND) )
   ALLOCATE ( TGL_URB3D_mosaic  (XSTART:XEND,1:NSOIL*number_mosaic_catagories, YSTART:YEND) )
 
+  ! Extra variables needed for the restart of the urban model
+  ALLOCATE ( CMR_SFCDIF_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CHR_SFCDIF_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CMC_SFCDIF_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CHC_SFCDIF_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CMGR_SFCDIF_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CHGR_SFCDIF_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( XXXR_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( XXXB_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( XXXG_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( CMCR_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( TGR_URB2D_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( TGRL_URB3D_mosaic  (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( SMR_URB3D_mosaic   (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( DRELR_URB2D_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( DRELB_URB2D_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( DRELG_URB2D_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( FLXHUMR_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( FLXHUMB_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( FLXHUMG_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+
 ENDIF
 !------------------------------------------------------------------------
 !Added by Aaron Alexander for noahmp mosaic scheme
@@ -2739,8 +2781,36 @@ ENDIF
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TRL_URB3D_mosaic"  ,    TRL_URB3D  )
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TBL_URB3D_mosaic"  ,    TBL_URB3D  )
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TGL_URB3D_mosaic"  ,    TGL_URB3D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "TR_URB2D_mosaic"  ,     TR_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "TB_URB2D_mosaic"  ,     TB_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "TG_URB2D_mosaic"  ,     TG_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "TC_URB2D_mosaic"  ,     TC_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "QC_URB2D_mosaic"  ,     QC_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "UC_URB2D_mosaic"  ,     UC_URB2D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TRL_URB3D_mosaic"  ,    TRL_URB3D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TBL_URB3D_mosaic"  ,    TBL_URB3D  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TGL_URB3D_mosaic"  ,    TGL_URB3D  )
 
-
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CMR_SFCDIF_mosaic"  ,    CMR_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CHR_SFCDIF_mosaic"  ,    CHR_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CMC_SFCDIF_mosaic"  ,    CMC_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CHC_SFCDIF_mosaic"  ,    CHC_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CMGR_SFCDIF_mosaic"  ,    CMGR_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CHGR_SFCDIF_mosaic"  ,    CHGR_SFCDIF_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "XXXR_URB2D_mosaic"  ,    XXXR_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "XXXB_URB2D_mosaic"  ,    XXXB_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "XXXG_URB2D_mosaic"  ,    XXXG_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "XXXC_URB2D_mosaic"  ,    XXXC_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "CMCR_URB2D_mosaic"  ,    CMCR_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TGR_URB2D_mosaic"   ,    TGR_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TGRL_URB3D_mosaic"  ,    TGRL_URB3D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "SMR_URB3D_mosaic"  ,    SMR_URB3D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "DRELR_URB2D_mosaic"  ,    DRELR_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "DRELB_URB2D_mosaic"  ,    DRELB_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "DRELG_URB2D_mosaic"  ,    DRELG_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMR_URB2D_mosaic"  ,    FLXHUMR_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMB_URB2D_mosaic"  ,    FLXHUMB_URB2D_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMG_URB2D_mosaic"  ,    FLXHUMG_URB2D_mosaic  )
        ENDIF
 
 
@@ -3723,14 +3793,19 @@ end subroutine land_driver_ini
                 igrid, output_timestep, llanduse, split_output_count, hgrid,                &
                 ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                         &
                 iswater, mapproj, lat1, lon1, dx, dy, truelat1, truelat2, cen_lon,          &
-                nsoil, nsnow, dzs, startdate, olddate, spinup_loop, spinup_loops, IVGTYP, ISLTYP)
+                nsoil, nsnow, dzs, startdate, olddate, spinup_loop, spinup_loops, IVGTYP, ISLTYP, &
+                number_mosaic_catagories)
 
            DEFINE_MODE_LOOP : do imode = 1, 2
 
               call set_output_define_mode(imode)
 
               ! For 3D arrays, we need to know whether the Z dimension is snow layers, or soil layers.
-
+        !! Added by Aaron A. Mosaic Capabilities built off of
+        ! code infrastructure.
+        ! MOS1 = number of mosaic catagories
+        ! MOS2 = number of mosaic catagories * number of soil layers
+        ! MOS3 = number of mosaic catagories * number of snow layers 
         ! Properties - Assigned or predicted
               call add_to_output(IVGTYP     , "IVGTYP"  , "Dominant vegetation category"         , "category"              )
               call add_to_output(ISLTYP     , "ISLTYP"  , "Dominant soil category"               , "category"              )
@@ -3834,11 +3909,11 @@ end subroutine land_driver_ini
               call add_to_output(PSNXY      , "PSN"     , "Total photosynthesis"                   , "umol CO@ m{-2} s{-1}")
               call add_to_output(APARXY     , "APAR"    , "Photosynthesis active energy by canopy" , "W m{-2}"             )
         IF (noahmp_mosaic_scheme.eq.1) then
-        ! MOSIAC ADD TO OUTPUT (CHECK THESE)
-              call add_to_output(t2mvxy_mosaic , "T2MV_MOS", "Mosaic 2m Air Temp vegetated",       "K", "SOIL"             )
-              call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "SOIL"             )
-              call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "SOIL"           )
-              call add_to_output(LANDUSEF2(:,1:4,:), "FRAC_LND", "Mosaic Land Use Weight", "[-]", "SOIL")
+
+              call add_to_output(t2mvxy_mosaic , "T2MV_MOS", "Mosaic 2m Air Temp vegetated",       "K", "MOS1"             )
+              call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "MOS1"             )
+              call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "MOS1"           )
+              call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weight", "[-]", "MOS1")
           !MOSAIC
         ENDIF
         ! additional NoahMP output
@@ -3983,7 +4058,8 @@ subroutine lsm_restart()
   call prepare_restart_file (trim(outdir), version, igrid, llanduse, olddate, startdate, &
        ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                               &
        nsoil, nsnow, num_urban_hi, dx, dy, truelat1, truelat2, mapproj, lat1, lon1,   &
-       cen_lon, iswater, ivgtyp)
+       cen_lon, iswater, ivgtyp                                                       &
+       number_mosaic_catagories)
 
   call add_to_restart(TSLB      , "SOIL_T", layers="SOIL")
   call add_to_restart(TSNOXY    , "SNOW_T", layers="SNOW")
@@ -4167,110 +4243,135 @@ subroutine lsm_restart()
       call add_to_restart(     LFG_URB3D ,     "LFG_URB3D", layers="URBN" )
 
   ENDIF
+  ! MOS1 = only catagories of mosaic
+  ! MOS2 = 4 soil catagoris for each mosiac
+  ! MOS3 = number of soil layers times mosiac
+  ! MOS4 = 7 possible layers (snow and soil) for each mosaic
+  IF(noahmp_mosaic_scheme.eq.1) THEN
+    call add_to_restart(          TSK_mosaic ,       "TSK_mosaic", layers="MOS1"  )
+    call add_to_restart(        TSLB_mosaic,        "TSLB_mosaic" , layers="MOS2" )
+    call add_to_restart(      SMOIS_mosaic ,       "SMOIS_mosaic", layers="MOS2" )
+    call add_to_restart(        SH2O_mosaic ,       "SH2O_mosaic" , layers="MOS2" )
+    call add_to_restart(    CANWAT_mosaic  ,      "CANWAT_mosaic" , layers="MOS1" )
+    call add_to_restart(         SNOW_mosaic ,      "SNOW_mosaic" , layers="MOS1" )
+    call add_to_restart(       SNOWH_mosaic ,      "SNOWH_mosaic"  , layers="MOS1")
+    call add_to_restart(   isnowxy_mosaic,       "isnowxy_mosaic"  , layers="MOS1")
+    call add_to_restart(           tvxy_mosaic,     "tvxy_mosaic"  , layers="MOS1")
+    call add_to_restart(         tgxy_mosaic,       "tgxy_mosaic"  , layers="MOS1")
+    call add_to_restart(    canicexy_mosaic ,"canicexy_mosaic"  , layers="MOS1")
+    call add_to_restart(         TMN_mosaic   , "TMN_mosaic"  , layers="MOS1")
+    call add_to_restart(   canliqxy_mosaic , "canliqxy_mosaic" , layers="MOS1")
+    call add_to_restart(        eahxy_mosaic , "eahxy_mosaic"   , layers="MOS1")
+    call add_to_restart(     tahxy_mosaic , "tahxy_mosaic"   , layers="MOS1")
+    call add_to_restart(        cmxy_mosaic,   "cmxy_mosaic"    , layers="MOS1")
+    call add_to_restart(      chxy_mosaic ,    "chxy_mosaic"    , layers="MOS1")
+    call add_to_restart(        fwetxy_mosaic , "fwetxy_mosaic"  , layers="MOS1")
+    call add_to_restart(   sneqvoxy_mosaic, "sneqvoxy_mosaic"   , layers="MOS1")
+    call add_to_restart(   alboldxy_mosaic ,"alboldxy_mosaic"  , layers="MOS1" )
+    call add_to_restart(    qsnowxy_mosaic , "qsnowxy_mosaic"   , layers="MOS1")
+    call add_to_restart(    qrainxy_mosaic , "qrainxy_mosaic"    , layers="MOS1")
+    call add_to_restart(  wslakexy_mosaic , "wslakexy_mosaic"   , layers="MOS1")
+    call add_to_restart(      zwtxy_mosaic,   "zwtxy_mosaic"    , layers="MOS1")
+    call add_to_restart(          waxy_mosaic, "waxy_mosaic"    , layers="MOS1")
+    call add_to_restart(       wtxy_mosaic ,   "wtxy_mosaic"   , layers="MOS1")
+    call add_to_restart(     tsnoxy_mosaic ,  "tsnoxy_mosaic"   , layers="MOS3")
+    call add_to_restart(   zsnsoxy_mosaic,   "zsnsoxy_mosaic"   , layers="MOS4" )
+    call add_to_restart(   snicexy_mosaic,  "snicexy_mosaic"    , layers="MOS3")
+    call add_to_restart(   snliqxy_mosaic,  "snliqxy_mosaic"   , layers="MOS3")
+    call add_to_restart(  lfmassxy_mosaic, "lfmassxy_mosaic"   , layers="MOS1")
+    call add_to_restart( rtmassxy_mosaic,  "rtmassxy_mosaic"   , layers="MOS1" )
+    call add_to_restart(  stmassxy_mosaic, "stmassxy_mosaic"    , layers="MOS1")
+    call add_to_restart(    woodxy_mosaic,   "woodxy_mosaic"    , layers="MOS1")
+    call add_to_restart(  stblcpxy_mosaic, "stblcpxy_mosaic"    , layers="MOS1")
+    call add_to_restart(  fastcpxy_mosaic , "fastcpxy_mosaic"   , layers="MOS1")
+    call add_to_restart(    xsaixy_mosaic ,  "xsaixy_mosaic"    , layers="MOS1")
+    call add_to_restart(       xlai_mosaic,    "xlai_mosaic"    , layers="MOS1")
+    call add_to_restart(   grainxy_mosaic,  "grainxy_mosaic"    , layers="MOS1")
+    call add_to_restart(        gddxy_mosaic,  "gddxy_mosaic"   , layers="MOS1")
+    call add_to_restart(      t2mvxy_mosaic,  "t2mvxy_mosaic"   , layers="MOS1")
+    call add_to_restart(     t2mbxy_mosaic ,  "t2mbxy_mosaic"   , layers="MOS1")
+    call add_to_restart(  chstarxy_mosaic, "chstarxy_mosaic"    , layers="MOS1")
 
-  IF(noahmp_mosaic_scheme.eq.1) THEN !!!!!!NOT DONE YET
-    call add_to_restart(          TSK_mosaic , "TSK_mosaic"   )
-    call add_to_restart(        TSLB_mosaic,   "TSLB_mosaic"    )
-    call add_to_restart(      SMOIS_mosaic , "SMOIS_mosaic"  ,  )
-    call add_to_restart(        SH2O_mosaic , "SH2O_mosaic"  , )
-    call add_to_restart(    CANWAT_mosaic  , "CANWAT_mosaic"  , )
-    call add_to_restart(         SNOW_mosaic , "SNOW_mosaic"  ,  )
-    call add_to_restart(       SNOWH_mosaic ,"SNOWH_mosaic"  ,  )
-    call add_to_restart(   isnowxy_mosaic,  "isnowxy_mosaic"  ,   )
-    call add_to_restart(           tvxy_mosaic, "tvxy_mosaic"  ,  )
-    call add_to_restart(         tgxy_mosaic,  "tgxy_mosaic"  ,   )
-    call add_to_restart(   "canicexy_mosaic" , canicexy_mosaic  )
-    call add_to_restart(       "TMN_mosaic"  ,      TMN_mosaic  )
-    call add_to_restart(   "canliqxy_mosaic" , canliqxy_mosaic  )
-    call add_to_restart(     "eahxy_mosaic"  ,    eahxy_mosaic  )
-    call add_to_restart(     "tahxy_mosaic"  ,    tahxy_mosaic  )
-    call add_to_restart(      "cmxy_mosaic"  ,     cmxy_mosaic  )
-    call add_to_restart(      "chxy_mosaic"  ,     chxy_mosaic  )
-    call add_to_restart(    "fwetxy_mosaic"  ,   fwetxy_mosaic  )
-    call add_to_restart(   "sneqvoxy_mosaic" , sneqvoxy_mosaic  )
-    call add_to_restart(  "alboldxy_mosaic"  , alboldxy_mosaic  )
-    call add_to_restart(   "qsnowxy_mosaic"  ,  qsnowxy_mosaic  )
-    call add_to_restart(   "qrainxy_mosaic"  ,  qrainxy_mosaic  )
-    call add_to_restart(  "wslakexy_mosaic"  , wslakexy_mosaic  )
-    call add_to_restart(     "zwtxy_mosaic"  ,    zwtxy_mosaic  )
-    call add_to_restart(      "waxy_mosaic"  ,     waxy_mosaic  )
-    call add_to_restart(      "wtxy_mosaic"  ,     wtxy_mosaic  )
-    call add_to_restart(    "tsnoxy_mosaic"  ,   tsnoxy_mosaic  )
-    call add_to_restart(   "zsnsoxy_mosaic"  ,  zsnsoxy_mosaic  )
-    call add_to_restart(   "snicexy_mosaic"  ,  snicexy_mosaic  )
-    call add_to_restart(   "snliqxy_mosaic"  ,  snliqxy_mosaic  )
-    call add_to_restart(  "lfmassxy_mosaic"  , lfmassxy_mosaic  )
-    call add_to_restart(  "rtmassxy_mosaic"  , rtmassxy_mosaic  )
-    call add_to_restart(  "stmassxy_mosaic"  , stmassxy_mosaic  )
-    call add_to_restart(    "woodxy_mosaic"  ,   woodxy_mosaic  )
-    call add_to_restart(  "stblcpxy_mosaic"  , stblcpxy_mosaic  )
-    call add_to_restart(  "fastcpxy_mosaic"  , fastcpxy_mosaic  )
-    call add_to_restart(    "xsaixy_mosaic"  ,   xsaixy_mosaic  )
-    call add_to_restart(      "xlai_mosaic"  ,     xlai_mosaic  )
-    call add_to_restart(   "grainxy_mosaic"  ,  grainxy_mosaic  )
-    call add_to_restart(     "gddxy_mosaic"  ,    gddxy_mosaic  )
-    call add_to_restart(    "t2mvxy_mosaic"  ,   t2mvxy_mosaic  )
-    call add_to_restart(    "t2mbxy_mosaic"  ,   t2mbxy_mosaic  )
-    call add_to_restart(  "chstarxy_mosaic"  , chstarxy_mosaic  )
 
-
-    call add_to_restart(  "ACSNOM_mosaic"  , ACSNOM_mosaic   )
-    call add_to_restart(  "ACSNOW_mosaic"  , ACSNOW_mosaic   )
-    call add_to_restart(  "taussxy_mosaic" , taussxy_mosaic  )
-    call add_to_restart(  "QSFC_mosaic"    , QSFC_mosaic     )
-    call add_to_restart(  "SFCRUNOFF_mosaic",SFCRUNOFF_mosaic)
-    call add_to_restart(  "UDRUNOFF_mosaic" ,UDRUNOFF_mosaic )
+    call add_to_restart(   ACSNOM_mosaic, "ACSNOM_mosaic"    , layers="MOS1" )
+    call add_to_restart(  ACSNOW_mosaic,  "ACSNOW_mosaic"    , layers="MOS1" )
+    call add_to_restart(   taussxy_mosaic, "taussxy_mosaic"  , layers="MOS1" )
+    call add_to_restart(  QSFC_mosaic,  "QSFC_mosaic"         , layers="MOS1")
+    call add_to_restart( SFCRUNOFF_mosaic,  "SFCRUNOFF_mosaic", layers="MOS1")
+    call add_to_restart(   UDRUNOFF_mosaic, "UDRUNOFF_mosaic" , layers="MOS1")
 
     ! additional inout variable
-         call add_to_restart(  "ACC_SSOILXY_mosaic" , ACC_SSOILXY_mosaic )
-         call add_to_restart(  "ACC_QINSURXY_mosaic", ACC_QINSURXY_mosaic)
-         call add_to_restart(  "ACC_QSEVAXY_mosaic" , ACC_QSEVAXY_mosaic )
-         call add_to_restart(  "ACC_ETRANIXY_mosaic", ACC_ETRANIXY_mosaic)
-         call add_to_restart(  "ACC_DWATERXY_mosaic", ACC_DWATERXY_mosaic)
-         call add_to_restart(  "ACC_PRCPXY_mosaic"  , ACC_PRCPXY_mosaic  )
-         call add_to_restart(  "ACC_ECANXY_mosaic"  , ACC_ECANXY_mosaic  )
-         call add_to_restart(  "ACC_ETRANXY_mosaic" , ACC_ETRANXY_mosaic )
-         call add_to_restart(  "ACC_EDIRXY_mosaic"  , ACC_EDIRXY_mosaic  )
+    call add_to_restart(  ACC_SSOILXY_mosaic, "ACC_SSOILXY_mosaic" , layers="MOS1" )
+    call add_to_restart(  ACC_QINSURXY_mosaic, "ACC_QINSURXY_mosaic", layers="MOS1")
+    call add_to_restart(  ACC_QSEVAXY_mosaic, "ACC_QSEVAXY_mosaic"  , layers="MOS1")
+    call add_to_restart(  ACC_ETRANIXY_mosaic, "ACC_ETRANIXY_mosaic", layers="MOS2")
+    call add_to_restart(  ACC_DWATERXY_mosaic, "ACC_DWATERXY_mosaic", layers="MOS1")
+    call add_to_restart(  ACC_PRCPXY_mosaic,  "ACC_PRCPXY_mosaic" , layers="MOS1"   )
+    call add_to_restart(  ACC_ECANXY_mosaic, "ACC_ECANXY_mosaic" , layers="MOS1"  )
+    call add_to_restart(  ACC_ETRANXY_mosaic, "ACC_ETRANXY_mosaic" , layers="MOS1" )
+    call add_to_restart(  ACC_EDIRXY_mosaic , "ACC_EDIRXY_mosaic" , layers="MOS1"  )
+
     !! Irrigation varaibles for re-writing
     IF (irrigation_option > 0) THEN
-      call add_to_restart(   "IRNUMSI_mosaic"  ,  IRNUMSI_mosaic  )
-      call add_to_restart(   "IRNUMMI_mosaic"  ,  IRNUMMI_mosaic  )
-      call add_to_restart(   "IRNUMFI_mosaic"  ,  IRNUMFI_mosaic  )
-      call add_to_restart(   "IRWATSI_mosaic"  ,  IRWATSI_mosaic  )
-      call add_to_restart(   "IRWATMI_mosaic"  ,  IRWATMI_mosaic  )
-      call add_to_restart(   "IRWATFI_mosaic"  ,  IRWATFI_mosaic  )
-      call add_to_restart(   "IRELOSS_mosaic"  ,  IRELOSS_mosaic  )
-      call add_to_restart(   "IRSIVOL_mosaic"  ,  IRSIVOL_mosaic  )
-      call add_to_restart(   "IRMIVOL_mosaic"  ,  IRMIVOL_mosaic  )
-      call add_to_restart(   "IRFIVOL_mosaic"  ,  IRFIVOL_mosaic  )
-      call add_to_restart(   "IRRSPLH_mosaic"  ,  IRRSPLH_mosaic  )
+      call add_to_restart(    IRNUMSI_mosaic,  "IRNUMSI_mosaic" , layers="MOS1"  )
+      call add_to_restart(    IRNUMMI_mosaic,  "IRNUMMI_mosaic" , layers="MOS1"   )
+      call add_to_restart(    IRNUMFI_mosaic, "IRNUMFI_mosaic"  , layers="MOS1"  )
+      call add_to_restart(    IRWATSI_mosaic, "IRWATSI_mosaic"  , layers="MOS1"  )
+      call add_to_restart(    IRWATMI_mosaic , "IRWATMI_mosaic" , layers="MOS1"  )
+      call add_to_restart(    IRWATFI_mosaic,   "IRWATFI_mosaic"  , layers="MOS1"  )
+      call add_to_restart(   IRELOSS_mosaic , "IRELOSS_mosaic"   , layers="MOS1" )
+      call add_to_restart(   IRSIVOL_mosaic, "IRSIVOL_mosaic"  , layers="MOS1"  )
+      call add_to_restart(   IRMIVOL_mosaic ,  "IRMIVOL_mosaic" , layers="MOS1"  )
+      call add_to_restart(    IRFIVOL_mosaic,  "IRFIVOL_mosaic" , layers="MOS1"  )
+      call add_to_restart(     IRRSPLH_mosaic, "IRRSPLH_mosaic"  , layers="MOS1"  )
     ENDIF
 
     !Variables needed for MMF option 5 (unsure if this will work at the moment)
-    call add_to_restart(  "smoiseq_mosaic"   , SMOISEQ_mosaic    )
-    call add_to_restart(  "smcwtdxy_mosaic"  , smcwtdxy_mosaic   )
-    call add_to_restart(  "deeprechxy_mosaic", deeprechxy_mosaic )
+    call add_to_restart(  SMOISEQ_mosaic,  "smoiseq_mosaic"   , layers="MOS2"    )
+    call add_to_restart(  smcwtdxy_mosaic,  "smcwtdxy_mosaic"   , layers="MOS1"  )
+    call add_to_restart(  deeprechxy_mosaic, "deeprechxy_mosaic" , layers="MOS1")
 
     IF(SF_URBAN_PHYSICS > 0 )  THEN  ! any urban model
 
-      call add_to_restart(       "SH_URB2D_mosaic"  ,     SH_URB2D_mosaic  )
-      call add_to_restart(       "LH_URB2D_mosaic"  ,     LH_URB2D_mosaic  )
-      call add_to_restart(        "G_URB2D_mosaic"  ,      G_URB2D_mosaic  )
-      call add_to_restart(       "RN_URB2D_mosaic"  ,     RN_URB2D_mosaic  )
-      call add_to_restart(       "TS_URB2D_mosaic"  ,     TS_URB2D_mosaic  )
+      call add_to_restart(        SH_URB2D_mosaic,  "SH_URB2D_mosaic" , layers="MOS1"   )
+      call add_to_restart(        LH_URB2D_mosaic,  "LH_URB2D_mosaic"  , layers="MOS1"  )
+      call add_to_restart(        G_URB2D_mosaic ,  "G_URB2D_mosaic" , layers="MOS1" )
+      call add_to_restart(        RN_URB2D_mosaic,  "RN_URB2D_mosaic"  , layers="MOS1" )
+      call add_to_restart(        TS_URB2D_mosaic,  "TS_URB2D_mosaic" , layers="MOS1"   )
     ENDIF
 
     IF(SF_URBAN_PHYSICS == 1 ) THEN  ! single layer urban model
 
-      call add_to_restart(       "TR_URB2D_mosaic"  ,     TR_URB2D  )
-      call add_to_restart(       "TB_URB2D_mosaic"  ,     TB_URB2D  )
-      call add_to_restart(       "TG_URB2D_mosaic"  ,     TG_URB2D  )
-      call add_to_restart(       "TC_URB2D_mosaic"  ,     TC_URB2D  )
-      call add_to_restart(       "QC_URB2D_mosaic"  ,     QC_URB2D  )
-      call add_to_restart(       "UC_URB2D_mosaic"  ,     UC_URB2D  )
-      call add_to_restart(      "TRL_URB3D_mosaic"  ,    TRL_URB3D  )
-      call add_to_restart(      "TBL_URB3D_mosaic"  ,    TBL_URB3D  )
-      call add_to_restart(      "TGL_URB3D_mosaic"  ,    TGL_URB3D  )
+      call add_to_restart(         TR_URB2D_mosaic,  "TR_URB2D_mosaic" , layers="MOS1"   )
+      call add_to_restart(         TB_URB2D_mosaic , "TB_URB2D_mosaic" , layers="MOS1"  )
+      call add_to_restart(         TG_URB2D_mosaic,  "TG_URB2D_mosaic"  , layers="MOS1" )
+      call add_to_restart(         TC_URB2D_mosaic,  "TC_URB2D_mosaic"  , layers="MOS1"  )
+      call add_to_restart(         QC_URB2D_mosaic,  "QC_URB2D_mosaic"  , layers="MOS1" )
+      call add_to_restart(         UC_URB2D_mosaic,  "UC_URB2D_mosaic"  , layers="MOS1"  )
+      call add_to_restart(         TRL_URB3D_mosaic, "TRL_URB3D_mosaic"  , layers="MOS2"  )
+      call add_to_restart(         TBL_URB3D_mosaic,  "TBL_URB3D_mosaic"  , layers="MOS2"  )
+      call add_to_restart(         TGL_URB3D_mosaic, "TGL_URB3D_mosaic" , layers="MOS2"  )
+
+      call add_to_restart(    CMR_SFCDIF_mosaic ,     "CMR_SFCDIF_mosaic" )
+      call add_to_restart(    CHR_SFCDIF_mosaic ,     "CHR_SFCDIF_mosaic" )
+      call add_to_restart(    CMC_SFCDIF_mosaic ,     "CMC_SFCDIF_mosaic" )
+      call add_to_restart(    CHC_SFCDIF_mosaic ,     "CHC_SFCDIF_mosaic" )
+      call add_to_restart(   CMGR_SFCDIF_mosaic ,    "CMGR_SFCDIF_mosaic" )
+      call add_to_restart(   CHGR_SFCDIF_mosaic ,    "CHGR_SFCDIF_mosaic" )
+      call add_to_restart(   XXXR_URB2D_mosaic  ,    "XXXR_URB2D_mosaic" )
+      call add_to_restart(   XXXB_URB2D_mosaic  ,    "XXXB_URB2D_mosaic" )
+      call add_to_restart(   XXXG_URB2D_mosaic  ,    "XXXG_URB2D_mosaic" )
+      call add_to_restart(   XXXC_URB2D_mosaic  ,    "XXXC_URB2D_mosaic" )
+      call add_to_restart(   CMCR_URB2D_mosaic  ,    "CMCR_URB2D_mosaic" )
+      call add_to_restart(    TGR_URB2D_mosaic  ,     "TGR_URB2D_mosaic" )
+      call add_to_restart(   TGRL_URB3D_mosaic  ,    "TGRL_URB3D_mosaic", layers="MOS2" )
+      call add_to_restart(    SMR_URB3D_mosaic  ,     "SMR_URB3D_mosaic", layers="MOS2" )
+      call add_to_restart(  DRELR_URB2D_mosaic  ,   "DRELR_URB2D_mosaic" )
+      call add_to_restart(  DRELB_URB2D_mosaic  ,   "DRELB_URB2D_mosaic" )
+      call add_to_restart(  DRELG_URB2D_mosaic  ,   "DRELG_URB2D_mosaic" )
+      call add_to_restart(FLXHUMR_URB2D_mosaic  , "FLXHUMR_URB2D_mosaic" )
+      call add_to_restart(FLXHUMB_URB2D_mosaic  , "FLXHUMB_URB2D_mosaic" )
+      call add_to_restart(FLXHUMG_URB2D_mosaic  , "FLXHUMG_URB2D_mosaic" )
 
 
     ENDIF
