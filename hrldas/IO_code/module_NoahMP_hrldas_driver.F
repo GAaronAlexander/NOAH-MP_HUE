@@ -1262,6 +1262,18 @@ module module_NoahMP_hrldas_driver
         stop
   endif
 
+  if (noahmp_HUE_iopt.eq.1) then
+    if (number_land_use_catagories.le.40 ) then
+       write(*, *)
+       write(*, '(" ***** Namelist error: ******************************************************")')
+       write(*, '(" ***** ")')
+       write(*, '(" *****      HUE NOAH-MP must have more than 40 Land-types to be used. If not, no new physics will be implemented ")')
+       write(*, *)
+       stop
+    endif
+ endif
+
+
 !---------------------------------------------------------------------
 !  NAMELIST check end
 !---------------------------------------------------------------------
