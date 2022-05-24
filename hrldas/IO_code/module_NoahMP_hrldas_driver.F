@@ -850,6 +850,7 @@ module module_NoahMP_hrldas_driver
   character(len=256) :: geogrid_file_name_for_mosaic = " "
   integer            :: number_mosaic_catagories
   integer            :: number_land_use_catagories
+  integer            :: noahmp_HUE_iopt
   !! End modifications for NOAH-MP HUE
 
   integer            :: sf_urban_physics = 0
@@ -962,7 +963,8 @@ module module_NoahMP_hrldas_driver
        xstart, xend, ystart, yend, &
 
        !!Added by Aaron Alexander
-       noahmp_mosaic_scheme, geogrid_file_name_for_mosaic,number_mosaic_catagories,number_land_use_catagories
+       noahmp_mosaic_scheme, geogrid_file_name_for_mosaic,number_mosaic_catagories,number_land_use_catagories, &
+       noahmp_HUE_iopt
        !!End Mods by Aaron Alexander
 
 
@@ -1009,6 +1011,7 @@ module module_NoahMP_hrldas_driver
     noahmp_mosaic_scheme     = -999 !should true or false
     number_mosaic_catagories = -999 !should be greater than zero but less than 8
     number_land_use_catagories = -999 !should be set so we can read in the fractional land use data
+    noahmp_HUE_iopt = -999
   !!NOAH-MP HUE end mods by Aaron Alexander
 
   open(30, file="namelist.hrldas", form="FORMATTED")
@@ -1201,7 +1204,7 @@ module module_NoahMP_hrldas_driver
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
         write(*, '(" ***** ")')
-        write(*, '(" *****       HUE NOAH-MP option must be either 0 (off) or 1 (on)")')
+        write(*, '(" *****       Mosaic option must be either 0 (off) or 1 (on)")')
         write(*, *)
         stop
   endif
@@ -1250,6 +1253,14 @@ module module_NoahMP_hrldas_driver
      endif
   endif
 
+  if (noahmp_HUE_iopt /= 0 .and. noahmp_HUE_iopt /= 1) then
+        write(*, *)
+        write(*, '(" ***** Namelist error: ******************************************************")')
+        write(*, '(" ***** ")')
+        write(*, '(" *****       HUE NOAH-MP option must be either 0 (off) or 1 (on)")')
+        write(*, *)
+        stop
+  endif
 
 !---------------------------------------------------------------------
 !  NAMELIST check end
@@ -2915,7 +2926,7 @@ ENDIF
                      irwatmi, irwatfi, ireloss, irsivol,                                  &
                      irmivol, irfivol, irrsplh,                                           &
                       T2MVXY,   T2MBXY, CHSTARXY,                                         &
-                       NSOIL,  .false.,                                                   &
+                       NSOIL,  .true.,                                                   &
                       .true.,runoff_option, crop_option, irrigation_option, irrigation_method,  &
                       sf_urban_physics,                         &  ! urban scheme
                       ids,ide+1, jds,jde+1, kds,kde,                &  ! domain
@@ -2924,6 +2935,7 @@ ENDIF
                       smoiseq, smcwtdxy, rechxy, deeprechxy,
                       LANDUSEF, landusef2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                      noahmp_HUE_iopt,
                       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
@@ -3338,6 +3350,7 @@ if (noahmp_mosaic_scheme.eq.0) then
                   smoiseq, smcwtdxy, rechxy, deeprechxy,
                   LANDUSEF, landusef2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                  noahmp_HUE_iopt,                                                      &
                   TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                   CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                   isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
@@ -3354,12 +3367,20 @@ if (noahmp_mosaic_scheme.eq.0) then
                   IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &
                   IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &
 
+                  smoiseq_mosaic,  smcwtdxy_mosaic, rechxy_mosaic, deeprechxy_mosaic,   &
+
                   TR_URB2D_mosaic, TB_URB2D_mosaic,                                     &      ! Added by Aaron A.
                   TG_URB2D_mosaic, TC_URB2D_mosaic, QC_URB2D_mosaic,                    &      ! Added by Aaron A.
                   TRL_URB3D_mosaic, TBL_URB3D_mosaic,                                   &      ! Added by Aaron A.
                   TGL_URB3D_mosaic, SH_URB2D_mosaic, LH_URB2D_mosaic,                   &      ! Added by Aaron A.
                   G_URB2D_mosaic, RN_URB2D_mosaic, TS_URB2D_mosaic,                     &      ! Added by Aaron A.
-                  TS_RUL2D_mosaic,                                                      &
+                  CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic, CMC_SFCDIF_mosaic,              &
+                  CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic, CHGR_SFCDIF_mosaic,            &
+                  XXXR_URB2D_mosaic, XXXB_URB2D_mosaic, XXXG_URB2D_mosaic,              &
+                  CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
+                  TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
+                  DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
+                  FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
                     )                                                            ! Added by Aaron A.
 
    endif !end mosaic if else statement
@@ -3805,7 +3826,7 @@ end subroutine land_driver_ini
         ! code infrastructure.
         ! MOS1 = number of mosaic catagories
         ! MOS2 = number of mosaic catagories * number of soil layers
-        ! MOS3 = number of mosaic catagories * number of snow layers 
+        ! MOS3 = number of mosaic catagories * number of snow layers
         ! Properties - Assigned or predicted
               call add_to_output(IVGTYP     , "IVGTYP"  , "Dominant vegetation category"         , "category"              )
               call add_to_output(ISLTYP     , "ISLTYP"  , "Dominant soil category"               , "category"              )

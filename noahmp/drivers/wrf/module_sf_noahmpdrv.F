@@ -10,14 +10,14 @@ MODULE module_sf_noahmpdrv
 CONTAINS
 !
   SUBROUTINE noahmplsm(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
-                  DZ8W,       DT,       DZS,    NSOIL,       DX,            & ! IN : Model configuration 
+                  DZ8W,       DT,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
 	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
 		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
 	       PLANTING,  HARVEST,SEASON_GDD,                               &
                  IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
               IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
               IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
-             IOPT_IRRM, IOPT_INFDV, IOPT_TDRN,soiltstep,                    & ! IN : User options                 
+             IOPT_IRRM, IOPT_INFDV, IOPT_TDRN,soiltstep,                    & ! IN : User options
               IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
 	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
                    T3D,     QV3D,     U_PHY,    V_PHY,   SWDOWN,     SWDDIR,&
@@ -105,7 +105,7 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLAND     ! =2 ocean; =1 land/seaice
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XICE      ! fraction of grid that is seaice
     REAL,                                            INTENT(IN   ) ::  XICE_THRES! fraction of grid determining seaice
-    INTEGER,                                         INTENT(IN   ) ::  IDVEG     ! dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1      
+    INTEGER,                                         INTENT(IN   ) ::  IDVEG     ! dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1
     INTEGER,                                         INTENT(IN   ) ::  IOPT_CRS  ! canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)
     INTEGER,                                         INTENT(IN   ) ::  IOPT_BTR  ! soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)
     INTEGER,                                         INTENT(IN   ) ::  IOPT_RUN  ! runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS)
@@ -160,14 +160,14 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  HARVEST   ! harvest date
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SEASON_GDD! growing season GDD
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GRAINXY   ! mass of grain XING [g/m2]
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GDDXY     ! growing degree days XING (based on 10C) 
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GDDXY     ! growing degree days XING (based on 10C)
  INTEGER,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  PGSXY
 
 ! gecros model
     REAL,    DIMENSION( ims:ime,       60,jms:jme ), INTENT(INOUT) ::  gecros_state !  gecros crop
 
-!Tile drain variables    
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QTDRAIN  
+!Tile drain variables
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QTDRAIN
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN)    ::  TD_FRACTION
 
 #ifdef WRF_HYDRO
@@ -189,16 +189,16 @@ CONTAINS
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  AXAJ_2D   ! Xinanjiang: Tension water distribution inflection parameter [-] for opt_run=7
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  BXAJ_2D   ! Xinanjiang: Tension water distribution shape parameter [-] for opt_run=7
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  XXAJ_2D   ! Xinanjiang: Free water distribution shape parameter [-] for opt_run=7
-!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  BDVIC_2D  ! VIC model infiltration parameter [-]  
+!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  BDVIC_2D  ! VIC model infiltration parameter [-]
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  GDVIC_2D  ! Mean Capillary Drive (m) for infiltration models
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  BBVIC_2D  ! DVIC heterogeniety paramater [-]
 
 ! placeholders for 2D irrigation parameters
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  IRR_FRAC_2D   ! irrigation Fraction
-!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  IRR_HAR_2D    ! number of days before harvest date to stop irrigation 
+!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  IRR_HAR_2D    ! number of days before harvest date to stop irrigation
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  IRR_LAI_2D    ! Minimum lai to trigger irrigation
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  IRR_MAD_2D    ! management allowable deficit (0-1)
-!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  FILOSS_2D     ! fraction of flood irrigation loss (0-1) 
+!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  FILOSS_2D     ! fraction of flood irrigation loss (0-1)
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  SPRIR_RATE_2D ! mm/h, sprinkler irrigation rate
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  MICIR_RATE_2D ! mm/h, micro irrigation rate
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  FIRTFAC_2D    ! flood application rate factor
@@ -208,7 +208,7 @@ CONTAINS
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  KLAT_FAC   ! factor multiplier to hydraulic conductivity
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TDSMC_FAC  ! factor multiplier to field capacity
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_DC      ! drainage coefficient for simple
-!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_DCOEF   ! drainge coefficient for Hooghoudt 
+!    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_DCOEF   ! drainge coefficient for Hooghoudt
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_DDRAIN  ! depth of drain
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_RADI    ! tile radius
 !    REAL,    DIMENSION( ims:ime, jms:jme ), INTENT(IN)          ::  TD_SPAC    ! tile spacing
@@ -274,7 +274,7 @@ CONTAINS
     REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(INOUT) ::  SMOISEQ   ! eq volumetric soil moisture [m3/m3]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SMCWTDXY  ! soil moisture content in the layer to the water table when deep
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  DEEPRECHXY ! recharge to the water table when deep
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  RECHXY    ! recharge to the water table (diagnostic) 
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  RECHXY    ! recharge to the water table (diagnostic)
 
 ! OUT (with no Noah LSM equivalent)
 
@@ -318,15 +318,15 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  IRBXY     ! bare net longwave rad. [w/m2] [+ to atm]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  TRXY      ! transpiration [w/m2]  [+ to atm]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EVCXY     ! canopy evaporation heat [w/m2]  [+ to atm]
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHLEAFXY  ! leaf exchange coefficient 
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHUCXY    ! under canopy exchange coefficient 
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHV2XY    ! veg 2m exchange coefficient 
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHLEAFXY  ! leaf exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHUCXY    ! under canopy exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHV2XY    ! veg 2m exchange coefficient
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHB2XY    ! bare 2m exchange coefficient
 ! additional output variables
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHXY     ! precipitation advected heat 
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHGXY    ! precipitation advected heat 
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHBXY    ! precipitation advected heat 
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHVXY    ! precipitation advected heat 
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHXY     ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHGXY    ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHBXY    ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHVXY    ! precipitation advected heat
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QINTSXY
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QINTRXY
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QDRIPSXY
@@ -365,19 +365,19 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_ECANXY
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_ETRANXY
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_EDIRXY
- 
+
     INTEGER,  INTENT(IN   )   ::     ids,ide, jds,jde, kds,kde,  &  ! d -> domain
          &                           ims,ime, jms,jme, kms,kme,  &  ! m -> memory
          &                           its,ite, jts,jte, kts,kte      ! t -> tile
 
-!2D inout irrigation variables 
+!2D inout irrigation variables
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(IN)    :: IRFRACT    ! irrigation fraction
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(IN)    :: SIFRACT    ! sprinkler irrigation fraction
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(IN)    :: MIFRACT    ! micro irrigation fraction
-    REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(IN)    :: FIFRACT    ! flood irrigation fraction   
+    REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(IN)    :: FIFRACT    ! flood irrigation fraction
     INTEGER, DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRNUMSI    ! irrigation event number, Sprinkler
     INTEGER, DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRNUMMI    ! irrigation event number, Micro
-    INTEGER, DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRNUMFI    ! irrigation event number, Flood 
+    INTEGER, DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRNUMFI    ! irrigation event number, Flood
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRWATSI    ! irrigation water amount [m] to be applied, Sprinkler
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRWATMI    ! irrigation water amount [m] to be applied, Micro
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRWATFI    ! irrigation water amount [m] to be applied, Flood
@@ -385,17 +385,17 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRSIVOL    ! amount of irrigation by sprinkler (mm)
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRMIVOL    ! amount of irrigation by micro (mm)
     REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRFIVOL    ! amount of irrigation by micro (mm)
-    REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRRSPLH    ! latent heating from sprinkler evaporation (w/m2)    
+    REAL,    DIMENSION( ims:ime,          jms:jme ),  INTENT(INOUT) :: IRRSPLH    ! latent heating from sprinkler evaporation (w/m2)
     CHARACTER(LEN=256),                               INTENT(IN)    :: LLANDUSE   ! landuse data name (USGS or MODIS_IGBP)
 
-!ID local irrigation variables 
+!ID local irrigation variables
     REAL                                                            :: IRRFRA     ! irrigation fraction
     REAL                                                            :: SIFAC      ! sprinkler irrigation fraction
     REAL                                                            :: MIFAC      ! micro irrigation fraction
-    REAL                                                            :: FIFAC      ! flood irrigation fraction   
+    REAL                                                            :: FIFAC      ! flood irrigation fraction
     INTEGER                                                         :: IRCNTSI    ! irrigation event number, Sprinkler
     INTEGER                                                         :: IRCNTMI    ! irrigation event number, Micro
-    INTEGER                                                         :: IRCNTFI    ! irrigation event number, Flood 
+    INTEGER                                                         :: IRCNTFI    ! irrigation event number, Flood
     REAL                                                            :: IRAMTSI    ! irrigation water amount [m] to be applied, Sprinkler
     REAL                                                            :: IRAMTMI    ! irrigation water amount [m] to be applied, Micro
     REAL                                                            :: IRAMTFI    ! irrigation water amount [m] to be applied, Flood
@@ -439,7 +439,7 @@ CONTAINS
 ! INOUT (with generic LSM equivalent)
 
     REAL                                :: FSH          ! total sensible heat (w/m2) [+ to atm]
-    REAL                                :: SSOIL        ! soil heat heat (w/m2) 
+    REAL                                :: SSOIL        ! soil heat heat (w/m2)
     REAL                                :: SALB         ! surface albedo (-)
     REAL                                :: FSNO         ! snow cover fraction (-)
     REAL,   DIMENSION( 1:NSOIL)         :: SMCEQ        ! eq vol. soil moisture (m3/m3)
@@ -473,7 +473,7 @@ CONTAINS
     REAL                                :: WT           ! groundwater storage [mm]
     REAL                                :: SMCWTD       ! soil moisture content in the layer to the water table when deep
     REAL                                :: DEEPRECH     ! recharge to the water table when deep
-    REAL                                :: RECH         ! recharge to the water table (diagnostic)  
+    REAL                                :: RECH         ! recharge to the water table (diagnostic)
     REAL, DIMENSION(-2:NSOIL)           :: ZSNSO        ! snow layer depth [m]
     REAL, DIMENSION(-2:              0) :: SNICE        ! snow layer ice [mm]
     REAL, DIMENSION(-2:              0) :: SNLIQ        ! snow layer liquid water [mm]
@@ -491,7 +491,7 @@ CONTAINS
     REAL                                :: TAUSS        ! non-dimensional snow age
 
 ! tile drainage
-    REAL                                :: QTLDRN       ! tile drainage (mm)    
+    REAL                                :: QTLDRN       ! tile drainage (mm)
     REAL                                :: TDFRACMP     ! tile drainage map
 #ifdef WRF_HYDRO
     REAL                                :: WATBLED      ! water table depth for tile drainage
@@ -545,9 +545,9 @@ CONTAINS
     REAL                                :: GHB          ! bare ground heat flux [w/m2] [+ to soil]
     REAL                                :: TR           ! transpiration [w/m2]  [+ to atm]
     REAL                                :: EVC          ! canopy evaporation heat [w/m2]  [+ to atm]
-    REAL                                :: CHLEAF       ! leaf exchange coefficient 
-    REAL                                :: CHUC         ! under canopy exchange coefficient 
-    REAL                                :: CHV2         ! veg 2m exchange coefficient 
+    REAL                                :: CHLEAF       ! leaf exchange coefficient
+    REAL                                :: CHUC         ! under canopy exchange coefficient
+    REAL                                :: CHV2         ! veg 2m exchange coefficient
     REAL                                :: CHB2         ! bare 2m exchange coefficient
     REAL                                :: QINTS
     REAL                                :: QINTR
@@ -562,13 +562,13 @@ CONTAINS
     REAL                                :: QSUBC
     REAL                                :: QFROC
     REAL                                :: QFRZC
-    REAL                                :: QMELTC 
+    REAL                                :: QMELTC
     REAL                                :: PAHV    !precipitation advected heat - vegetation net (W/m2)
     REAL                                :: PAHG    !precipitation advected heat - under canopy net (W/m2)
     REAL                                :: PAHB    !precipitation advected heat - bare ground net (W/m2)
     REAL                                :: PAH     !precipitation advected heat - total (W/m2)
-    REAL                                :: RAININ  !rain rate                   (mm/s) 
-    REAL                                :: SNOWIN  !liquid equivalent snow rate (mm/s) 
+    REAL                                :: RAININ  !rain rate                   (mm/s)
+    REAL                                :: SNOWIN  !liquid equivalent snow rate (mm/s)
     REAL                                :: ACC_SSOIL
     REAL                                :: ACC_QINSUR
     REAL                                :: ACC_QSEVA
@@ -599,7 +599,7 @@ CONTAINS
 
     REAL, DIMENSION(1:60)               :: gecros1d     !  gecros crop
     REAL                                :: gecros_dd ,gecros_tbem,gecros_emb ,gecros_ema, &
-                                           gecros_ds1,gecros_ds2 ,gecros_ds1x,gecros_ds2x 
+                                           gecros_ds1,gecros_ds2 ,gecros_ds1x,gecros_ds2x
 
     REAL                                :: FSR          ! total reflected solar radiation (w/m2)
     REAL, DIMENSION(-2:0)               :: FICEOLD      ! snow layer ice fraction []
@@ -627,11 +627,11 @@ CONTAINS
 
     INTEGER, PARAMETER                  :: NSNOW = 3    ! number of snow layers fixed to 3
     REAL, PARAMETER                     :: undefined_value = -1.E36
-    
+
     REAL, DIMENSION( 1:nsoil ) :: SAND
     REAL, DIMENSION( 1:nsoil ) :: CLAY
     REAL, DIMENSION( 1:nsoil ) :: ORGM
-    
+
     type(noahmp_parameters) :: parameters
 
 
@@ -732,7 +732,7 @@ CONTAINS
 
        IF((XLAND(I,J)-1.5) >= 0.) CYCLE ILOOP   ! Open water case
 
-!     2D to 1D       
+!     2D to 1D
 
 ! IN only
 
@@ -749,7 +749,7 @@ CONTAINS
          SOILTYP(4) = nint(SOILCL4(I,J))              ! soil type in layer4
        elseif(iopt_soil == 3) then
          SOILTYP= ISLTYP(I,J)                         ! to initialize with default
-       end if 
+       end if
        FVEG   = VEGFRA(I,J)/100.                      ! vegetation fraction [0-1]
        FVGMAX = VEGMAX (I,J)/100.                     ! Vegetation fraction annual max [0-1]
        TBOT = TMN(I,J)                                ! Fixed deep soil temperature for land
@@ -786,7 +786,7 @@ CONTAINS
          PRCPOTHR  = PRCP - PRCPCONV - PRCPNONC - PRCPSHCV ! take care of other (fog) contained in rainbl
 	 PRCPOTHR  = MAX(0.0,PRCPOTHR)
 	 PRCPNONC  = PRCPNONC + PRCPOTHR
-         PRCPSNOW  = PRCPSNOW + SR(I,J)  * PRCPOTHR 
+         PRCPSNOW  = PRCPSNOW + SR(I,J)  * PRCPOTHR
        ELSE
          PRCPCONV  = 0.
          PRCPNONC  = PRCP
@@ -841,7 +841,7 @@ CONTAINS
        SMCEQ(       1:NSOIL) = SMOISEQ (I,       1:NSOIL,J)
        SMCWTD                = SMCWTDXY(I,J)
        RECH                  = 0.
-       DEEPRECH              = 0.  
+       DEEPRECH              = 0.
        ACC_SSOIL             = ACC_SSOILXY (I,J)                 ! surface heat flux
        ACC_QSEVA             = ACC_QSEVAXY (I,J)
        ACC_QINSUR            = ACC_QINSURXY(I,J)
@@ -863,10 +863,10 @@ CONTAINS
        IRRFRA                = IRFRACT(I,J)    ! irrigation fraction
        SIFAC                 = SIFRACT(I,J)    ! sprinkler irrigation fraction
        MIFAC                 = MIFRACT(I,J)    ! micro irrigation fraction
-       FIFAC                 = FIFRACT(I,J)    ! flood irrigation fraction   
+       FIFAC                 = FIFRACT(I,J)    ! flood irrigation fraction
        IRCNTSI               = IRNUMSI(I,J)    ! irrigation event number, Sprinkler
        IRCNTMI               = IRNUMMI(I,J)    ! irrigation event number, Micro
-       IRCNTFI               = IRNUMFI(I,J)    ! irrigation event number, Flood 
+       IRCNTFI               = IRNUMFI(I,J)    ! irrigation event number, Flood
        IRAMTSI               = IRWATSI(I,J)    ! irrigation water amount [m] to be applied, Sprinkler
        IRAMTMI               = IRWATMI(I,J)    ! irrigation water amount [m] to be applied, Micro
        IRAMTFI               = IRWATFI(I,J)    ! irrigation water amount [m] to be applied, Flood
@@ -880,22 +880,22 @@ CONTAINS
        if(iopt_crop == 2) then   ! gecros crop model
 
          gecros1d(1:60)      = gecros_state(I,1:60,J)       ! Gecros variables 2D -> local
-         
+
          if(croptype == 1) then
            gecros_dd   =  2.5
            gecros_tbem =  2.0
-           gecros_emb  = 10.2 
+           gecros_emb  = 10.2
            gecros_ema  = 40.0
            gecros_ds1  =  2.1 !BBCH 92
            gecros_ds2  =  2.0 !BBCH 90
            gecros_ds1x =  0.0
            gecros_ds2x = 10.0
          end if
-           
+
          if(croptype == 2) then
            gecros_dd   =  5.0
            gecros_tbem =  8.0
-           gecros_emb  = 15.0 
+           gecros_emb  = 15.0
            gecros_ema  =  6.0
            gecros_ds1  =  1.78  !BBCH 85
            gecros_ds2  =  1.63  !BBCH 80
@@ -903,7 +903,7 @@ CONTAINS
            gecros_ds2x = 14.0
          end if
 
-       end if 
+       end if
 
        SLOPETYP     = 1                               ! set underground runoff slope term
        IST          = 1                               ! MP surface type: 1 = land; 2 = lake
@@ -924,7 +924,7 @@ CONTAINS
            VEGTYP = ISURBAN_TABLE
          ELSE
            VEGTYP = NATURAL_TABLE  ! set urban vegetation type based on table natural
-           FVGMAX = 0.96 
+           FVGMAX = 0.96
          ENDIF
 
        ENDIF
@@ -953,10 +953,10 @@ CONTAINS
 
 ! placeholders for 2D irrigation params
 !       parameters%IRR_FRAC   = IRR_FRAC_2D(I,J)   ! irrigation Fraction
-!       parameters%IRR_HAR    = IRR_HAR_2D(I,J)    ! number of days before harvest date to stop irrigation 
+!       parameters%IRR_HAR    = IRR_HAR_2D(I,J)    ! number of days before harvest date to stop irrigation
 !       parameters%IRR_LAI    = IRR_LAI_2D(I,J)    ! Minimum lai to trigger irrigation
 !       parameters%IRR_MAD    = IRR_MAD_2D(I,J)    ! management allowable deficit (0-1)
-!       parameters%FILOSS     = FILOSS_2D(I,J)     ! fraction of flood irrigation loss (0-1) 
+!       parameters%FILOSS     = FILOSS_2D(I,J)     ! fraction of flood irrigation loss (0-1)
 !       parameters%SPRIR_RATE = SPRIR_RATE_2D(I,J) ! mm/h, sprinkler irrigation rate
 !       parameters%MICIR_RATE = MICIR_RATE_2D(I,J) ! mm/h, micro irrigation rate
 !       parameters%FIRTFAC    = FIRTFAC_2D(I,J)    ! flood application rate factor
@@ -966,16 +966,16 @@ CONTAINS
 !       parameters%klat_fac  = KLAT_FAC (I,J)      ! factor multiplier to hydraulic conductivity
 !       parameters%tdsmc_fac = TDSMC_FAC(I,J)      ! factor multiplier to field capacity
 !       parameters%td_dc     = TD_DC    (I,J)      ! drainage coefficient for simple
-!       parameters%td_dcoef  = TD_DCOEF (I,J)      ! drainge coefficient for Hooghoudt 
+!       parameters%td_dcoef  = TD_DCOEF (I,J)      ! drainge coefficient for Hooghoudt
 !       parameters%td_ddrain = TD_DDRAIN(I,J)      ! depth of drain
 !       parameters%td_radi   = TD_RADI  (I,J)      ! tile radius
 !       parameters%td_spac   = TD_SPAC  (I,J)      ! tile spacing
 
 
        CALL TRANSFER_MP_PARAMETERS(VEGTYP,SOILTYP,SLOPETYP,SOILCOLOR,CROPTYPE,parameters)
-       
+
        if(iopt_soil == 3 .and. .not. parameters%urban_flag) then
-         
+
 	sand = 0.01 * soilcomp(i,1:4,j)
 	clay = 0.01 * soilcomp(i,5:8,j)
         orgm = 0.0
@@ -1026,7 +1026,7 @@ CONTAINS
 ! Initialized local
 
        FICEOLD = 0.0
-       FICEOLD(ISNOW+1:0) = SNICEXY(I,ISNOW+1:0,J) &  ! snow ice fraction  
+       FICEOLD(ISNOW+1:0) = SNICEXY(I,ISNOW+1:0,J) &  ! snow ice fraction
            /(SNICEXY(I,ISNOW+1:0,J)+SNLIQXY(I,ISNOW+1:0,J))
        CO2PP  = CO2_TABLE * P_ML                      ! partial pressure co2 [Pa]
        O2PP   = O2_TABLE  * P_ML                      ! partial pressure  o2 [Pa]
@@ -1036,7 +1036,7 @@ CONTAINS
        DZ8W1D = DZ8W (I,1,J)                          ! thickness of atmospheric layers
 
        IF(VEGTYP == 25) FVEG = 0.0                  ! Set playa, lava, sand to bare
-       IF(VEGTYP == 25) PLAI = 0.0 
+       IF(VEGTYP == 25) PLAI = 0.0
        IF(VEGTYP == 26) FVEG = 0.0                  ! hard coded for USGS
        IF(VEGTYP == 26) PLAI = 0.0
        IF(VEGTYP == 27) FVEG = 0.0
@@ -1045,7 +1045,7 @@ CONTAINS
        IF ( VEGTYP == ISICE_TABLE ) THEN
          ICE = -1                           ! Land-ice point
          CALL NOAHMP_OPTIONS_GLACIER(IOPT_ALB  ,IOPT_SNF  ,IOPT_TBOT, IOPT_STC, IOPT_GLA )
-      
+
          TBOT = MIN(TBOT,263.15)                      ! set deep temp to at most -10C
          CALL NOAHMP_GLACIER(     I,       J,    COSZ,   NSNOW,   NSOIL,      DT, & ! IN : Time/Space/Model-related
                                T_ML,    P_ML,    U_ML,    V_ML,    Q_ML,    SWDN, & ! IN : Forcing
@@ -1053,7 +1053,7 @@ CONTAINS
                               QSNOW,  SNEQVO,  ALBOLD,      CM,      CH,   ISNOW, & ! IN/OUT :
                                 SWE,     SMC,   ZSNSO,  SNDPTH,   SNICE,   SNLIQ, & ! IN/OUT :
                                  TG,     STC,   SMH2O,   TAUSS,  QSFC1D,          & ! IN/OUT :
-                                FSA,     FSR,    FIRA,     FSH,    FGEV,   SSOIL, & ! OUT : 
+                                FSA,     FSR,    FIRA,     FSH,    FGEV,   SSOIL, & ! OUT :
                                TRAD,   ESOIL,   RUNSF,   RUNSB,     SAG,    SALB, & ! OUT :
                               QSNBOT,PONDING,PONDING1,PONDING2,    T2MB,    Q2MB, & ! OUT :
 			      EMISSI,  FPICE,    CHB2,   QMELT                    & ! OUT :
@@ -1062,54 +1062,54 @@ CONTAINS
 #endif
                               )
 
-         FSNO   = 1.0       
+         FSNO   = 1.0
          TV     = undefined_value     ! Output from standard Noah-MP undefined for glacier points
-         TGB    = TG 
-         CANICE = undefined_value 
-         CANLIQ = undefined_value 
-         EAH    = undefined_value 
+         TGB    = TG
+         CANICE = undefined_value
+         CANLIQ = undefined_value
+         EAH    = undefined_value
          TAH    = undefined_value
-         FWET   = undefined_value 
-         WSLAKE = undefined_value 
-!         ZWT    = undefined_value 
-         WA     = undefined_value 
-         WT     = undefined_value 
-         LFMASS = undefined_value 
-         RTMASS = undefined_value 
-         STMASS = undefined_value 
-         WOOD   = undefined_value 
+         FWET   = undefined_value
+         WSLAKE = undefined_value
+!         ZWT    = undefined_value
+         WA     = undefined_value
+         WT     = undefined_value
+         LFMASS = undefined_value
+         RTMASS = undefined_value
+         STMASS = undefined_value
+         WOOD   = undefined_value
          QTLDRN = undefined_value
          GRAIN  = undefined_value
          GDD    = undefined_value
-         STBLCP = undefined_value 
-         FASTCP = undefined_value 
-         PLAI   = undefined_value 
-         PSAI   = undefined_value 
-         T2MV   = undefined_value 
-         Q2MV   = undefined_value 
-         NEE    = undefined_value 
-         GPP    = undefined_value 
-         NPP    = undefined_value 
-         FVEGMP = 0.0 
-         ECAN   = 0.0 
+         STBLCP = undefined_value
+         FASTCP = undefined_value
+         PLAI   = undefined_value
+         PSAI   = undefined_value
+         T2MV   = undefined_value
+         Q2MV   = undefined_value
+         NEE    = undefined_value
+         GPP    = undefined_value
+         NPP    = undefined_value
+         FVEGMP = 0.0
+         ECAN   = 0.0
          ETRAN  = 0.0
-         APAR   = undefined_value 
-         PSN    = undefined_value 
-         SAV    = 0.0 
-         RSSUN  = undefined_value 
-         RSSHA  = undefined_value 
+         APAR   = undefined_value
+         PSN    = undefined_value
+         SAV    = 0.0
+         RSSUN  = undefined_value
+         RSSHA  = undefined_value
          RB     = undefined_value
          LAISUN = undefined_value
          LAISHA = undefined_value
          RS(I,J)= undefined_value
-         BGAP   = undefined_value 
-         WGAP   = undefined_value 
+         BGAP   = undefined_value
+         WGAP   = undefined_value
          TGV    = undefined_value
-         CHV    = undefined_value 
-         CHB    = CH 
+         CHV    = undefined_value
+         CHB    = CH
          IRC    = 0.0
          IRG    = 0.0
-         SHC    = 0.0 
+         SHC    = 0.0
          SHG    = 0.0
          EVG    = 0.0
          GHV    = 0.0
@@ -1124,9 +1124,9 @@ CONTAINS
          PAHG   = 0.0
          PAHB   = 0.0
          PAHV   = 0.0
-         CHLEAF = undefined_value 
-         CHUC   = undefined_value 
-         CHV2   = undefined_value 
+         CHLEAF = undefined_value
+         CHUC   = undefined_value
+         CHV2   = undefined_value
          FCEV   = 0.0
          FCTR   = 0.0
          Z0WRF  = 0.002
@@ -1157,37 +1157,37 @@ CONTAINS
          ICE=0                              ! Neither sea ice or land ice.
          CALL NOAHMP_SFLX (parameters, &
             I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
-            DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration 
+            DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
             FVEG    , FVGMAX  , VEGTYP  , ICE     , IST     , CROPTYPE, & ! IN : Vegetation/Soil characteristics
             SMCEQ   ,                                                   & ! IN : Vegetation/Soil characteristics
             T_ML    , P_ML    , PSFC    , U_ML    , V_ML    , Q_ML    , & ! IN : Forcing
             QC      , SWDN    , LWDN    ,                               & ! IN : Forcing
 	    PRCPCONV, PRCPNONC, PRCPSHCV, PRCPSNOW, PRCPGRPL, PRCPHAIL, & ! IN : Forcing
             TBOT    , CO2PP   , O2PP    , FOLN    , FICEOLD , Z_ML    , & ! IN : Forcing
-            IRRFRA  , SIFAC   , MIFAC   , FIFAC   , LLANDUSE,           & ! IN : Irrigation: fractions	
-            ALBOLD  , SNEQVO  ,                                         & ! IN/OUT : 
-            STC     , SMH2O   , SMC     , TAH     , EAH     , FWET    , & ! IN/OUT : 
-            CANLIQ  , CANICE  , TV      , TG      , QSFC1D  , QSNOW   , & ! IN/OUT : 
+            IRRFRA  , SIFAC   , MIFAC   , FIFAC   , LLANDUSE,           & ! IN : Irrigation: fractions
+            ALBOLD  , SNEQVO  ,                                         & ! IN/OUT :
+            STC     , SMH2O   , SMC     , TAH     , EAH     , FWET    , & ! IN/OUT :
+            CANLIQ  , CANICE  , TV      , TG      , QSFC1D  , QSNOW   , & ! IN/OUT :
             QRAIN   ,                                                   & ! IN/OUT :
-            ISNOW   , ZSNSO   , SNDPTH  , SWE     , SNICE   , SNLIQ   , & ! IN/OUT : 
-            ZWT     , WA      , WT      , WSLAKE  , LFMASS  , RTMASS  , & ! IN/OUT : 
-            STMASS  , WOOD    , STBLCP  , FASTCP  , PLAI    , PSAI    , & ! IN/OUT : 
-            CM      , CH      , TAUSS   ,                               & ! IN/OUT : 
-            GRAIN   , GDD     , PGS     ,                               & ! IN/OUT 
+            ISNOW   , ZSNSO   , SNDPTH  , SWE     , SNICE   , SNLIQ   , & ! IN/OUT :
+            ZWT     , WA      , WT      , WSLAKE  , LFMASS  , RTMASS  , & ! IN/OUT :
+            STMASS  , WOOD    , STBLCP  , FASTCP  , PLAI    , PSAI    , & ! IN/OUT :
+            CM      , CH      , TAUSS   ,                               & ! IN/OUT :
+            GRAIN   , GDD     , PGS     ,                               & ! IN/OUT
             SMCWTD  ,DEEPRECH , RECH    ,                               & ! IN/OUT :
             GECROS1D,                                                   & ! IN/OUT :
             QTLDRN  , TDFRACMP,                                         & ! IN/OUT : tile drainage
             Z0WRF   ,                                                   & ! OUT :
             IRCNTSI , IRCNTMI , IRCNTFI , IRAMTSI , IRAMTMI , IRAMTFI , & ! IN/OUT : Irrigation: vars
             IRSIRATE, IRMIRATE, IRFIRATE, FIRR    , EIRR    ,           & ! IN/OUT : Irrigation: vars
-            FSA     , FSR     , FIRA    , FSH     , SSOIL   , FCEV    , & ! OUT : 
-            FGEV    , FCTR    , ECAN    , ETRAN   , ESOIL   , TRAD    , & ! OUT : 
-            TGB     , TGV     , T2MV    , T2MB    , Q2MV    , Q2MB    , & ! OUT : 
-            RUNSF   , RUNSB   , APAR    , PSN     , SAV     , SAG     , & ! OUT : 
-            FSNO    , NEE     , GPP     , NPP     , FVEGMP  , SALB    , & ! OUT : 
-            QSNBOT  , PONDING , PONDING1, PONDING2, RSSUN   , RSSHA   , & ! OUT : 
+            FSA     , FSR     , FIRA    , FSH     , SSOIL   , FCEV    , & ! OUT :
+            FGEV    , FCTR    , ECAN    , ETRAN   , ESOIL   , TRAD    , & ! OUT :
+            TGB     , TGV     , T2MV    , T2MB    , Q2MV    , Q2MB    , & ! OUT :
+            RUNSF   , RUNSB   , APAR    , PSN     , SAV     , SAG     , & ! OUT :
+            FSNO    , NEE     , GPP     , NPP     , FVEGMP  , SALB    , & ! OUT :
+            QSNBOT  , PONDING , PONDING1, PONDING2, RSSUN   , RSSHA   , & ! OUT :
             ALBSND  , ALBSNI  ,                                         & ! OUT :
-            BGAP    , WGAP    , CHV     , CHB     , EMISSI  ,           & ! OUT : 
+            BGAP    , WGAP    , CHV     , CHB     , EMISSI  ,           & ! OUT :
             SHG     , SHC     , SHB     , EVG     , EVB     , GHV     , & ! OUT :
 	    GHB     , IRG     , IRC     , IRB     , TR      , EVC     , & ! OUT :
 	    CHLEAF  , CHUC    , CHV2    , CHB2    , FPICE   , PAHV    , & ! OUT :
@@ -1202,11 +1202,11 @@ CONTAINS
             , sfcheadrt(i,j), WATBLED                                   &
 #endif
             )            ! OUT :
-                  
+
             QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
             LH(I,J)  = FCEV + FGEV  + FCTR  + FIRR
 
-   ENDIF ! glacial split ends 
+   ENDIF ! glacial split ends
 
 #ifdef WRF_HYDRO
 !AD_CHANGE: Glacier cells can produce small negative subsurface runoff for mass balance.
@@ -1304,7 +1304,7 @@ CONTAINS
              LAISUN                        = MAX(LAISUN, 0.0)
              LAISHA                        = MAX(LAISHA, 0.0)
              RB                            = MAX(RB, 0.0)
-! New Calculation of total Canopy/Stomatal Conductance Based on Bonan et al. (2011) 
+! New Calculation of total Canopy/Stomatal Conductance Based on Bonan et al. (2011)
 ! -- Inverse of Canopy Resistance (below)
              IF(RSSUN .le. 0.0 .or. RSSHA .le. 0.0 .or. LAISUN .eq. 0.0 .or. LAISHA .eq. 0.0) THEN
                 RS    (I,J)                = 0.0
@@ -1393,7 +1393,7 @@ CONTAINS
              ENDDO
 
              GRAINXY  (I,J) = GRAIN !GRAIN XING
-             GDDXY    (I,J) = GDD   !XING 
+             GDDXY    (I,J) = GDD   !XING
 	     PGSXY    (I,J) = PGS
 
              ! irrigation
@@ -1412,17 +1412,17 @@ CONTAINS
              if(iopt_crop == 2) then   ! gecros crop model
 
                !*** Check for harvest
-               if ((gecros1d(1) >= gecros_ds1).and.(gecros1d(42) < 0)) then   
+               if ((gecros1d(1) >= gecros_ds1).and.(gecros1d(42) < 0)) then
                  if (checkIfHarvest(gecros1d, DT, gecros_ds1, gecros_ds2, gecros_ds1x, &
                      gecros_ds2x) == 1) then
-           
+
                    call gecros_reinit(gecros1d)
                  endif
-               endif                  
+               endif
 
                gecros_state (i,1:60,j)     = gecros1d(1:60)
-             end if 
- 
+             end if
+
           ENDIF                                                         ! endif of land-sea test
 
       ENDDO ILOOP                                                       ! of I loop
@@ -1444,9 +1444,9 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
   INTEGER, INTENT(IN)    :: SLOPETYPE
   INTEGER, INTENT(IN)    :: SOILCOLOR
   INTEGER, INTENT(IN)    :: CROPTYPE
-    
+
   type (noahmp_parameters), intent(inout) :: parameters
-    
+
   REAL    :: REFDK
   REAL    :: REFKDT
   REAL    :: FRZK
@@ -1485,7 +1485,7 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
   parameters%SLA    =    SLA_TABLE(VEGTYPE)       !single-side leaf area per Kg [m2/kg]
   parameters%DILEFC = DILEFC_TABLE(VEGTYPE)       !coeficient for leaf stress death [1/s]
   parameters%DILEFW = DILEFW_TABLE(VEGTYPE)       !coeficient for leaf stress death [1/s]
-  parameters%FRAGR  =  FRAGR_TABLE(VEGTYPE)       !fraction of growth respiration  !original was 0.3 
+  parameters%FRAGR  =  FRAGR_TABLE(VEGTYPE)       !fraction of growth respiration  !original was 0.3
   parameters%LTOVRC = LTOVRC_TABLE(VEGTYPE)       !leaf turnover [1/s]
 
   parameters%C3PSN  =  C3PSN_TABLE(VEGTYPE)       !photosynthetic pathway: 0. = c4, 1. = c3
@@ -1533,7 +1533,7 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
    parameters%ALBSAT    = ALBSAT_TABLE(SOILCOLOR,:)
    parameters%ALBDRY    = ALBDRY_TABLE(SOILCOLOR,:)
    parameters%ALBICE    = ALBICE_TABLE
-   parameters%ALBLAK    = ALBLAK_TABLE               
+   parameters%ALBLAK    = ALBLAK_TABLE
    parameters%OMEGAS    = OMEGAS_TABLE
    parameters%BETADS    = BETADS_TABLE
    parameters%BETAIS    = BETAIS_TABLE
@@ -1551,10 +1551,10 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
    parameters%GDDTBASE  =  GDDTBASE_TABLE(CROPTYPE)    ! Base temperature for GDD accumulation [C]
    parameters%GDDTCUT   =   GDDTCUT_TABLE(CROPTYPE)    ! Upper temperature for GDD accumulation [C]
    parameters%GDDS1     =     GDDS1_TABLE(CROPTYPE)    ! GDD from seeding to emergence
-   parameters%GDDS2     =     GDDS2_TABLE(CROPTYPE)    ! GDD from seeding to initial vegetative 
-   parameters%GDDS3     =     GDDS3_TABLE(CROPTYPE)    ! GDD from seeding to post vegetative 
+   parameters%GDDS2     =     GDDS2_TABLE(CROPTYPE)    ! GDD from seeding to initial vegetative
+   parameters%GDDS3     =     GDDS3_TABLE(CROPTYPE)    ! GDD from seeding to post vegetative
    parameters%GDDS4     =     GDDS4_TABLE(CROPTYPE)    ! GDD from seeding to intial reproductive
-   parameters%GDDS5     =     GDDS5_TABLE(CROPTYPE)    ! GDD from seeding to pysical maturity 
+   parameters%GDDS5     =     GDDS5_TABLE(CROPTYPE)    ! GDD from seeding to pysical maturity
    parameters%C3PSN     =     C3PSNI_TABLE(CROPTYPE)   ! parameters from stomata ! Zhe Zhang 2020-07-13
    parameters%KC25      =      KC25I_TABLE(CROPTYPE)
    parameters%AKC       =       AKCI_TABLE(CROPTYPE)
@@ -1567,7 +1567,7 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
    parameters%FOLNMX    =    FOLNMXI_TABLE(CROPTYPE)
    parameters%QE25      =      QE25I_TABLE(CROPTYPE)   ! ends here
    parameters%C3C4      =      C3C4_TABLE(CROPTYPE)    ! photosynthetic pathway:  1. = c3 2. = c4
-   parameters%AREF      =      AREF_TABLE(CROPTYPE)    ! reference maximum CO2 assimulation rate 
+   parameters%AREF      =      AREF_TABLE(CROPTYPE)    ! reference maximum CO2 assimulation rate
    parameters%PSNRF     =     PSNRF_TABLE(CROPTYPE)    ! CO2 assimulation reduction factor(0-1) (caused by non-modeling part,e.g.pest,weeds)
    parameters%I2PAR     =     I2PAR_TABLE(CROPTYPE)    ! Fraction of incoming solar radiation to photosynthetically active radiation
    parameters%TASSIM0   =   TASSIM0_TABLE(CROPTYPE)    ! Minimum temperature for CO2 assimulation [C]
@@ -1655,10 +1655,10 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
 ! Transfer irrigation parameters
 !------------------------------------------------------------------------------------------!
     parameters%IRR_FRAC   = IRR_FRAC_TABLE      ! irrigation Fraction
-    parameters%IRR_HAR    = IRR_HAR_TABLE       ! number of days before harvest date to stop irrigation 
+    parameters%IRR_HAR    = IRR_HAR_TABLE       ! number of days before harvest date to stop irrigation
     parameters%IRR_LAI    = IRR_LAI_TABLE       ! minimum lai to trigger irrigation
     parameters%IRR_MAD    = IRR_MAD_TABLE       ! management allowable deficit (0-1)
-    parameters%FILOSS     = FILOSS_TABLE        ! fraction of flood irrigation loss (0-1) 
+    parameters%FILOSS     = FILOSS_TABLE        ! fraction of flood irrigation loss (0-1)
     parameters%SPRIR_RATE = SPRIR_RATE_TABLE    ! mm/h, sprinkler irrigation rate
     parameters%MICIR_RATE = MICIR_RATE_TABLE    ! mm/h, micro irrigation rate
     parameters%FIRTFAC    = FIRTFAC_TABLE       ! flood application rate factor
@@ -1670,14 +1670,14 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
    parameters%KLAT_FAC        = KLAT_FAC_TABLE(SOILTYPE(1))
    parameters%TDSMC_FAC       = TDSMCFAC_TABLE(SOILTYPE(1))
    parameters%TD_DC           = TD_DC_TABLE(SOILTYPE(1))
-   parameters%TD_DCOEF        = TD_DCOEF_TABLE(SOILTYPE(1)) 
-   parameters%TD_RADI         = TD_RADI_TABLE(SOILTYPE(1)) 
-   parameters%TD_SPAC         = TD_SPAC_TABLE(SOILTYPE(1)) 
+   parameters%TD_DCOEF        = TD_DCOEF_TABLE(SOILTYPE(1))
+   parameters%TD_RADI         = TD_RADI_TABLE(SOILTYPE(1))
+   parameters%TD_SPAC         = TD_SPAC_TABLE(SOILTYPE(1))
    parameters%TD_DDRAIN       = TD_DDRAIN_TABLE(SOILTYPE(1))
    parameters%TD_DEPTH        = TD_DEPTH_TABLE(SOILTYPE(1))
    parameters%TD_ADEPTH       = TD_ADEPTH_TABLE(SOILTYPE(1))
    parameters%DRAIN_LAYER_OPT = DRAIN_LAYER_OPT_TABLE
-   parameters%TD_D            = TD_D_TABLE(SOILTYPE(1)) 
+   parameters%TD_D            = TD_D_TABLE(SOILTYPE(1))
 
 ! ----------------------------------------------------------------------
 ! Transfer GENPARM parameters
@@ -1691,10 +1691,10 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
     parameters%SLOPE  = SLOPE_TABLE(SLOPETYPE)
 
     IF(parameters%URBAN_FLAG)THEN  ! Hardcoding some urban parameters for soil
-       parameters%SMCMAX = 0.45 
-       parameters%SMCREF = 0.42 
-       parameters%SMCWLT = 0.40 
-       parameters%SMCDRY = 0.40 
+       parameters%SMCMAX = 0.45
+       parameters%SMCREF = 0.42
+       parameters%SMCWLT = 0.40
+       parameters%SMCDRY = 0.40
        parameters%CSOIL  = 3.E6
     ENDIF
 
@@ -1711,14 +1711,14 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 
   use module_sf_noahmplsm
   use noahmp_tables
-        
+
   implicit none
-        
+
   integer,                    intent(in   ) :: nsoil     ! number of soil layers
   real, dimension( 1:nsoil ), intent(inout) :: sand
   real, dimension( 1:nsoil ), intent(inout) :: clay
   real, dimension( 1:nsoil ), intent(inout) :: orgm
-    
+
   real, dimension( 1:nsoil ) :: theta_1500t
   real, dimension( 1:nsoil ) :: theta_1500
   real, dimension( 1:nsoil ) :: theta_33t
@@ -1727,7 +1727,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
   real, dimension( 1:nsoil ) :: theta_s33
   real, dimension( 1:nsoil ) :: psi_et
   real, dimension( 1:nsoil ) :: psi_e
-    
+
   type(noahmp_parameters), intent(inout) :: parameters
   integer :: k
 
@@ -1738,7 +1738,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
     end if
     if(orgm(k) <= 0 ) orgm(k) = 0.0
   end do
-        
+
   theta_1500t =   sr2006_theta_1500t_a*sand       &
                 + sr2006_theta_1500t_b*clay       &
                 + sr2006_theta_1500t_c*orgm       &
@@ -1783,12 +1783,12 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
                 + sr2006_psi_et_e*clay*theta_s33 &
                 + sr2006_psi_et_f*sand*clay      &
                 + sr2006_psi_et_g
- 
+
   psi_e       =   psi_et                        &
                 + sr2006_psi_e_a*psi_et*psi_et  &
                 + sr2006_psi_e_b*psi_et         &
                 + sr2006_psi_e_c
-    
+
   parameters%smcwlt = theta_1500
   parameters%smcref = theta_33
   parameters%smcmax =   theta_33    &
@@ -1800,17 +1800,17 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
   parameters%psisat = psi_e
   parameters%dksat  = 1930.0 * (parameters%smcmax - theta_33) ** (3.0 - 1.0/parameters%bexp)
   parameters%quartz = sand
-    
+
 ! Units conversion
-    
+
   parameters%psisat = max(0.1,parameters%psisat)     ! arbitrarily impose a limit of 0.1kpa
   parameters%psisat = 0.101997 * parameters%psisat   ! convert kpa to m
   parameters%dksat  = parameters%dksat / 3600000.0   ! convert mm/h to m/s
   parameters%dwsat  = parameters%dksat * parameters%psisat *parameters%bexp / parameters%smcmax  ! units should be m*m/s
   parameters%smcdry = parameters%smcwlt
-  
+
 ! Introducing somewhat arbitrary limits (based on SOILPARM) to prevent bad things
-  
+
   parameters%smcmax = max(0.32 ,min(parameters%smcmax,             0.50 ))
   parameters%smcref = max(0.17 ,min(parameters%smcref,parameters%smcmax ))
   parameters%smcwlt = max(0.01 ,min(parameters%smcwlt,parameters%smcref ))
@@ -1820,7 +1820,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
   parameters%dksat  = max(5.e-7,min(parameters%dksat,              1.e-5))
   parameters%dwsat  = max(1.e-6,min(parameters%dwsat,              3.e-5))
   parameters%quartz = max(0.05 ,min(parameters%quartz,             0.95 ))
-    
+
  END SUBROUTINE PEDOTRANSFER_SR2006
 
   SUBROUTINE NOAHMP_INIT ( MMINLU, SNOW , SNOWH , CANWAT , ISLTYP ,   IVGTYP, XLAT, &
@@ -1837,7 +1837,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
        irmivol  ,irfivol  ,irrsplh  ,            &
 !jref:start
        t2mvxy   ,t2mbxy   ,chstarxy,             &
-!jref:end       
+!jref:end
        NSOIL, restart,                 &
        allowed_to_read , iopt_run,  iopt_crop, iopt_irr, iopt_irrm,           &
        sf_urban_physics,                         &  ! urban scheme
@@ -1972,12 +1972,12 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 !jref:end
 
 
-    REAL, DIMENSION(1:NSOIL)  :: ZSOIL      ! Depth of the soil layer bottom (m) from 
+    REAL, DIMENSION(1:NSOIL)  :: ZSOIL      ! Depth of the soil layer bottom (m) from
     !                                                   the surface (negative)
 
     REAL                      :: BEXP, SMCMAX, PSISAT
     REAL                      :: FK, masslai,masssai
-    
+
 ! gecros local variables
     REAL ::  hti,rdi,fpro,lncmin,fcar,cfo,clvi,crti,ygo,nlvi,laii,nrti,slnbi
 
@@ -2078,7 +2078,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 		SNOW(I,J) = MAX(SNOW(I,J), 10.0)        ! set SWE to at least 10mm
                 SNOWH(I,J)=SNOW(I,J)*0.01               ! SNOW in mm and SNOWH in m
 	    ELSE
-	      
+
               BEXP   =   BEXP_TABLE(ISLTYP(I,J))
               SMCMAX = SMCMAX_TABLE(ISLTYP(I,J))
               PSISAT = PSISAT_TABLE(ISLTYP(I,J))
@@ -2118,7 +2118,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
              CANWAT     (I,J) = 0.0
              canliqxy   (I,J) = CANWAT(I,J)
              canicexy   (I,J) = 0.
-             eahxy      (I,J) = 2000. 
+             eahxy      (I,J) = 2000.
              tahxy      (I,J) = TSK(I,J)
 	       if(snow(i,j) > 0.0 .and. tsk(i,j) > 273.15) tahxy(I,J) = 273.15
 !             tahxy      (I,J) = 287.
@@ -2139,7 +2139,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
              qrainxy    (I,J) = 0.0
              wslakexy   (I,J) = 0.0
 
-             if(iopt_run.ne.5) then 
+             if(iopt_run.ne.5) then
                    waxy       (I,J) = 4900.                                       !???
                    wtxy       (I,J) = waxy(i,j)                                   !???
                    zwtxy      (I,J) = (25. + 2.0) - waxy(i,j)/1000/0.2            !???
@@ -2152,7 +2152,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
            IF(IVGTYP(I,J) == ISBARREN_TABLE .OR. IVGTYP(I,J) == ISICE_TABLE .OR. &
 	      ( SF_URBAN_PHYSICS == 0 .AND. IVGTYP(I,J) == ISURBAN_TABLE )  .OR. &
 	      IVGTYP(I,J) == ISWATER_TABLE ) THEN
-	     
+
 	     lai        (I,J) = 0.0
              xsaixy     (I,J) = 0.0
              lfmassxy   (I,J) = 0.0
@@ -2166,7 +2166,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 	     cropcat    (I,J) = 0
 
 	   ELSE
-	     
+
 	     lai        (I,J) = max(lai(i,j),0.05)             ! at least start with 0.05 for arbitrary initialization (v3.7)
              xsaixy     (I,J) = max(0.1*lai(I,J),0.05)         ! MB: arbitrarily initialize SAI using input LAI (v3.7)
              masslai = 1000. / max(SLA_TABLE(IVGTYP(I,J)),1.0) ! conversion from lai to mass  (v3.7)
@@ -2178,7 +2178,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
              stblcpxy   (I,J) = 1000.0                         !
              fastcpxy   (I,J) = 1000.0                         !
              grainxy    (I,J) = 1E-10
-             gddxy      (I,J) = 0    
+             gddxy      (I,J) = 0
 
 ! Initialize crop for Liu crop model
 
@@ -2186,7 +2186,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 	       cropcat    (i,j) = default_crop_table
                if(croptype(i,5,j) >= 0.5) then
                  rtmassxy(i,j) = 0.0
-                 woodxy  (i,j) = 0.0                    
+                 woodxy  (i,j) = 0.0
 
 	         if(    croptype(i,1,j) > croptype(i,2,j) .and. &
 		        croptype(i,1,j) > croptype(i,3,j) .and. &
@@ -2238,7 +2238,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
                laii   = clvi/cfv*sla0
                nrti   = npl * seedw * eg * seednc - nlvi
                slnbi  = nlvi/laii
-    
+
                call gecros_init(xlat(i,j),hti,rdi,clvi,crti,nlvi,laii,nrti,slnbi,gecros_state(i,:,j))
 
              end if
@@ -2249,12 +2249,12 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
                    irnumsi(i,j) = 0
                    irwatsi(i,j) = 0.
                    ireloss(i,j) = 0.
-                   irrsplh(i,j) = 0.     
+                   irrsplh(i,j) = 0.
                 else if (iopt_irrm == 0 .or. iopt_irrm ==2) then ! micro or drip
                    irnummi(i,j) = 0
                    irwatmi(i,j) = 0.
                    irmivol(i,j) = 0.
-                else if (iopt_irrm == 0 .or. iopt_irrm ==3) then ! flood 
+                else if (iopt_irrm == 0 .or. iopt_irrm ==3) then ! flood
                    irnumfi(i,j) = 0
                    irwatfi(i,j) = 0.
                    irfivol(i,j) = 0.
@@ -2265,7 +2265,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 
           enddo
        enddo
-       
+
 
        ! Given the soil layer thicknesses (in DZS), initialize the soil layer
        ! depths from the surface.
@@ -2274,7 +2274,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
           ZSOIL(NS)       = ZSOIL(NS-1) - DZS(NS)
        END DO
 
-       ! Initialize snow/soil layer arrays ZSNSOXY, TSNOXY, SNICEXY, SNLIQXY, 
+       ! Initialize snow/soil layer arrays ZSNSOXY, TSNOXY, SNICEXY, SNLIQXY,
        ! and ISNOWXY
        CALL snow_init ( ims , ime , jms , jme , its , itf , jts , jtf , 3 , &
             &           NSOIL , zsoil , snow , tgxy , snowh ,     &
@@ -2315,7 +2315,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
        endif
 
     ENDIF
-    
+
   END SUBROUTINE NOAHMP_INIT
 
 !------------------------------------------------------------------------------------------
@@ -2328,11 +2328,11 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 !   Initialize snow arrays for Noah-MP LSM, based in input SNOWDEP, NSNOW
 !   ISNOWXY is an index array, indicating the index of the top snow layer.  Valid indices
 !           for snow layers range from 0 (no snow) and -1 (shallow snow) to (-NSNOW)+1 (deep snow).
-!   TSNOXY holds the temperature of the snow layer.  Snow layers are initialized with 
+!   TSNOXY holds the temperature of the snow layer.  Snow layers are initialized with
 !          temperature = ground temperature [?].  Snow-free levels in the array have value 0.0
 !   SNICEXY is the frozen content of a snow layer.  Initial estimate based on SNODEP and SWE
 !   SNLIQXY is the liquid content of a snow layer.  Initialized to 0.0
-!   ZNSNOXY is the layer depth from the surface.  
+!   ZNSNOXY is the layer depth from the surface.
 !------------------------------------------------------------------------------------------
     IMPLICIT NONE
 !------------------------------------------------------------------------------------------
@@ -2340,7 +2340,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
     INTEGER, INTENT(IN)                              :: its, itf, jts, jtf
     INTEGER, INTENT(IN)                              :: NSNOW
     INTEGER, INTENT(IN)                              :: NSOIL
-    REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: SWE 
+    REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: SWE
     REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: SNODEP
     REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: TGXY
     REAL,    INTENT(IN), DIMENSION(1:NSOIL)          :: ZSOIL
@@ -2462,7 +2462,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
     REAL,    INTENT(IN), DIMENSION(1:NSOIL)          :: DZS
     INTEGER, INTENT(IN), DIMENSION(ims:ime, jms:jme) :: ISLTYP, IVGTYP
     REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: FDEPTH, TOPO , AREA
-    REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: rechclim 
+    REAL,    INTENT(IN), DIMENSION(ims:ime, jms:jme) :: rechclim
     REAL,    INTENT(OUT), DIMENSION(ims:ime, jms:jme) :: RIVERCOND
     REAL,    INTENT(INOUT), DIMENSION(ims:ime, jms:jme) :: WTD, RIVERBED, EQWTD, PEXP
     REAL,     DIMENSION( ims:ime , 1:nsoil, jms:jme ), &
@@ -2507,7 +2507,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
     ELSEWHERE
          LANDMASK=-1
     ENDWHERE
-    
+
     PEXP = 1.0
 
     DELTAT=365.*24*3600. !1 year
@@ -2532,7 +2532,7 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 IF(NCOUNT.GT.0.OR.NITER.eq.1)THEN
     QLAT = 0.
     CALL LATERALFLOW(ISLTYP,WTD,QLAT,FDEPTH,TOPO,LANDMASK,DELTAT,AREA       &
-                        ,ids,ide,jds,jde,kds,kde                      & 
+                        ,ids,ide,jds,jde,kds,kde                      &
                         ,ims,ime,jms,jme,kms,kme                      &
                         ,its,ite,jts,jte,kts,kte                      )
 
@@ -2604,10 +2604,10 @@ EQWTD=WTD
 
     QLAT = 0.
     CALL LATERALFLOW(ISLTYP,WTD,QLAT,FDEPTH,TOPO,LANDMASK,DELTAT,AREA       &
-                        ,ids,ide,jds,jde,kds,kde                      & 
+                        ,ids,ide,jds,jde,kds,kde                      &
                         ,ims,ime,jms,jme,kms,kme                      &
                         ,its,ite,jts,jte,kts,kte                      )
-                        
+
 !compute flux from grounwater to rivers in the cell
 
     DO J=jts,jtf
@@ -2615,12 +2615,12 @@ EQWTD=WTD
           IF(LANDMASK(I,J).GT.0)THEN
              IF(WTD(I,J) .GT. RIVERBED(I,J) .AND.  EQWTD(I,J) .GT. RIVERBED(I,J)) THEN
                RCOND = RIVERCOND(I,J) * EXP(PEXP(I,J)*(WTD(I,J)-EQWTD(I,J)))
-             ELSE    
+             ELSE
                RCOND = RIVERCOND(I,J)
              ENDIF
              QRF(I,J) = RCOND * (WTD(I,J)-RIVERBED(I,J)) * DELTAT/AREA(I,J)
 !for now, dont allow it to go from river to groundwater
-             QRF(I,J) = MAX(QRF(I,J),0.) 
+             QRF(I,J) = MAX(QRF(I,J),0.)
           ELSE
              QRF(I,J) = 0.
           ENDIF
@@ -2635,9 +2635,9 @@ EQWTD=WTD
              SMCMAX = SMCMAX_TABLE(ISLTYP(I,J))
              SMCWLT = SMCWLT_TABLE(ISLTYP(I,J))
              IF(IVGTYP(I,J)==ISURBAN_TABLE)THEN
-                 SMCMAX = 0.45         
-                 SMCWLT = 0.40         
-             ENDIF 
+                 SMCMAX = 0.45
+                 SMCWLT = 0.40
+             ENDIF
              DWSAT  =   DWSAT_TABLE(ISLTYP(I,J))
              DKSAT  =   DKSAT_TABLE(ISLTYP(I,J))
              PSISAT = -PSISAT_TABLE(ISLTYP(I,J))
@@ -2665,7 +2665,7 @@ EQWTD=WTD
                          DO ITER = 1, 100
                            DD = (SMC+SMCMAX)/(2.*SMCMAX)
                            AA = -DKSAT * DD  ** EXPON
-                           BBB = CC * ( (SMCMAX/SMC)**BEXP - 1. ) + 1. 
+                           BBB = CC * ( (SMCMAX/SMC)**BEXP - 1. ) + 1.
                            FUNC =  AA * BBB - FLUX
                            DFUNC = -DKSAT * (EXPON/(2.*SMCMAX)) * DD ** (EXPON - 1.) * BBB &
                                    + AA * CC * (-BEXP) * SMCMAX ** BEXP * SMC ** (-BEXP-1.)
@@ -2696,7 +2696,7 @@ EQWTD=WTD
                               WTD(I,J) = ZSOIL(K)
                           ELSE
                               WTD(I,J) = ( SMOIS(I,K,J)*DZS(K) - SMCEQ(K)*ZSOIL(K-1) + SMCMAX*ZSOIL(K) ) / &
-                                         (SMCMAX - SMCEQ(K))   
+                                         (SMCMAX - SMCEQ(K))
                           ENDIF
                           EXIT
                      ENDIF
@@ -2766,7 +2766,7 @@ EQWTD=WTD
 
          DO ITER = 1, 100
             FUNC = (SMC - SMCMAX) * AA +  BB * SMC ** EXPON
-            DFUNC = AA + BB * EXPON * SMC ** BEXP 
+            DFUNC = AA + BB * EXPON * SMC ** BEXP
 
             DX = FUNC/DFUNC
             SMC = SMC - DX
@@ -2781,7 +2781,7 @@ END  SUBROUTINE EQSMOISTURE
 
 ! gecros initialization routines
 
-SUBROUTINE gecros_init(xlat,hti,rdi,clvi,crti,nlvi,laii,nrti,slnbi,state_gecros)   
+SUBROUTINE gecros_init(xlat,hti,rdi,clvi,crti,nlvi,laii,nrti,slnbi,state_gecros)
 implicit none
 REAL, INTENT(IN)     :: HTI
 REAL, INTENT(IN)     :: RDI
@@ -2794,20 +2794,20 @@ REAL, INTENT(IN)     :: SLNBI
 REAL, INTENT(IN)     :: XLAT
 REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
 
-  !Inititalization of Gecros variables  
+  !Inititalization of Gecros variables
   STATE_GECROS(1) = 0.      !DS
   STATE_GECROS(2) = 0.      !CTDURDI, HTI, CLVI, CRTI, NLVI, LAII, NRTI, SLNBI,
   STATE_GECROS(3) = 0.      !CVDU
-  STATE_GECROS(4) = CLVI    !CLV 
-  STATE_GECROS(5) = 0.      !CLVD  
-  STATE_GECROS(6) = 0.      !CSST  
+  STATE_GECROS(4) = CLVI    !CLV
+  STATE_GECROS(5) = 0.      !CLVD
+  STATE_GECROS(6) = 0.      !CSST
   STATE_GECROS(7) = 0.      !CSO
-  STATE_GECROS(8) = CRTI    !CSRT 
-  STATE_GECROS(9) =  0.     !CRTD 
-  STATE_GECROS(10) = 0.     !CLVDS 
+  STATE_GECROS(8) = CRTI    !CSRT
+  STATE_GECROS(9) =  0.     !CRTD
+  STATE_GECROS(10) = 0.     !CLVDS
   STATE_GECROS(11) = NRTI   !NRT
   STATE_GECROS(12) = 0.     !NST
-  STATE_GECROS(13) = NLVI   !NLV 
+  STATE_GECROS(13) = NLVI   !NLV
   STATE_GECROS(14) = 0.     !NSO
   STATE_GECROS(15) = NLVI   !TNLV
   STATE_GECROS(16) = 0.     !NLVD
@@ -2845,18 +2845,18 @@ REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
   STATE_GECROS(48) = 0.     !StrawNC
   STATE_GECROS(49) = 0.01   !GLAI
   STATE_GECROS(50) = 0.01   !TLAI
-  STATE_GECROS(51) = HTI    !Fields 51-58 set for reinitialization  
-  STATE_GECROS(52) = RDI    
-  STATE_GECROS(53) = CLVI   
-  STATE_GECROS(54) = CRTI   
-  STATE_GECROS(55) = NRTI   
-  STATE_GECROS(56) = NLVI   
-  STATE_GECROS(57) = SLNBI  
-  STATE_GECROS(58) = LAII   
-    
+  STATE_GECROS(51) = HTI    !Fields 51-58 set for reinitialization
+  STATE_GECROS(52) = RDI
+  STATE_GECROS(53) = CLVI
+  STATE_GECROS(54) = CRTI
+  STATE_GECROS(55) = NRTI
+  STATE_GECROS(56) = NLVI
+  STATE_GECROS(57) = SLNBI
+  STATE_GECROS(58) = LAII
+
 END SUBROUTINE gecros_init
 
-SUBROUTINE gecros_reinit(STATE_GECROS)   
+SUBROUTINE gecros_reinit(STATE_GECROS)
 implicit none
 REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
 
@@ -2864,16 +2864,16 @@ REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
   STATE_GECROS(1) = 0.               !DS
   STATE_GECROS(2) = 0.               !CTDU
   STATE_GECROS(3) = 0.               !CVDU
-  STATE_GECROS(4) = STATE_GECROS(53) !CLV 
-  STATE_GECROS(5) = 0.               !CLVD  
-  STATE_GECROS(6) = 0.               !CSST  
+  STATE_GECROS(4) = STATE_GECROS(53) !CLV
+  STATE_GECROS(5) = 0.               !CLVD
+  STATE_GECROS(6) = 0.               !CSST
   STATE_GECROS(7) = 0.               !CSO
-  STATE_GECROS(8) = STATE_GECROS(54) !CRT 
-  STATE_GECROS(9) = 0.               !CRTD 
-  STATE_GECROS(10) = 0.              !CLVDS 
+  STATE_GECROS(8) = STATE_GECROS(54) !CRT
+  STATE_GECROS(9) = 0.               !CRTD
+  STATE_GECROS(10) = 0.              !CLVDS
   STATE_GECROS(11) = STATE_GECROS(55)!NRT
   STATE_GECROS(12) = 0.              !NST
-  STATE_GECROS(13) = STATE_GECROS(56)!NLV 
+  STATE_GECROS(13) = STATE_GECROS(56)!NLV
   STATE_GECROS(14) = 0.              !NSO
   STATE_GECROS(15) = STATE_GECROS(56)!TNLV
   STATE_GECROS(16) = 0.              !NLVD
@@ -2910,20 +2910,20 @@ REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
   STATE_GECROS(48) = 0.              !StrawNC
   STATE_GECROS(49) = 0.01            !GLAI
   STATE_GECROS(50) = 0.01            !TLAI
-  
+
 END SUBROUTINE gecros_reinit
 
 !***Function for HARVEST DATES:
 
 !Determine if crop is to be harvested today
 !function to be called once a day
-!return codes: 0 - no, 1- yes 
+!return codes: 0 - no, 1- yes
 !requires two counters 'daysSinceDS2', 'daysSinceDS1' , zero-initialized to be maintained within caller
 !STATE_GECROS(1) = current DS
 !STATE_GECROS(38)=daysSinceDS1
 !STATE_GECROS(39)=daysSinceDS2
 
-function checkIfHarvest(STATE_GECROS, DT, harvestDS1, harvestDS2, harvestDS1ExtraDays, harvestDS2ExtraDays) 
+function checkIfHarvest(STATE_GECROS, DT, harvestDS1, harvestDS2, harvestDS1ExtraDays, harvestDS2ExtraDays)
 implicit none
 real :: DT, harvestDS1, harvestDS2
 real :: daysSinceDS1, daysSinceDS2
@@ -2934,20 +2934,20 @@ REAL, DIMENSION(1:60), INTENT(INOUT) :: STATE_GECROS
 
  !***check whether maturity (DS1) has been reached
  if (STATE_GECROS(1) >= harvestDS1) then
- 
+
     if (STATE_GECROS(38) >= harvestDS1ExtraDays) then
         checkIfHarvest=1
  !if we are > DS1, but not over the limit, increase the counter of days
     else
         STATE_GECROS(38) = STATE_GECROS(38) + DT/86400.
     endif
- else 
- 
+ else
+
  !if maturity has not been reached, but we are close (> DS2)
  !check the number of days for which we have been > DS2
- !and harvest in case we are over the limit given for that stage 
+ !and harvest in case we are over the limit given for that stage
  !(in case that maturity will not be reached at all)
- 
+
  checkIfHarvest=0
  if (STATE_GECROS(1) >= harvestDS2 ) then
 
@@ -2964,13 +2964,13 @@ end function checkIfHarvest
 
 !------------------------------------------------------------------------------------------
 
-  SUBROUTINE noahmp_urban(sf_urban_physics,   NSOIL,         IVGTYP,  ITIMESTEP,            & ! IN : Model configuration 
+  SUBROUTINE noahmp_urban(sf_urban_physics,   NSOIL,         IVGTYP,  ITIMESTEP,            & ! IN : Model configuration
                                  DT,     COSZ_URB2D,     XLAT_URB2D,                        & ! IN : Time/Space-related
                                 T3D,           QV3D,          U_PHY,      V_PHY,   SWDOWN,  & ! IN : Forcing
                              SWDDIR,         SWDDIF,                                        &
 		                GLW,          P8W3D,         RAINBL,       DZ8W,      ZNT,  & ! IN : Forcing
-                                TSK,            HFX,            QFX,         LH,   GRDFLX,  & ! IN/OUT : LSM 
-		             ALBEDO,          EMISS,           QSFC,                        & ! IN/OUT : LSM 
+                                TSK,            HFX,            QFX,         LH,   GRDFLX,  & ! IN/OUT : LSM
+		             ALBEDO,          EMISS,           QSFC,                        & ! IN/OUT : LSM
                             ids,ide,        jds,jde,        kds,kde,                        &
                             ims,ime,        jms,jme,        kms,kme,                        &
                             its,ite,        jts,jte,        kts,kte,                        &
@@ -3349,22 +3349,22 @@ ILOOP : DO I = its, ite
 
     UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
 
-    TA_URB    = T3D(I,1,J)                                ! [K]            
-    QA_URB    = QV3D(I,1,J)/(1.0+QV3D(I,1,J))             ! [kg/kg]       
+    TA_URB    = T3D(I,1,J)                                ! [K]
+    QA_URB    = QV3D(I,1,J)/(1.0+QV3D(I,1,J))             ! [kg/kg]
     UA_URB    = SQRT(U_PHY(I,1,J)**2.+V_PHY(I,1,J)**2.)
     U1_URB    = U_PHY(I,1,J)
     V1_URB    = V_PHY(I,1,J)
     IF(UA_URB < 1.) UA_URB=1.                             ! [m/s]
-    SSG_URB   = SWDOWN(I,J)                               ! [W/m/m]      
-    SSGD_URB  = 0.8*SWDOWN(I,J)                           ! [W/m/m]     
+    SSG_URB   = SWDOWN(I,J)                               ! [W/m/m]
+    SSGD_URB  = 0.8*SWDOWN(I,J)                           ! [W/m/m]
     SSGQ_URB  = SSG_URB-SSGD_URB                          ! [W/m/m]
     LLG_URB   = GLW(I,J)                                  ! [W/m/m]
-    RAIN_URB  = RAINBL(I,J) / DT * 3600.0                 ! [mm/hr]       
-    RHOO_URB  = (P8W3D(I,KTS+1,J)+P8W3D(I,KTS,J))*0.5 / (287.04 * TA_URB * (1.0+ 0.61 * QA_URB)) ![kg/m/m/m] 
-    ZA_URB    = 0.5*DZ8W(I,1,J)                           ! [m]         
+    RAIN_URB  = RAINBL(I,J) / DT * 3600.0                 ! [mm/hr]
+    RHOO_URB  = (P8W3D(I,KTS+1,J)+P8W3D(I,KTS,J))*0.5 / (287.04 * TA_URB * (1.0+ 0.61 * QA_URB)) ![kg/m/m/m]
+    ZA_URB    = 0.5*DZ8W(I,1,J)                           ! [m]
     DELT_URB  = DT                                        ! [sec]
     XLAT_URB  = XLAT_URB2D(I,J)                           ! [deg]
-    COSZ_URB  = COSZ_URB2D(I,J) 
+    COSZ_URB  = COSZ_URB2D(I,J)
     OMG_URB   = OMG_URB2D(I,J)
     ZNT_URB   = ZNT(I,J)
 
@@ -3417,7 +3417,7 @@ ILOOP : DO I = its, ite
     ENDIF
 
     CHS_URB  = CHS(I,J)
-    CHS2(I,J)= CQS2(I,J)      
+    CHS2(I,J)= CQS2(I,J)
     CHS2_URB = CHS2(I,J)
     IF (PRESENT(CMR_SFCDIF)) THEN
       CMR_URB = CMR_SFCDIF(I,J)
@@ -3472,14 +3472,14 @@ ILOOP : DO I = its, ite
 
     TS_URB2D(I,J) = TS_URB
 
-    ALBEDO(I,J)   = FRC_URB2D(I,J) * ALB_URB + (1-FRC_URB2D(I,J)) * ALBEDO(I,J)        ![-]      
-    HFX(I,J)      = FRC_URB2D(I,J) * SH_URB  + (1-FRC_URB2D(I,J)) * HFX(I,J)           ![W/m/m] 
+    ALBEDO(I,J)   = FRC_URB2D(I,J) * ALB_URB + (1-FRC_URB2D(I,J)) * ALBEDO(I,J)        ![-]
+    HFX(I,J)      = FRC_URB2D(I,J) * SH_URB  + (1-FRC_URB2D(I,J)) * HFX(I,J)           ![W/m/m]
     QFX(I,J)      = FRC_URB2D(I,J) * LH_KINEMATIC_URB &
-                       + (1-FRC_URB2D(I,J))* QFX(I,J)                                  ![kg/m/m/s] 
-    LH(I,J)       = FRC_URB2D(I,J) * LH_URB  + (1-FRC_URB2D(I,J)) * LH(I,J)            ![W/m/m]   
-    GRDFLX(I,J)   = FRC_URB2D(I,J) * (G_URB) + (1-FRC_URB2D(I,J)) * GRDFLX(I,J)        ![W/m/m]  
-    TSK(I,J)      = FRC_URB2D(I,J) * TS_URB  + (1-FRC_URB2D(I,J)) * TSK(I,J)           ![K]    
-!    Q1            = QSFC(I,J)/(1.0+QSFC(I,J))                                         
+                       + (1-FRC_URB2D(I,J))* QFX(I,J)                                  ![kg/m/m/s]
+    LH(I,J)       = FRC_URB2D(I,J) * LH_URB  + (1-FRC_URB2D(I,J)) * LH(I,J)            ![W/m/m]
+    GRDFLX(I,J)   = FRC_URB2D(I,J) * (G_URB) + (1-FRC_URB2D(I,J)) * GRDFLX(I,J)        ![W/m/m]
+    TSK(I,J)      = FRC_URB2D(I,J) * TS_URB  + (1-FRC_URB2D(I,J)) * TSK(I,J)           ![K]
+!    Q1            = QSFC(I,J)/(1.0+QSFC(I,J))
 !    Q1            = FRC_URB2D(I,J) * QS_URB  + (1-FRC_URB2D(I,J)) * Q1                 ![-]
 
 ! Convert QSFC back to mixing ratio
@@ -3525,7 +3525,7 @@ ILOOP : DO I = its, ite
 
     SH_URB2D(I,J)      = SH_URB
     LH_URB2D(I,J)      = LH_URB
-    G_URB2D(I,J)       = G_URB         
+    G_URB2D(I,J)       = G_URB
     RN_URB2D(I,J)      = RN_URB
     PSIM_URB2D(I,J)    = PSIM_URB
     PSIH_URB2D(I,J)    = PSIH_URB
@@ -3641,7 +3641,7 @@ END DO
 
 ENDIF ! SF_URBAN_PHYSICS == 3
 
-IF((SF_URBAN_PHYSICS == 2).OR.(SF_URBAN_PHYSICS == 3))THEN 
+IF((SF_URBAN_PHYSICS == 2).OR.(SF_URBAN_PHYSICS == 3))THEN
 
   sigma_sb=5.67e-08
   do j = jts, jte
@@ -3676,7 +3676,7 @@ IF((SF_URBAN_PHYSICS == 2).OR.(SF_URBAN_PHYSICS == 3))THEN
     a_v_bep(i,1,j)   = (1.-frc_urb2d(i,j))*(-ust(I,J)*ust(I,J))/dz8w(i,1,j)/   &
                           ((u_phy(i,1,j)**2+v_phy(i,1,j)**2.)**.5)+a_v_bep(i,1,j)
 
-    b_t_bep(i,1,j)   = (1.-frc_urb2d(i,j))*hfx_rural(i,j)/dz8w(i,1,j)/rho(i,1,j)/CP+ & 
+    b_t_bep(i,1,j)   = (1.-frc_urb2d(i,j))*hfx_rural(i,j)/dz8w(i,1,j)/rho(i,1,j)/CP+ &
                            b_t_bep(i,1,j)
 
     b_q_bep(i,1,j)   = (1.-frc_urb2d(i,j))*qfx_rural(i,j)/dz8w(i,1,j)/rho(i,1,j)+b_q_bep(i,1,j)
@@ -3739,4 +3739,640 @@ END SUBROUTINE noahmp_urban
 
 !------------------------------------------------------------------------------------------
 !
+
+
+
+!============================================================================================
+!
+! subroutine lsm_mosaic_init: initialization of mosaic state variables Generated by Aaron A.
+! added on 24 May 2022
+!
+!============================================================================================
+   SUBROUTINE NOAHMP_MOSAIC_INIT(XLAND, SNOW , SNOWH , CANWAT , ISLTYP ,   IVGTYP, XLAT, &
+          TSLB , SMOIS , SH2O , DZS , FNDSOILW , FNDSNOWH ,             &
+          TSK, isnowxy , tvxy     ,tgxy     ,canicexy ,         TMN,     XICE,   &
+          canliqxy ,eahxy    ,tahxy    ,cmxy     ,chxy     ,                     &
+          fwetxy   ,sneqvoxy ,alboldxy ,qsnowxy, qrainxy, wslakexy, zwtxy, waxy, &
+          wtxy     ,tsnoxy   ,zsnsoxy  ,snicexy  ,snliqxy  ,lfmassxy ,rtmassxy , &
+          stmassxy ,woodxy   ,stblcpxy ,fastcpxy ,xsaixy   ,lai      ,           &
+          grainxy  ,gddxy    ,                                                   &
+          croptype ,cropcat  ,                      &
+       irnumsi, irnummi, irnumfi, irwatsi,                                    &
+       irwatmi, irwatfi, ireloss, irsivol,                                    &
+       irmivol, irfivol, irrsplh,                                             &
+!jref:start
+       t2mvxy   ,t2mbxy   ,chstarxy,            &
+!jref:end
+       num_soil_layers, restart,                 &
+       allowed_to_read , iopt_run,  iopt_crop, iopt_irr, iopt_irrm,          &
+       sf_urban_physics,                         &  ! urban scheme
+       ids,ide, jds,jde, kds,kde,                &
+       ims,ime, jms,jme, kms,kme,                &
+       its,ite, jts,jte, kts,kte,                &
+       smoiseq, smcwtdxy, rechxy, deeprechxy,    &
+       LANDUSEF, LANDUSEF2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+       mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+       noahmp_HUE_iopt,                                                      &
+       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
+       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
+       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
+       TMN_mosaic, canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,              &      ! Added by Aaron A.
+       cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A.
+       alboldxy_mosaic, qsnowxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
+       waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
+       snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
+       stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
+       xsaixy_mosaic, lai_mosaic, grainxy_mosaic, gddxy_mosaic,              &      ! Added by Aaron A.
+       t2mvxy_mosaic, t2mbxy_mosaic, chstarxy_mosaic,                        &      ! Added by Aaron A.
+
+       IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &
+       IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &
+       IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &
+
+
+       smoiseq_mosaic,  smcwtdxy_mosaic, rechxy_mosaic, deeprechxy_mosaic,   &
+
+       TR_URB2D_mosaic, TB_URB2D_mosaic,                                     &      ! Added by Aaron A.
+       TG_URB2D_mosaic, TC_URB2D_mosaic, QC_URB2D_mosaic,                    &      ! Added by Aaron A.
+       TRL_URB3D_mosaic, TBL_URB3D_mosaic,                                   &      ! Added by Aaron A.
+       TGL_URB3D_mosaic, SH_URB2D_mosaic, LH_URB2D_mosaic,                   &      ! Added by Aaron A.
+       G_URB2D_mosaic, RN_URB2D_mosaic, TS_URB2D_mosaic,                     &      ! Added by Aaron A.
+       CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic, CMC_SFCDIF_mosaic,              &
+       CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic, CHGR_SFCDIF_mosaic,            &
+       XXXR_URB2D_mosaic, XXXB_URB2D_mosaic, XXXG_URB2D_mosaic,              &
+       CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
+       TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
+       DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
+       FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
+         )                                                            ! Added by Aaron A.             ! Added by Aaron A.
+
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ! This initilization functions to first generate an ordering of fractioanl land use based on each grid cell.
+  ! Then, the data that has been initilzied in the normal NOAHMP INIT call are fed used to set each of the
+  ! sub-landuse layer to the the same constant. This allows for continuity between the different calls of NOAHMP
+  ! which may need all of the above variables to initilize.
+  !
+  ! In addition, the NOAHMP mosiac initilization will initilize the urban mosaic variables that are needed to inilize
+  ! our runs.
+  !
+  ! Format of the code is as follows:
+  ! -> Variable Declirations
+  ! -> Land Use For loop that is nearly identical to the one that Dan Li authored for the NOAH LSM
+  !     -> This uses a bubble sorting, in which the fractional land use is ordered through comparisoin
+  !     -> of elemtns of land use that are directly next to each other.
+  !     -> There are a few checks that occur to ensure that the LAND_SEA mask and the mosaic are
+  !     -> Consistent. See below for more detailed information
+  ! -> Setting filling the mosaic variables!
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  !This is the original call for the NOAHMP INIT
+
+  USE NOAHMP_TABLES
+
+
+  INTEGER, INTENT(IN   )    ::     ids,ide, jds,jde, kds,kde,  &
+         &                           ims,ime, jms,jme, kms,kme,  &
+         &                           its,ite, jts,jte, kts,kte
+
+    INTEGER, INTENT(IN)       ::     num_soil_layers, iopt_run, iopt_crop, ISWATER, ISICE
+
+    LOGICAL, INTENT(IN)       ::     restart,                    &
+         &                           allowed_to_read
+    INTEGER, INTENT(IN)       ::     sf_urban_physics                              ! urban, by yizhou
+
+    REAL,    DIMENSION( num_soil_layers), INTENT(IN)    ::     DZS  ! Thickness of the soil layers [m]
+
+    REAL,    DIMENSION( ims:ime, num_soil_layers, jms:jme ) ,    &
+         &   INTENT(INOUT)    ::     SMOIS,                      &
+         &                           SH2O,                       &
+         &                           TSLB
+
+    REAL,    DIMENSION( ims:ime, jms:jme ) ,                     &
+         &   INTENT(INOUT)    ::     SNOW,                       &
+         &                           SNOWH,                      &
+         &                           CANWAT,                     &
+         &                           XLAND
+
+    INTEGER, DIMENSION( ims:ime, jms:jme ),                      &
+         &   INTENT(IN)       ::     ISLTYP,  &
+                                     IVGTYP
+
+    LOGICAL, INTENT(IN)       ::     FNDSOILW
+
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(IN) :: XLAT         !latitude
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(IN) :: TSK         !skin temperature (k)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: TMN         !deep soil temperature (k)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(IN) :: XICE         !sea ice fraction
+    INTEGER, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: isnowxy     !actual no. of snow layers
+    REAL, DIMENSION(ims:ime,-2:num_soil_layers,jms:jme), INTENT(INOUT) :: zsnsoxy  !snow layer depth [m]
+    REAL, DIMENSION(ims:ime,-2:              0,jms:jme), INTENT(INOUT) :: tsnoxy   !snow temperature [K]
+    REAL, DIMENSION(ims:ime,-2:              0,jms:jme), INTENT(INOUT) :: snicexy  !snow layer ice [mm]
+    REAL, DIMENSION(ims:ime,-2:              0,jms:jme), INTENT(INOUT) :: snliqxy  !snow layer liquid water [mm]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: tvxy        !vegetation canopy temperature
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: tgxy        !ground surface temperature
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: canicexy    !canopy-intercepted ice (mm)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: canliqxy    !canopy-intercepted liquid water (mm)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: eahxy       !canopy air vapor pressure (pa)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: tahxy       !canopy air temperature (k)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: cmxy        !momentum drag coefficient
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: chxy        !sensible heat exchange coefficient
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: fwetxy      !wetted or snowed fraction of the canopy (-)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: sneqvoxy    !snow mass at last time step(mm h2o)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: alboldxy    !snow albedo at last time step (-)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: qsnowxy     !snowfall on the ground [mm/s]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: wslakexy    !lake water storage [mm]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: zwtxy       !water table depth [m]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: waxy        !water in the "aquifer" [mm]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: wtxy        !groundwater storage [mm]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: lfmassxy    !leaf mass [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: rtmassxy    !mass of fine roots [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: stmassxy    !stem mass [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: woodxy      !mass of wood (incl. woody roots) [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: grainxy     !mass of grain [g/m2] !XING
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: gddxy       !growing degree days !XING
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: stblcpxy    !stable carbon in deep soil [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: fastcpxy    !short-lived carbon, shallow soil [g/m2]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: xsaixy      !stem area index
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: lai         !leaf area index
+
+!jref:start
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: t2mvxy        !2m temperature vegetation part (k)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: t2mbxy        !2m temperature bare ground part (k)
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: chstarxy        !dummy
+!jref:end
+
+!added by Aaron A.
+! From here on, we define the important variables that are needed to re-catagorize the landuse data sets
+
+  INTEGER, INTENT(IN) :: NLCAT
+  INTEGER, INTENT(IN) :: noahmp_mosaic_scheme                                       !This tells us that the mosaic scheme is active
+  INTEGER, INTENT(IN) :: mosaic_cat                                               !This tells how many mosaic catagories that are of interet,
+  REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
+  REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
+
+  INTEGER, DIMENSION( ims:ime, NLCAT, jms:jme ), INTENT(INOUT) :: mosaic_cat_index !This is the re-ordered mosaic catagory data
+
+  !variables with dimensions 1:mosaic_cat
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TSK_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TMN_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CANWAT_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOW_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOWH_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tvxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: canicexy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: canliqxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: eahxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tahxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: cmxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fwetxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: sneqvoxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: alboldxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: qsnowxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wslakexy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: zwtxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: waxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wtxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: lfmassxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rtmassxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stmassxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: woodxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: grainxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gddxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stblcpxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fastcpxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: xsaixy_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: lai_mosaic
+
+
+ !snow variables, which have dimensions of 7*mosaic cat and 3 * number of mosaic cats
+  INTEGER, DIMENSION(ims:ime, 1:mosaic_cat, jms:jme), OPTIONAL, INTENT(INOUT) :: isnowxy_mosaic     !actual no. of snow layers
+  REAL, DIMENSION(ims:ime, 1:7*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: zsnsoxy_mosaic  !snow layer depth [m] **These have not been adjusted for indexing, Added in main driver
+  REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: tsnoxy_mosaic   !snow temperature [K] **These have not been adjusted for indexing, Added in main driver
+  REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snicexy_mosaic  !snow layer ice [mm] **These have not been adjusted for indexing, Added in main driver
+  REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snliqxy_mosaic  !snow layer liquid water [mm] **These have not been adjusted for indexing, Added in main driver
+
+ !variables that are for the soil layers
+  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: TSLB_mosaic
+  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SMOIS_mosaic
+  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SH2O_mosaic
+
+!variables for 2d urban model
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TR_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TB_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TG_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TC_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: QC_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SH_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: LH_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: G_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: RN_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_RUL2D_mosaic
+
+  !values that are needed for the
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TRL_URB3D_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
+
+  !Now add the final mosaic checks for jref:start and jref:end
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mvxy_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mbxy_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: chstarxy_mosaic
+
+  INTEGER :: ij, i,j,mosaic_i,LastSwap,NumPairs,soil_k, Temp2,Temp5,Temp7, ICE,temp_index
+  REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x
+  LOGICAL :: IPRINT
+  CHARACTER(len=256) :: message_text
+
+  IPRINT=.false.
+
+
+  xice_threshold = 0.5
+
+
+
+
+  if(iopt_crop.gt.0)then !check added by Aaron Alexander
+    CALL wrf_error_fatal('NOAHMP MOSAIC DOES NOT SUPPORT GECROS MODEL FOR CROPS AT THIS TIME or LIU et al CROP MODEL ')
+  endif
+
+  if(iopt_run.eq.5)then !check added by Aaron Alexander
+    CALL wrf_error_fatal('NOAHMP MOSAIC DOES NOT SUPPORT SHALLOW GROUNDWATER MODEL AT THIS TIME')
+  endif
+  !===========================================================================
+  ! CHOOSE THE TILES
+  !===========================================================================
+
+  itf=min0(ite,ide-1)
+  jtf=min0(jte,jde-1)
+
+  ! simple test
+
+  DO i = its,itf
+     DO j = jts,jtf
+        IF ((xland(i,j).LT. 1.5 ) .AND. (IVGTYP(i,j) .EQ. ISWATER)) THEN
+           PRINT*, 'BEFORE MOSAIC_INIT'
+           CALL wrf_message("BEFORE MOSAIC_INIT")
+           WRITE(message_text,fmt='(a,2I6,2F8.2,2I6)') 'I,J,xland,xice,mosaic_cat_index,ivgtyp = ', &
+                 I,J,xland(i,j),xice(i,j),mosaic_cat_index(I,1,J),IVGTYP(i,j)
+           CALL wrf_message(message_text)
+        ENDIF
+     ENDDO
+  ENDDO
+
+     DO i = its,itf                               !This loop populates the LANDUSEF2 and mosaic_cat
+        DO j = jts,jtf
+           DO mosaic_i=1,NLCAT
+              LANDUSEF2(i,mosaic_i,j)=LANDUSEF(i,mosaic_i,j)
+              mosaic_cat_index(i,mosaic_i,j)=mosaic_i
+
+           ENDDO
+        ENDDO
+     ENDDO
+
+     DO i = its,itf  !These do loops swap around the fractional land use
+        DO j = jts,jtf
+
+          NumPairs=NLCAT-1
+
+          DO
+               IF (NumPairs == 0) EXIT
+                   LastSwap = 1
+          DO  mosaic_i=1, NumPairs
+            IF(LANDUSEF2(i,mosaic_i, j) < LANDUSEF2(i,mosaic_i+1, j)  ) THEN
+               Temp = LANDUSEF2(i,mosaic_i, j)
+               LANDUSEF2(i,mosaic_i, j)=LANDUSEF2(i,mosaic_i+1, j)
+               LANDUSEF2(i,mosaic_i+1, j)=Temp
+               LastSwap = mosaic_i
+
+               Temp2 =  mosaic_cat_index(i,mosaic_i,j)
+               mosaic_cat_index(i,mosaic_i,j)=mosaic_cat_index(i,mosaic_i+1,j)
+               mosaic_cat_index(i,mosaic_i+1,j)=Temp2
+            ENDIF
+          ENDDO
+               NumPairs = LastSwap - 1
+          ENDDO
+
+        ENDDO
+      ENDDO
+  !===========================================================================
+  ! For non-seaice grids, eliminate the seaice-tiles
+  !===========================================================================
+
+     DO i = its,itf
+        DO j = jts,jtf
+
+         IF   (XLAND(I,J).LT.1.5)  THEN
+
+             ICE = 0
+                 IF( XICE(I,J).GE. XICE_THRESHOLD ) THEN
+                   WRITE (message_text,fmt='(a,2I5)') 'sea-ice at point, I and J = ', i,j
+                   CALL wrf_message(message_text)
+                 ICE = 1
+                 ENDIF
+
+          IF (ICE == 1)   Then         ! sea-ice case , eliminate sea-ice if they are not the dominant ones
+
+          IF (IVGTYP(i,j) == isice)  THEN    ! if this grid cell is dominanted by ice, then do nothing
+
+          ELSE
+
+                DO mosaic_i=2,mosaic_cat
+                   IF (mosaic_cat_index(i,mosaic_i,j) == isice ) THEN
+                       Temp4=LANDUSEF2(i,mosaic_i,j)
+                       Temp5=mosaic_cat_index(i,mosaic_i,j)
+
+                       LANDUSEF2(i,mosaic_i:NLCAT-1,j)=LANDUSEF2(i,mosaic_i+1:NLCAT,j)
+                       mosaic_cat_index(i,mosaic_i:NLCAT-1,j)=mosaic_cat_index(i,mosaic_i+1:NLCAT,j)
+
+                       LANDUSEF2(i,NLCAT,j)=Temp4
+                       mosaic_cat_index(i,NLCAT,j)=Temp5
+                   ENDIF
+                 ENDDO
+
+          ENDIF   ! for (IVGTYP(i,j) == isice )
+
+          ELSEIF (ICE ==0)  THEN
+
+          IF ((mosaic_cat_index(I,1,J) .EQ. ISWATER)) THEN
+
+          ! xland < 1.5 but the dominant land use category based on our calculation is water
+
+           IF (IVGTYP(i,j) .EQ. ISWATER) THEN
+
+           ! xland < 1.5 but the dominant land use category based on the geogrid calculation is water, this must be wrong
+
+              CALL wrf_message("IN MOSAIC_INIT")
+              WRITE(message_text,fmt='(a,3I6,2F8.2)') 'I,J,IVGTYP,XLAND,XICE = ',I,J,IVGTYP(I,J),xland(i,j),xice(i,j)
+              CALL wrf_message(message_text)
+              CALL wrf_message("xland < 1.5 but the dominant land use category based on our calculation is water."//&
+                   "In addition, the dominant land use category based on the geogrid calculation is water, this must be wrong")
+
+           ENDIF  ! for (IVGTYP(i,j) .EQ. ISWATER)
+
+           IF (IVGTYP(i,j) .NE. ISWATER) THEN
+
+           ! xland < 1.5,   the dominant land use category based on our calculation is water, but based on the geogrid calculation is not water, which might be due to the inconsistence between land use data and land-sea mask
+
+           Temp4=LANDUSEF2(i,1,j)
+           Temp5=mosaic_cat_index(i,1,j)
+
+           LANDUSEF2(i,1:NLCAT-1,j)=LANDUSEF2(i,2:NLCAT,j)
+           mosaic_cat_index(i,1:NLCAT-1,j)=mosaic_cat_index(i,2:NLCAT,j)
+
+           LANDUSEF2(i,NLCAT,j)=Temp4
+           mosaic_cat_index(i,NLCAT,j)=Temp5
+
+              CALL wrf_message("IN MOSAIC_INIT")
+              WRITE(message_text,fmt='(a,3I6,2F8.2)') 'I,J,IVGTYP,XLAND,XICE = ',I,J,IVGTYP(I,J),xland(i,j),xice(i,j)
+              CALL wrf_message(message_text)
+              CALL wrf_message("xland < 1.5 but the dominant land use category based on our calculation is water."//&
+                   "this is fine as long as we change our calculation so that the dominant land use category is"//&
+                   "stwiched back to not water.")
+              WRITE(message_text,fmt='(a,2I6)') 'land use category has been switched, before and after values are ', &
+                   temp5,mosaic_cat_index(i,1,j)
+              CALL wrf_message(message_text)
+              WRITE(message_text,fmt='(a,2I6)') 'new dominant and second dominant cat are ', mosaic_cat_index(i,1,j),mosaic_cat_index(i,2,j)
+              CALL wrf_message(message_text)
+
+           ENDIF  ! for (IVGTYP(i,j) .NE. ISWATER)
+
+           ELSE    !  for (mosaic_cat_index(I,1,J) .EQ. ISWATER)
+
+                     DO mosaic_i=2,mosaic_cat
+                    IF (mosaic_cat_index(i,mosaic_i,j) == iswater ) THEN
+                       Temp4=LANDUSEF2(i,mosaic_i,j)
+                       Temp5=mosaic_cat_index(i,mosaic_i,j)
+
+                       LANDUSEF2(i,mosaic_i:NLCAT-1,j)=LANDUSEF2(i,mosaic_i+1:NLCAT,j)
+                       mosaic_cat_index(i,mosaic_i:NLCAT-1,j)=mosaic_cat_index(i,mosaic_i+1:NLCAT,j)
+
+                       LANDUSEF2(i,NLCAT,j)=Temp4
+                       mosaic_cat_index(i,NLCAT,j)=Temp5
+                    ENDIF
+                  ENDDO
+
+           ENDIF !  for (mosaic_cat_index(I,1,J) .EQ. ISWATER)
+
+          ENDIF  !  for ICE == 1
+
+      ELSE  ! FOR (XLAND(I,J).LT.1.5)
+
+                 ICE = 0
+
+                     IF( XICE(I,J).GE. XICE_THRESHOLD ) THEN
+                       WRITE (message_text,fmt='(a,2I6)') 'sea-ice at water point, I and J = ', i,j
+                       CALL wrf_message(message_text)
+                       ICE = 1
+                     ENDIF
+
+           IF ((mosaic_cat_index(I,1,J) .NE. ISWATER)) THEN
+
+                ! xland > 1.5 and the dominant land use category based on our calculation is not water
+
+                 IF (IVGTYP(i,j) .NE. ISWATER) THEN
+
+                 ! xland > 1.5 but the dominant land use category based on the geogrid calculation is not water, this must be wrong
+                 CALL wrf_message("IN MOSAIC_INIT")
+                 WRITE(message_text,fmt='(a,3I6,2F8.2)') 'I,J,IVGTYP,XLAND,XICE = ',I,J,IVGTYP(I,J),xland(i,j),xice(i,j)
+                 CALL wrf_message(message_text)
+                 CALL wrf_message("xland > 1.5 but the dominant land use category based on our calculation is not water."// &
+                      "in addition, the dominant land use category based on the geogrid calculation is not water,"//  &
+                      "this must be wrong.")
+                 ENDIF  ! for (IVGTYP(i,j) .NE. ISWATER)
+
+                 IF (IVGTYP(i,j) .EQ. ISWATER) THEN
+
+                 ! xland > 1.5,   the dominant land use category based on our calculation is not water, but based on the geogrid calculation is water, which might be due to the inconsistence between land use data and land-sea mask
+
+                 CALL wrf_message("IN MOSAIC_INIT")
+                 WRITE(message_text,fmt='(a,3I6,2F8.2)') 'I,J,IVGTYP,XLAND,XICE = ',I,J,IVGTYP(I,J),xland(i,j),xice(i,j)
+                 CALL wrf_message(message_text)
+                 CALL wrf_message("xland > 1.5 but the dominant land use category based on our calculation is not water."// &
+                      "however, the dominant land use category based on the geogrid calculation is water")
+                 CALL wrf_message("This is fine. We do not need to do anyting because in the noaddrv, "//&
+                      "we use xland as a criterion for whether using"// &
+                      "mosaic or not when xland > 1.5, no mosaic will be used anyway")
+
+                 ENDIF  ! for (IVGTYP(i,j) .NE. ISWATER)
+
+           ENDIF !  for (mosaic_cat_index(I,1,J) .NE. ISWATER)
+
+        ENDIF  ! FOR (XLAND(I,J).LT.1.5)
+
+          ENDDO
+      ENDDO
+  !===========================================================================
+  ! Swap the data so that 'paired' land-types are
+  !===========================================================================
+  IF (number_land_use_catagories.GT.40) THEN ! if there are more than 40 land-use catagories, we want to
+
+  !===========================================================================
+  ! normalize
+  !===========================================================================
+
+     DO i = its,itf
+        DO j = jts,jtf
+
+          Temp6=0
+
+            DO mosaic_i=1,mosaic_cat
+               Temp6=Temp6+LANDUSEF2(i,mosaic_i,j)
+            ENDDO
+
+            if (Temp6 .LT. 1e-5)  then
+
+            Temp6 = 1e-5
+            WRITE (message_text,fmt='(a,e8.1)') 'the total land surface fraction is less than ', temp6
+            CALL wrf_message(message_text)
+            WRITE (message_text,fmt='(a,2I6,4F8.2)') 'some landusef values at i,j are ', &
+                 i,j,landusef2(i,1,j),landusef2(i,2,j),landusef2(i,3,j),landusef2(i,4,j)
+            CALL wrf_message(message_text)
+            WRITE (message_text,fmt='(a,2I6,3I6)') 'some mosaic cat values at i,j are ', &
+                 i,j,mosaic_cat_index(i,1,j),mosaic_cat_index(i,2,j),mosaic_cat_index(i,3,j)
+            CALL wrf_message(message_text)
+
+            endif
+
+            LANDUSEF2(i,1:mosaic_cat, j)=LANDUSEF2(i,1:mosaic_cat,j)*(1/Temp6)
+
+          ENDDO
+      ENDDO
+
+  !===========================================================================
+  ! initilize the variables
+  !===========================================================================
+IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
+  ! things already generated/read in
+     DO i = its,itf
+        DO j = jts,jtf
+
+             DO mosaic_i=1,mosaic_cat
+
+                !add qualifer for the mosaic croptpes
+
+            TSK_mosaic(i,mosaic_i,j)=TSK(i,j)
+            CANWAT_mosaic(i,mosaic_i,j)=CANWAT(i,j)
+            SNOW_mosaic(i,mosaic_i,j)=SNOW(i,j)
+            SNOWH_mosaic(i,mosaic_i,j)=SNOWH(i,j)
+
+            TMN_mosaic(i,mosaic_i,j)=TMN(i,j)
+            tvxy_mosaic(i,mosaic_i,j)=tvxy(i,j)
+            tgxy_mosaic(i,mosaic_i,j)=tgxy(i,j)
+
+            canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
+            canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j)
+
+            eahxy_mosaic(i,mosaic_i,j)=eahxy(i,j)
+            tahxy_mosaic(i,mosaic_i,j)=tahxy(i,j)
+            cmxy_mosaic(i,mosaic_i,j)=cmxy(i,j)
+            chxy_mosaic(i,mosaic_i,j)=chxy(i,j)
+
+            fwetxy_mosaic(i,mosaic_i,j)=fwetxy(i,j)
+            sneqvoxy_mosaic(i,mosaic_i,j)=sneqvoxy(i,j)
+            alboldxy_mosaic(i,mosaic_i,j)=alboldxy(i,j)
+            qsnowxy_mosaic(i,mosaic_i,j)=qsnowxy(i,j)
+
+            wslakexy_mosaic(i,mosaic_i,j)=wslakexy(i,j)
+            zwtxy_mosaic(i,mosaic_i,j)=zwtxy(i,j)
+            waxy_mosaic(i,mosaic_i,j)=waxy(i,j)
+            wtxy_mosaic(i,mosaic_i,j)=wtxy(i,j)
+
+            lfmassxy_mosaic(i,mosaic_i,j)=lfmassxy(i,j)
+            rtmassxy_mosaic(i,mosaic_i,j)=rtmassxy(i,j)
+            stmassxy_mosaic(i,mosaic_i,j)=stmassxy(i,j)
+
+            woodxy_mosaic(i,mosaic_i,j)=woodxy(i,j)
+            grainxy_mosaic(i,mosaic_i,j)=grainxy(i,j)
+            gddxy_mosaic(i,mosaic_i,j)=gddxy(i,j)
+            stblcpxy_mosaic(i,mosaic_i,j)=stblcpxy(i,j)
+            fastcpxy_mosaic(i,mosaic_i,j)=fastcpxy(i,j)
+            xsaixy_mosaic(i,mosaic_i,j)=xsaixy(i,j)
+            lai_mosaic(i,mosaic_i,j)=lai(i,j)
+
+            t2mvxy_mosaic(i,mosaic_i,j)=t2mvxy(i,j)
+            t2mbxy_mosaic(i,mosaic_i,j)=t2mbxy(i,j)
+            chstarxy_mosaic(i,mosaic_i,j)=chstarxy(i,j)
+
+              DO soil_k=1,num_soil_layers
+
+            TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+            SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+            SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+
+              ENDDO
+
+           !!snow things
+           isnowxy_mosaic(i,mosaic_i,j)=isnowxy(i,j)
+
+           DO snow_layer=1,7
+            zsnsoxy_mosaic(i,7*(mosaic_i-1)+snow_layer,j)=zsnsoxy(i,snow_layer,j)
+           ENDDO
+
+           DO top_layer=1,3
+            tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,snow_layer,j)
+            snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,snow_layer,j)
+            snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,snow_layer,j)
+           ENDDO
+
+           TR_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           TB_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           TG_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           TC_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           TS_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           TS_RUL2D_mosaic(i,mosaic_i,j)=TSK(i,j)
+           QC_URB2D_mosaic(i,mosaic_i,j)=0.01
+           SH_URB2D_mosaic(i,mosaic_i,j)=0
+           LH_URB2D_mosaic(i,mosaic_i,j)=0
+           G_URB2D_mosaic(i,mosaic_i,j)=0
+           RN_URB2D_mosaic(i,mosaic_i,j)=0
+
+          TRL_URB3D_mosaic(I,4*(mosaic_i-1)+1,J)=TSLB(I,1,J)+0.
+          TRL_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=0.5*(TSLB(I,1,J)+TSLB(I,2,J))
+          TRL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,2,J)+0.
+          TRL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,2,J)+(TSLB(I,3,J)-TSLB(I,2,J))*0.29
+
+          TBL_URB3D_mosaic(I,4*(mosaic_i-1)+1,J)=TSLB(I,1,J)+0.
+          TBL_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=0.5*(TSLB(I,1,J)+TSLB(I,2,J))
+          TBL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,2,J)+0.
+          TBL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,2,J)+(TSLB(I,3,J)-TSLB(I,2,J))*0.29
+
+          TGL_URB3D_mosaic(I,4*(mosaic_i-1)+1,J)=TSLB(I,1,J)
+          TGL_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=TSLB(I,2,J)
+          TGL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,3,J)
+          TGL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,4,J)
+
+            ENDDO
+          ENDDO
+      ENDDO
+
+   ! simple test
+
+       DO i = its,itf
+        DO j = jts,jtf
+
+           IF ((xland(i,j).LT. 1.5 ) .AND. (mosaic_cat_index(I,1,J) .EQ. ISWATER)) THEN
+             CALL wrf_message("After MOSAIC_INIT")
+             WRITE (message_text,fmt='(a,2I6,2F8.2,2I6)') 'weird xland,xice,mosaic_cat_index and ivgtyp at I,J = ', &
+                i,j,xland(i,j),xice(i,j),mosaic_cat_index(I,1,J),IVGTYP(i,j)
+             CALL wrf_message(message_text)
+           ENDIF
+
+        ENDDO
+      ENDDO
+
+ ENDIF      !  for not restart
+
+!--------------------------------
+  END SUBROUTINE NOAHMP_MOSAIC_INIT
+!--------------------------------
+
+
+
+
+
+
+
 END MODULE module_sf_noahmpdrv
