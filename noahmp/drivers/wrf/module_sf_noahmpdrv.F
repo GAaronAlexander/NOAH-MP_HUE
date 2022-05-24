@@ -3982,9 +3982,13 @@ END SUBROUTINE noahmp_urban
   REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: chstarxy_mosaic
 
   INTEGER :: ij, i,j,mosaic_i,LastSwap,NumPairs,soil_k, Temp2,Temp5,Temp7, ICE,temp_index
-  REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x
+  REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x ,
+  INTEGER, DIMENSION(7) :: HUE_noahmp_extracatagories ! added by Aaron A.
+  INTEGER :: LC, CAT_interested, temp_master_index
+  REAL :: temp_master_LUF
   LOGICAL :: IPRINT
   CHARACTER(len=256) :: message_text
+
 
   IPRINT=.false.
 
@@ -4205,10 +4209,55 @@ END SUBROUTINE noahmp_urban
           ENDDO
       ENDDO
   !===========================================================================
-  ! Swap the data so that 'paired' land-types are
+  ! Swap the data so that 'paired' land-types are. We are going to
+  ! order them in a specific way.
+  ! Ordered so:
+  ! Urban Tree over pavement (41)
+  ! Urban Tree (47)
+  ! Urban To Turfgrass (42)
+  ! Urban Turfgrass (43)
+  ! Urban to Permeable Pavement (45)
+  ! Urban Permeable Pavement (44)
+  ! Green Roof (46)
+  ! EVERYTHING ELSE
   !===========================================================================
-  IF (number_land_use_catagories.GT.40) THEN ! if there are more than 40 land-use catagories, we want to
+  HUE_noahmp_extracatagories = (/41,47,42,43,45,44,46/)
+  IF (noahmp_HUE_iopt.eq.1) THEN ! this means that there are extra land-use values
+    DO i = its,itf
+      do j = jts, jtf
 
+        DO LC = 1,size(HUE_noahmp_extracatagories)
+          CAT_interested = HUE_noahmp_extracatagories(LC)
+
+            DO  mosaic_i=1, NLCAT
+
+              !Check if we have the interested catagory
+                IF(mosaic_cat_index(i,mosaic_i,j) == CAT_interested) THEN
+                  ! Determine if the interested catagory is in the
+                    IF(mosaic_i==LC)THEN ! we are already in the correct space!
+                      EXIT ! There is nothing to do!
+                    ELSE
+                      temp_master_index = mosaic_cat_index(i,mosaic_i,j)
+                      mosaic_cat_index(i,LC+1:mosaic_i,j) = mosaic_cat_index(i,LC:mosaic_i-1,j)
+                      mosaic_cat_index(i,LC,j) = temp_master_index
+
+                      temp_master_LUF = LANDUSEF2(i,mosaic_i,j)
+                      LANDUSEF2(i,LC+1:mosaic_i,j) = LANDUSEF2(i,LC:mosaic_i-1,j)
+                      LANDUSEF2(i,LC,j) = temp_master_LUF
+
+                      EXIT !We re-ordered what we needed to do !
+                    ENDIF
+                ENDIF
+
+              ENDDO ! end the number of LAND-USE CATs
+
+            ENDDO ! end HUE_noahmp_extracatagories loop
+          ENDDO ! end j loop
+        ENDDO ! end i loop
+
+
+
+  ENDIF !end hue noahmp sort
   !===========================================================================
   ! normalize
   !===========================================================================
