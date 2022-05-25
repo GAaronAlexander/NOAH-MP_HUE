@@ -3489,6 +3489,8 @@ end subroutine land_driver_ini
      implicit  none
      integer :: itime          ! timestep loop
 
+if(noahmp_mosaic_scheme.eq.0) then !this check looks and sees if we are going to be doing
+  ! a mosaic tiling scheme call.
 !---------------------------------------------------------------------------------
 ! Read the forcing data.
 !---------------------------------------------------------------------------------
@@ -3848,6 +3850,319 @@ end subroutine land_driver_ini
 !------------------------------------------------------------------------
 
  ENDIF   ! SKIP FIRST TIMESTEP
+
+  ELSEIF(noahmp_mosaic_scheme.eq.1) then !below this is the noah-mp mosiac scheme call Aaron A.
+
+  inflnm = trim(indir)//"/"//&
+       olddate(1:4)//olddate(6:7)//olddate(9:10)//olddate(12:13)//&
+       ".LDASIN_DOMAIN"//hgrid
+
+  ! Build a filename template
+  inflnm_template = trim(indir)//"/<date>.LDASIN_DOMAIN"//hgrid
+
+#ifdef MPP_LAND
+  call mpp_land_bcast_char(19,OLDDATE(1:19))
+#endif
+
+#ifdef WRF_HYDRO
+
+#ifdef MPP_LAND
+  call mpp_land_bcast_char(19,forcDate(1:19))
+#endif
+  if(finemesh .ne. 0) goto 991
+
+  if(forc_typ .eq. 0) then
+     CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
+          XSTART, XEND, YSTART, YEND,                                  &
+    forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
+    forcing_name_LW,forcing_name_SW,forcing_name_PR,forcing_name_SN, &
+    T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),          &
+    P8W(:,1,:), GLW, SWDOWN, RAINBL_tmp, SNOWBL, VEGFRA, update_veg, LAI, update_lai, reset_spinup_date, startdate)
+     VEGFRA = VEGFRA * 100.
+  else
+     if(olddate == forcDate) then
+        LAI_tmp = LAI
+        CALL HYDRO_frocing_drv(trim(indir), forc_typ,snow_assim,olddate,                      &
+            xstart, xend, ystart, yend,    &
+            T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),P8W(:,1,:),    &
+            GLW,SWDOWN,RAINBL_tmp,LAI,VEGFRA,SNOWH,ITIME,FORCING_TIMESTEP,prcp0)
+
+        call geth_newdate(newdate, forcDate, FORCING_TIMESTEP)
+        forcDate = newdate
+     endif
+  endif
+
+#else
+  CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
+       XSTART, XEND, YSTART, YEND,                                  &
+    forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
+    forcing_name_LW,forcing_name_SW,forcing_name_PR,forcing_name_SN, &
+    T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),          &
+    P8W(:,1,:), GLW, SWDOWN, RAINBL_tmp, SNOWBL, VEGFRA, update_veg, LAI, update_lai, reset_spinup_date, startdate)
+    if(maxval(VEGFRA) <= 1 ) then
+        VEGFRA = VEGFRA * 100.   ! added for input vegfra as a fraction (0~1)
+    endif
+
+#endif
+
+991  continue
+
+  where(XLAND > 1.5)   T_PHY(:,1,:) = 0.0  ! Prevent some overflow problems with ifort compiler [MB:20150812]
+  where(XLAND > 1.5)   U_PHY(:,1,:) = 0.0
+  where(XLAND > 1.5)   V_PHY(:,1,:) = 0.0
+  where(XLAND > 1.5) QV_CURR(:,1,:) = 0.0
+  where(XLAND > 1.5)     P8W(:,1,:) = 0.0
+  where(XLAND > 1.5)     GLW        = 0.0
+  where(XLAND > 1.5)  SWDOWN        = 0.0
+  where(XLAND > 1.5) RAINBL_tmp     = 0.0
+  where(XLAND > 1.5) SNOWBL         = 0.0
+
+  QV_CURR(:,1,:) = QV_CURR(:,1,:)/(1.0 - QV_CURR(:,1,:))  ! Assuming input forcing are specific hum.;
+                                                          ! WRF wants mixing ratio at driver level
+  P8W(:,2,:)     = P8W(:,1,:)      ! WRF uses lowest two layers
+  T_PHY(:,2,:)   = T_PHY(:,1,:)    ! Only pressure is needed in two layer but fill the rest
+  U_PHY(:,2,:)   = U_PHY(:,1,:)    !
+  V_PHY(:,2,:)   = V_PHY(:,1,:)    !
+  QV_CURR(:,2,:) = QV_CURR(:,1,:)  !
+  RAINBL = RAINBL_tmp * DTBL       ! RAINBL in WRF is [mm]
+  SNOWBL = SNOWBL * DTBL           !
+  SR         = 0.0                 ! Will only use component if opt_snf=4
+  RAINCV     = 0.0
+  RAINNCV    = RAINBL
+  RAINSHV    = 0.0
+  SNOWNCV    = SNOWBL
+  GRAUPELNCV = 0.0
+  HAILNCV    = 0.0
+  DZ8W = 2*ZLVL                    ! 2* to be consistent with WRF model level
+
+  SWDDIR = SWDOWN * 0.7  ! following noahmplsm ATM 70% direct radiation
+  SWDDIF = SWDOWN * 0.3  ! following noahmplsm ATM 30% diffuse radiation
+
+  IF(SF_URBAN_PHYSICS == 2 .or. SF_URBAN_PHYSICS == 3) THEN  ! BEP or BEM urban models
+    where(XLAND < 1.5)     p_urban(:,kde,:) = p8w(:,1,:)
+    where(XLAND < 1.5)   rho_urban(:,kde,:) = p8w(:,1,:)/287.04/t_phy(:,1,:)
+    where(XLAND < 1.5) theta_urban(:,kde,:) = t_phy(:,1,:)*(100000.0/p8w(:,1,:))**(0.285714)
+    where(XLAND < 1.5)     u_urban(:,kde,:) = u_phy(:,1,:)
+    where(XLAND < 1.5)     v_urban(:,kde,:) = v_phy(:,1,:)
+    height_urban = 0.5*(dz_urban(1,kde,1) + dz_urban(1,kde-1,1))
+
+!      IF(ITIME == 0) THEN  ! BEP or BEM urban models
+    DO I = KDE-1, KDS, -1
+      where(XLAND < 1.5)     p_urban(:,i,:) = p8w(:,1,:)*exp(9.8*height_urban/287.04/t_phy(:,1,:))
+      where(XLAND < 1.5)   rho_urban(:,i,:) = p_urban(:,i,:)/287.04/t_phy(:,1,:)
+      where(XLAND < 1.5) theta_urban(:,i,:) = t_phy(:,1,:)*(100000.0/p_urban(:,i,:))**(0.285714)
+      where(XLAND < 1.5)     u_urban(:,i,:) = u_urban(:,kde,:)*log(zlvl-height_urban)/log(zlvl)
+      where(XLAND < 1.5)     v_urban(:,i,:) = v_urban(:,kde,:)*log(zlvl-height_urban)/log(zlvl)
+      height_urban = height_urban + urban_atmosphere_thickness
+    END DO
+!      ENDIF
+  ENDIF
+
+!------------------------------------------------------------------------
+! Noah-MP updates we can do before spatial loop.
+!------------------------------------------------------------------------
+
+! create a few fields that are IN in WRF - coszen, julian,yr
+
+ DO J = YSTART,YEND
+ DO I = XSTART,XEND
+   IF(SF_URBAN_PHYSICS == 0) THEN
+     CALL CALC_DECLIN(OLDDATE(1:19),XLAT(I,J), XLONG(I,J),COSZEN(I,J),JULIAN)
+   ELSE
+     CALL CALC_DECLIN(OLDDATE(1:19),XLAT(I,J), XLONG(I,J),COSZEN(I,J),JULIAN, &
+                      HRANG(I,J), DECLIN, GMT, JULDAY)
+   ENDIF
+   IF(IOPT_IRR > 0 ) THEN
+      CALL LOCAL_TIME(OLDDATE(1:19), XLONG(I,J), LOCTIM(I,J))
+   ENDIF
+ END DO
+ END DO
+
+ READ(OLDDATE(1:4),*)  YR
+ YEARLEN = 365                      ! find length of year for phenology (also S Hemisphere)
+ if (mod(YR,4) == 0) then
+    YEARLEN = 366
+    if (mod(YR,100) == 0) then
+       YEARLEN = 365
+       if (mod(YR,400) == 0) then
+          YEARLEN = 366
+       endif
+    endif
+ endif
+
+ IF (ITIME == 1 .AND. .NOT. RESTART_FLAG ) THEN
+   EAHXY = (P8W(:,1,:)*QV_CURR(:,1,:))/(0.622+QV_CURR(:,1,:)) ! Initial guess only.
+   TAHXY = T_PHY(:,1,:)                                       ! Initial guess only.
+   CHXY = 0.1
+   CMXY = 0.1
+ ENDIF
+
+!------------------------------------------------------------------------
+! Skip model call at t=1 since initial conditions are at start time; First model time is +1
+!------------------------------------------------------------------------
+
+IF (ITIME > 0) THEN
+
+!------------------------------------------------------------------------
+! Call to Noah-MP driver same as surface_driver
+!------------------------------------------------------------------------
+  sflx_count_sum = 0 ! Timing
+
+! Timing information for SFLX:
+ call system_clock(count=count_before_sflx, count_rate=clock_rate)
+
+ CALL noahmplsm_mosaic(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
+                   DZ8W,       DTBL,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
+ 	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
+ 		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
+ 	       PLANTING,  HARVEST,SEASON_GDD,                               &
+                  IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
+               IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
+               IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
+               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, noahmp_HUE_iopt, soilstep,  &
+                IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
+ 	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
+                    T3D,     QV3D,     U_PHY,    V_PHY,   SWDOWN,      GLW,  & ! IN : Forcing
+ 		 P8W3D,PRECIP_IN,        SR,                                & ! IN : Forcing
+               IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
+                    TSK,      HFX,      QFX,        LH,   GRDFLX,    SMSTAV, & ! IN/OUT LSM eqv
+                 SMSTOT,SFCRUNOFF, UDRUNOFF,    ALBEDO,    SNOWC,     SMOIS, & ! IN/OUT LSM eqv
+ 		  SH2O,     TSLB,     SNOW,     SNOWH,   CANWAT,    ACSNOM, & ! IN/OUT LSM eqv
+ 		ACSNOW,    EMISS,     QSFC,                                 & ! IN/OUT LSM eqv
+  		    Z0,      ZNT,                                           & ! IN/OUT LSM eqv
+         IRNUMSI,  IRNUMMI,  IRNUMFI,   IRWATSI,  IRWATMI,    IRWATFI, & ! IN/OUT Irrigation
+         IRELOSS,  IRSIVOL,  IRMIVOL,   IRFIVOL,  IRRSPLH,   LLANDUSE, & ! IN/OUT Irrigation
+                ISNOWXY,     TVXY,     TGXY,  CANICEXY, CANLIQXY,     EAHXY, & ! IN/OUT Noah MP only
+ 	         TAHXY,     CMXY,     CHXY,    FWETXY, SNEQVOXY,  ALBOLDXY, & ! IN/OUT Noah MP only
+                QSNOWXY, QRAINXY, WSLAKEXY,    ZWTXY,      WAXY,     WTXY,    TSNOXY, & ! IN/OUT Noah MP only
+ 	       ZSNSOXY,  SNICEXY,  SNLIQXY,  LFMASSXY, RTMASSXY,  STMASSXY, & ! IN/OUT Noah MP only
+ 	        WOODXY, STBLCPXY, FASTCPXY,    LAI,   XSAIXY,   TAUSSXY, & ! IN/OUT Noah MP only
+ 	       SMOISEQ, SMCWTDXY,DEEPRECHXY,   RECHXY,  GRAINXY,    GDDXY,PGSXY,  & ! IN/OUT Noah MP only
+                GECROS_STATE,                                                & ! IN/OUT gecros model
+                QTDRAIN, TD_FRACTION,                                  &
+ 	        T2MVXY,   T2MBXY,    Q2MVXY,   Q2MBXY,                      & ! OUT Noah MP only
+ 	        TRADXY,    NEEXY,    GPPXY,     NPPXY,   FVEGXY,   RUNSFXY, & ! OUT Noah MP only !added by Aaron A.
+ 	       RUNSBXY,   ECANXY,   EDIRXY,   ETRANXY,    FSAXY,    FIRAXY, & ! OUT Noah MP only
+ 	        APARXY,    PSNXY,    SAVXY,     SAGXY,  RSSUNXY,   RSSHAXY, & ! OUT Noah MP only
+ 		BGAPXY,   WGAPXY,    TGVXY,     TGBXY,    CHVXY,     CHBXY, & ! OUT Noah MP only
+ 		 SHGXY,    SHCXY,    SHBXY,     EVGXY,    EVBXY,     GHVXY, & ! OUT Noah MP only
+ 		 GHBXY,    IRGXY,    IRCXY,     IRBXY,     TRXY,     EVCXY, & ! OUT Noah MP only
+               CHLEAFXY,   CHUCXY,   CHV2XY,    CHB2XY, RS,                  & ! OUT Noah MP only
+               QINTSXY   ,QINTRXY   ,QDRIPSXY   ,&
+               QDRIPRXY  ,QTHROSXY  ,QTHRORXY   ,&
+               QSNSUBXY  ,QSNFROXY  ,QSUBCXY    ,&
+               QFROCXY   ,QEVACXY   ,QDEWCXY    ,QFRZCXY   ,QMELTCXY   ,&
+               QSNBOTXY  ,QMELTXY   ,PONDINGXY  ,PAHXY     ,PAHGXY, PAHVXY, PAHBXY,&
+               FPICEXY,RAINLSM,SNOWLSM,FORCTLSM ,FORCQLSM,FORCPLSM,FORCZLSM,FORCWLSM,&
+               ACC_SSOILXY, ACC_QINSURXY, ACC_QSEVAXY, ACC_ETRANIXY, EFLXBXY, &
+               SOILENERGY, SNOWENERGY, CANHSXY, &
+               ACC_DWATERXY, ACC_PRCPXY, ACC_ECANXY, ACC_ETRANXY, ACC_EDIRXY, &
+ #ifdef WRF_HYDRO
+                sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &    !O
+ #endif
+                ids,ide,  jds,jde,  kds,kde,                    &
+                ims,ime,  jms,jme,  kms,kme,                    &
+                its,ite,  jts,jte,  kts,kte,                    &
+                           LANDUSEF, landusef2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                           mosaic_cat_index, mosaic_cat,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                           TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic, TMN_mosaic,             &      ! Added by Aaron A. IN/OUT LSM
+                           GRDFLX_mosaic, SFCRUNOFF_mosaic, UDRUNOFF_mosaic,                     &      ! Added by Aaorn A. IN/OUT LSM
+                           ALBEDO_mosaic, SNOWC_mosaic, TSLB_mosaic, SMOIS_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
+                           SH2O_mosaic,  CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
+                           ACSNOM_mosaic, ACSNOW_mosaic, EMISS_mosaic, QSFC_mosaic,              &      ! Added by Aaron A. IN/OUT LSM
+                           Z0_mosaic, ZNT_mosaic,                                                &      ! Added by Aaron A. IN/OUT LSM
+                           IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
+                           IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
+                           IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
+                           isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,                          &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           alboldxy_mosaic, qsnowxy_mosaic, qrainxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           xsaixy_mosaic, xlai_mosaic, grainxy_mosaic, gddxy_mosaic,             &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           PGSXY_mosaic, smoiseq_mosaic, smcwtdxy_mosaic,                        &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           deeprechxy_mosaic, rechxy_mosaic, taussxy_mosaic,                     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                           t2mvxy_mosaic, t2mbxy_mosaic, q2mvxy_mosaic, q2mbxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           tradxy_mosaic, neexy_mosaic, gppxy_mosaic, nppxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           fvegxy_mosaic, runsfxy_mosaic, runsbxy_mosaic, ecanxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           edirxy_mosaic, etranxy_mosaic, fsaxy_mosaic, firaxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           aparxy_mosaic, psnxy_mosaic, savxy_mosaic, sagxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           rssunxy_mosaic, rsshaxy_mosaic, bgapxy_mosaic, wgapxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           tgvxy_mosaic, tgbxy_mosaic, chvxy_mosaic, chbxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           shgxy_mosaic, shcxy_mosaic, shbxy_mosaic, evgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           evbxy_mosaic, ghvxy_mosaic, ghbxy_mosaic, irgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           ircxy_mosaic, irbxy_mosaic, trxy_mosaic, evcxy_mosaic,                &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           chleafxy_mosaic, chucxy_mosaic, chv2xy_mosaic, chb2xy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           rs_mosaic, QINTSXY_mosaic, QINTRXY_mosaic, QDRIPSXY_mosaic,           &                                               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                           QDRIPRXY_mosaic, QTHROSXY_mosaic, QTHRORXY_mosaic, QSNSUBXY_mosaic,   &
+                           QSNFROXY_mosaic, QSUBCXY_mosaic, QFROCXY_mosaic, QEVACXY_mosaic,      &
+                           QDEWCXY_mosaic, QFRZCXY_mosaic, QMELTCXY_mosaic, QSNBOTXY_mosaic,     &
+                           QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHVXY_mosaic,        &
+                           PAHBXY_mosaic, FPICEXY_mosaic,                                        &
+                           ACC_SSOILXY_mosaic, ACC_QINSURXY_mosaic, ACC_QSEVAXY_mosaic,          &
+                           ACC_ETRANIXY_mosaic, EFLXBXY_mosaic, SOILENERGY_mosaic, SNOWENERGY_mosaic, &
+                           CANHSXY_mosaic, ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic, ACC_ECANXY_mosaic, ACC_EDIRXY_mosaic, &
+
+                           TR_URB2D_mosaic,TB_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                           TG_URB2D_mosaic,TC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                           QC_URB2D_mosaic,UC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                           TRL_URB3D_mosaic,TBL_URB3D_mosaic,                                    & !H urban  Aaron A. Mosaic
+                           TGL_URB3D_mosaic,                                                     & !H urban  Aaron A. Mosaic
+                           SH_URB2D_mosaic,LH_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                           G_URB2D_mosaic,RN_URB2D_mosaic,                                       & !H urban  Aaron A. Mosaic
+                           TS_URB2D_mosaic,CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic,                 & !H urban  Aaron A. Mosaic
+                           CMC_SFCDIF_mosaic, CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic,             &
+                           CHGR_SFCDIF_mosaic, XXXR_URB2D_mosaic, XXXB_URB2D_mosaic,             &
+                           XXXG_URB2D_mosaic, CMCR_URB2D_mosaic, TGR_URB2D_mosaic,               &
+                           TGRL_URB3D_mosaic, SMR_URB3D_mosaic, DRELR_URB2D_mosaic,              &
+                           DRELB_URB2D_mosaic, DRELG_URB2D_mosaic, FLXHUMR_URB2D_mosaic,         &
+                           FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,
+
+                           cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
+                           chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
+                           tr_urb2d,       tb_urb2d,       tg_urb2d,                             & !H urban
+                           tc_urb2d,       qc_urb2d,       uc_urb2d,                             & !H urban
+                           xxxr_urb2d,     xxxb_urb2d,     xxxg_urb2d, xxxc_urb2d,               & !H urban
+                           trl_urb3d,      tbl_urb3d,      tgl_urb3d,                            & !H urban
+                           sh_urb2d,       lh_urb2d,        g_urb2d,   rn_urb2d,  ts_urb2d,      & !H urban
+                           psim_urb2d,     psih_urb2d,      u10_urb2d,  v10_urb2d,               & !O urban
+                           GZ1OZ0_urb2d,     AKMS_URB2D,                                         & !O urban
+                           th2_urb2d,       q2_urb2d,      ust_urb2d,                            & !O urban
+                           declin_urb,      omg_urb2d,                                           & !I urban
+                           num_roof_layers,      num_wall_layers,      num_road_layers,          & !I urban
+                           dzr,            dzb,            dzg,                                  & !I urban
+                           cmcr_urb2d,      tgr_urb2d,     tgrl_urb3d,  smr_urb3d,               & !H urban
+                           drelr_urb2d,    drelb_urb2d,    drelg_urb2d,                          & !H urban
+                           flxhumr_urb2d,  flxhumb_urb2d,  flxhumg_urb2d,                        & !H urban
+                           julday,             julyr,                                            &
+                           frc_urb2d,    utype_urb2d,                                            & !I urban
+                           chs,           chs2,           cqs2,                                  & !H
+                           num_urban_ndm,  urban_map_zrd,  urban_map_zwd, urban_map_gd,          & !I multi-layer urban
+                           urban_map_zd,  urban_map_zdf,   urban_map_bd, urban_map_wd,           & !I multi-layer urban
+                           urban_map_gbd,  urban_map_fbd,                                        & !I multi-layer urban
+                           num_urban_hi,                                                         & !I multi-layer urban
+                           trb_urb4d,      tw1_urb4d,      tw2_urb4d,  tgb_urb4d,                & !H multi-layer urban
+                           tlev_urb3d,     qlev_urb3d,                                           & !H multi-layer urban
+                           tw1lev_urb3d,   tw2lev_urb3d,                                         & !H multi-layer urban
+                           tglev_urb3d,    tflev_urb3d,                                          & !H multi-layer urban
+                           sf_ac_urb3d,    lf_ac_urb3d,    cm_ac_urb3d,                          & !H multi-layer urban
+                           sfvent_urb3d,   lfvent_urb3d,                                         & !H multi-layer urban
+                           sfwin1_urb3d,   sfwin2_urb3d,                                         & !H multi-layer urban
+                           sfw1_urb3d,     sfw2_urb3d,      sfr_urb3d,  sfg_urb3d,               & !H multi-layer urban
+                           lp_urb2d,       hi_urb2d,       lb_urb2d,  hgt_urb2d,                 & !H multi-layer urban
+                           mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
+                           th_phy,            rho,          p_phy,        ust,                   & !I multi-layer urban
+                           gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
+                           a_u_bep,        a_v_bep,        a_t_bep,    a_q_bep,                  & !O multi-layer urban
+                           a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
+                           b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
+                           dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
+                   MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL )
+
+
+
 
 ! Output for history
      OUTPUT_FOR_HISTORY: if (output_timestep > 0) then
