@@ -3901,6 +3901,25 @@ END SUBROUTINE noahmp_urban
     REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: chstarxy        !dummy
 !jref:end
 
+    INTEGER, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irnumsi
+    INTEGER, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irnummi
+    INTEGER, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irnumfi
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irwatsi
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irwatmi
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irwatfi
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: ireloss
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irsivol
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irmivol
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irfivol
+    REAL,    DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: irrsplh
+
+    INTEGER, DIMENSION(ims:ime,  jms:jme), INTENT(OUT) :: cropcat
+    REAL   , DIMENSION(ims:ime,5,jms:jme), INTENT(IN ) :: croptype
+
+    REAL, DIMENSION(ims:ime,1:nsoil,jms:jme), INTENT(INOUT) , OPTIONAL :: smoiseq !equilibrium soil moisture content [m3m-3]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) , OPTIONAL :: smcwtdxy    !deep soil moisture content [m3m-3]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) , OPTIONAL :: deeprechxy  !deep recharge [m]
+    REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) , OPTIONAL :: rechxy      !accumulated recharge [mm]
 !added by Aaron A.
 ! From here on, we define the important variables that are needed to re-catagorize the landuse data sets
 
@@ -3958,7 +3977,37 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SMOIS_mosaic
   REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SH2O_mosaic
 
-!variables for 2d urban model
+  !values that are needed for the
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TRL_URB3D_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
+
+  !Now add the final mosaic checks for jref:start and jref:end
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mvxy_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mbxy_mosaic
+  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: chstarxy_mosaic
+
+  ! Needed for future integration of
+  REAL, DIMENSION(ims:ime,1:num_soil_layers*mosaic_cat,jms:jme), INTENT(INOUT) , OPTIONAL :: smoiseq_mosaic !equilibrium soil moisture content [m3m-3]
+  REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: smcwtdxy_mosaic    !deep soil moisture content [m3m-3]
+  REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: deeprechxy_mosaic  !deep recharge [m]
+  REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: rechxy_mosaic      !accu
+
+  ! Needed for irrigation model
+  INTEGER, DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRNUMSI_mosaic
+  INTEGER, DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRNUMMI_mosaic
+  INTEGER, DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRNUMFI_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRWATSI_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRWATMI_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRWATFI_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRELOSS_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRSIVOL_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRMIVOL_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRFIVOL_mosaic
+  REAL,    DIMENSION(ims:ime,1:mosaic_cat,jms:jme), INTENT(INOUT) :: IRRSPLH_mosaic
+
+
+  !variables for 2d urban model
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TR_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TB_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TG_URB2D_mosaic
@@ -3969,17 +4018,33 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: G_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: RN_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_URB2D_mosaic
-  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_RUL2D_mosaic
 
-  !values that are needed for the
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TRL_URB3D_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMR_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHR_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMC_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHC_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMGR_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHGR_SFCDIF_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXR_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXB_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXG_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMCR_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TGR_URB2D_mosaic
 
-  !Now add the final mosaic checks for jref:start and jref:end
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mvxy_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mbxy_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: chstarxy_mosaic
+  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TGRL_URB3D_mosaic
+  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SMR_URB3D_mosaic
+
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELR_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELB_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELG_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMR_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMB_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMG_URB2D_mosaic
+
+
+
+
+
 
   INTEGER :: ij, i,j,mosaic_i,LastSwap,NumPairs,soil_k, Temp2,Temp5,Temp7, ICE,temp_index
   REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x ,
@@ -3995,16 +4060,6 @@ END SUBROUTINE noahmp_urban
 
   xice_threshold = 0.5
 
-
-
-
-  if(iopt_crop.gt.0)then !check added by Aaron Alexander
-    CALL wrf_error_fatal('NOAHMP MOSAIC DOES NOT SUPPORT GECROS MODEL FOR CROPS AT THIS TIME or LIU et al CROP MODEL ')
-  endif
-
-  if(iopt_run.eq.5)then !check added by Aaron Alexander
-    CALL wrf_error_fatal('NOAHMP MOSAIC DOES NOT SUPPORT SHALLOW GROUNDWATER MODEL AT THIS TIME')
-  endif
   !===========================================================================
   ! CHOOSE THE TILES
   !===========================================================================
@@ -4238,7 +4293,7 @@ END SUBROUTINE noahmp_urban
                       EXIT ! There is nothing to do!
                     ELSE
                       temp_master_index = mosaic_cat_index(i,mosaic_i,j)
-                      mosaic_cat_index(i,LC+1:mosaic_i,j) = mosaic_cat_index(i,LC:mosaic_i-1,j)
+                      mosaic_cat_index(i,LC+1:mosaic_i+1,j) = mosaic_cat_index(i,LC:mosaic_i,j)
                       mosaic_cat_index(i,LC,j) = temp_master_index
 
                       temp_master_LUF = LANDUSEF2(i,mosaic_i,j)
@@ -4347,9 +4402,9 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
 
               DO soil_k=1,num_soil_layers
 
-            TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
-            SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
-            SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+              TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+              SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+              SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
 
               ENDDO
 
@@ -4366,6 +4421,25 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
             snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,snow_layer,j)
            ENDDO
 
+           ! Noah-MP irrigation scheme !pvk
+                        if(iopt_irr >= 1 .and. iopt_irr <= 3) then
+                           if(iopt_irrm == 0 .or. iopt_irrm ==1) then       ! sprinkler
+                              IRNUMSI_mosaic(i,mosaic_i,j) = 0
+                              IRNUMSI_mosaic(i,mosaic_i,j) = 0.
+                              IRELOSS_mosaic(i,mosaic_i,j) = 0.
+                              IRRSPLH_mosaic(i,mosaic_i,j) = 0.
+                           else if (iopt_irrm == 0 .or. iopt_irrm ==2) then ! micro or drip
+                              IRNUMMI_mosaic(i,mosaic_i,j) = 0
+                              IRWATMI_mosaic(i,mosaic_i,j) = 0.
+                              IRMIVOL_mosaic(i,mosaic_i,j) = 0.
+                           else if (iopt_irrm == 0 .or. iopt_irrm ==3) then ! flood
+                              IRNUMFI_mosaic(i,mosaic_i,j) = 0
+                              IRWATFI_mosaic(i,mosaic_i,j) = 0.
+                              IRFIVOL_mosaic(i,mosaic_i,j) = 0.
+                           end if
+                        end if
+
+           	   END IF
            TR_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
            TB_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
            TG_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
@@ -4392,6 +4466,19 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
           TGL_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=TSLB(I,2,J)
           TGL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,3,J)
           TGL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,4,J)
+
+          CMR_SFCDIF_mosaic(I,mosaic_i,J)=0.
+          CHR_SFCDIF_mosaic(I,mosaic_i,J)=0.
+          CMC_SFCDIF_mosaic(I,mosaic_i,J)=0.
+          CHC_SFCDIF_mosaic(I,mosaic_i,J)=0.
+          CMGR_SFCDIF_mosaic(I,mosaic_i,J)=0.
+          CHGR_SFCDIF_mosaic(I,mosaic_i,J)=0.
+
+          XXXR_URB2D_mosaic(I,mosaic_i,J)=0.
+          XXXB_URB2D_mosaic(I,mosaic_i,J)=0.
+          XXXG_URB2D_mosaic(I,mosaic_i,J)=0.
+          CMCR_URB2D_mosaic
+          TGR_URB2D_mosaic
 
             ENDDO
           ENDDO

@@ -1273,6 +1273,28 @@ module module_NoahMP_hrldas_driver
     endif
  endif
 
+ if (noahmp_mosaic_scheme.eq.1) then
+   if (iopt_crop.gt.0 ) then
+      write(*, *)
+      write(*, '(" ***** Namelist error: ******************************************************")')
+      write(*, '(" ***** ")')
+      write(*, '(" *****      Mosaic NOAH-MP does not support Geocros or Liu et al. 2016 crop model at this time ")')
+      write(*, *)
+      stop
+   endif
+endif
+
+if (noahmp_mosaic_scheme.eq.1) then
+  if (iopt_run.eq.5 ) then
+     write(*, *)
+     write(*, '(" ***** Namelist error: ******************************************************")')
+     write(*, '(" ***** ")')
+     write(*, '(" *****      Mosaic NOAH-MP does not support shallow groundwater model at this time  ")')
+     write(*, *)
+     stop
+  endif
+endif
+
 
 !---------------------------------------------------------------------
 !  NAMELIST check end
@@ -2945,9 +2967,9 @@ ENDIF
                       ims,ime, jms,jme, kms,kme,                &  ! memory
                       its,ite, jts,jte, kts,kte,                 &  ! tile
                       smoiseq, smcwtdxy, rechxy, deeprechxy,
-                      LANDUSEF, landusef2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                      mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                      noahmp_HUE_iopt,
+                      LANDUSEF, LANDUSEF2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                      mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                      noahmp_HUE_iopt,                                                      &
                       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
@@ -2957,19 +2979,28 @@ ENDIF
                       waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
                       snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
                       stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
-                      xsaixy_mosaic, xlai_mosaic, grainxy_mosaic, gddxy_mosaic,             &      ! Added by Aaron A.
-                      t2mvxy_mosaic, t2mbxy_mosaic, chstarxy_mosaic,                        &     ! Added by Aaron A.
+                      xsaixy_mosaic, xlai_mosaic, grainxy_mosaic, gddxy_mosaic,              &      ! Added by Aaron A.
+                      t2mvxy_mosaic, t2mbxy_mosaic, chstarxy_mosaic,                        &      ! Added by Aaron A.
 
                       IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &
                       IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &
                       IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &
+
+
+                      smoiseq_mosaic,  smcwtdxy_mosaic, rechxy_mosaic, deeprechxy_mosaic,   &
 
                       TR_URB2D_mosaic, TB_URB2D_mosaic,                                     &      ! Added by Aaron A.
                       TG_URB2D_mosaic, TC_URB2D_mosaic, QC_URB2D_mosaic,                    &      ! Added by Aaron A.
                       TRL_URB3D_mosaic, TBL_URB3D_mosaic,                                   &      ! Added by Aaron A.
                       TGL_URB3D_mosaic, SH_URB2D_mosaic, LH_URB2D_mosaic,                   &      ! Added by Aaron A.
                       G_URB2D_mosaic, RN_URB2D_mosaic, TS_URB2D_mosaic,                     &      ! Added by Aaron A.
-                      TS_RUL2D_mosaic,                                                      &
+                      CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic, CMC_SFCDIF_mosaic,              &
+                      CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic, CHGR_SFCDIF_mosaic,            &
+                      XXXR_URB2D_mosaic, XXXB_URB2D_mosaic, XXXG_URB2D_mosaic,              &
+                      CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
+                      TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
+                      DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
+                      FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
                         )                                                            ! Added by Aaron A.
 
        ENDIF !end mosaic if else statement
