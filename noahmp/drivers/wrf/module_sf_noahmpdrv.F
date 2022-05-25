@@ -4525,7 +4525,2434 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
   END SUBROUTINE NOAHMP_MOSAIC_INIT
 !--------------------------------
 
+!------------------------------------------------------------------------------
+! The following code adds the mosaic for loop. It functions by taking a for loop
+! over different land types, and then averaging them all together!
+! Added into this newest version of Noah-MP on 25 May 2022.
+! Aaron A.
+!------------------------------------------------------------------------------
 
+!--------------------------------
+  END SUBROUTINE NOAHMP_MOSAIC_INIT
+!--------------------------------
+
+!--------------------------------
+SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
+                  DZ8W,       DT,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
+	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
+		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
+	       PLANTING,  HARVEST,SEASON_GDD,                               &
+                 IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
+              IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
+              IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP,            & ! IN : User options
+              IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
+	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
+                   T3D,     QV3D,     U_PHY,    V_PHY,   SWDOWN,      GLW,  & ! IN : Forcing
+		 P8W3D,PRECIP_IN,        SR,                                & ! IN : Forcing
+                   TSK,      HFX,      QFX,        LH,   GRDFLX,    SMSTAV, & ! IN/OUT LSM eqv
+                SMSTOT,SFCRUNOFF, UDRUNOFF,    ALBEDO,    SNOWC,     SMOIS, & ! IN/OUT LSM eqv
+		  SH2O,     TSLB,     SNOW,     SNOWH,   CANWAT,    ACSNOM, & ! IN/OUT LSM eqv
+		ACSNOW,    EMISS,     QSFC,                                 & ! IN/OUT LSM eqv
+ 		    Z0,      ZNT,                                           & ! IN/OUT LSM eqv
+               ISNOWXY,     TVXY,     TGXY,  CANICEXY, CANLIQXY,     EAHXY, & ! IN/OUT Noah MP only
+	         TAHXY,     CMXY,     CHXY,    FWETXY, SNEQVOXY,  ALBOLDXY, & ! IN/OUT Noah MP only
+               QSNOWXY, WSLAKEXY,    ZWTXY,      WAXY,     WTXY,    TSNOXY, & ! IN/OUT Noah MP only
+	       ZSNSOXY,  SNICEXY,  SNLIQXY,  LFMASSXY, RTMASSXY,  STMASSXY, & ! IN/OUT Noah MP only
+	        WOODXY, STBLCPXY, FASTCPXY,    XLAIXY,   XSAIXY,   TAUSSXY, & ! IN/OUT Noah MP only
+	       SMOISEQ, SMCWTDXY,DEEPRECHXY,   RECHXY,  GRAINXY,    GDDXY,PGSXY,  & ! IN/OUT Noah MP only
+               GECROS_STATE,                                                & ! IN/OUT gecros model
+	        T2MVXY,   T2MBXY,    Q2MVXY,   Q2MBXY,                      & ! OUT Noah MP only
+	        TRADXY,    NEEXY,    GPPXY,     NPPXY,   FVEGXY,   RUNSFXY, & ! OUT Noah MP only !added by Aaron A.
+	       RUNSBXY,   ECANXY,   EDIRXY,   ETRANXY,    FSAXY,    FIRAXY, & ! OUT Noah MP only
+	        APARXY,    PSNXY,    SAVXY,     SAGXY,  RSSUNXY,   RSSHAXY, & ! OUT Noah MP only
+		BGAPXY,   WGAPXY,    TGVXY,     TGBXY,    CHVXY,     CHBXY, & ! OUT Noah MP only
+		 SHGXY,    SHCXY,    SHBXY,     EVGXY,    EVBXY,     GHVXY, & ! OUT Noah MP only
+		 GHBXY,    IRGXY,    IRCXY,     IRBXY,     TRXY,     EVCXY, & ! OUT Noah MP only
+              CHLEAFXY,   CHUCXY,   CHV2XY,    CHB2XY, RS,                  & ! OUT Noah MP only
+!                 BEXP_3D,SMCDRY_3D,SMCWLT_3D,SMCREF_3D,SMCMAX_3D,          & ! placeholders to activate 3D soil
+!		 DKSAT_3D,DWSAT_3D,PSISAT_3D,QUARTZ_3D,                     &
+!		 REFDK_2D,REFKDT_2D,                                        &
+#ifdef WRF_HYDRO
+               sfcheadrt,INFXSRT,soldrain,                                  &
+#endif
+               ids,ide,  jds,jde,  kds,kde,                    &
+               ims,ime,  jms,jme,  kms,kme,                    &
+               its,ite,  jts,jte,  kts,kte,                    &
+                          LANDUSEF, landusef2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                          mosaic_cat_index, mosaic_cat,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                          TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic, TMN_mosaic,             &      ! Added by Aaron A. IN/OUT LSM
+                          GRDFLX_mosaic, SFCRUNOFF_mosaic, UDRUNOFF_mosaic,                     &      ! Added by Aaorn A. IN/OUT LSM
+                          ALBEDO_mosaic, SNOWC_mosaic, TSLB_mosaic, SMOIS_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
+                          SH2O_mosaic,  CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
+                          ACSNOM_mosaic, ACSNOW_mosaic, EMISS_mosaic, QSFC_mosaic,              &      ! Added by Aaron A. IN/OUT LSM
+                          Z0_mosaic, ZNT_mosaic,                                                &      ! Added by Aaron A. IN/OUT LSM
+                          isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,                          &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          alboldxy_mosaic, qsnowxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          xsaixy_mosaic, xlai_mosaic, grainxy_mosaic, gddxy_mosaic,             &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          PGSXY_mosaic, smoiseq_mosaic, smcwtdxy_mosaic,                        &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          deeprechxy_mosaic, rechxy_mosaic, taussxy_mosaic,                     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          t2mvxy_mosaic, t2mbxy_mosaic, q2mvxy_mosaic, q2mbxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          tradxy_mosaic, neexy_mosaic, gppxy_mosaic, nppxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          fvegxy_mosaic, runsfxy_mosaic, runsbxy_mosaic, ecanxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          edirxy_mosaic, etranxy_mosaic, fsaxy_mosaic, firaxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          aparxy_mosaic, psnxy_mosaic, savxy_mosaic, sagxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          rssunxy_mosaic, rsshaxy_mosaic, bgapxy_mosaic, wgapxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          tgvxy_mosaic, tgbxy_mosaic, chvxy_mosaic, chbxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          shgxy_mosaic, shcxy_mosaic, shbxy_mosaic, evgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          evbxy_mosaic, ghvxy_mosaic, ghbxy_mosaic, irgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          ircxy_mosaic, irbxy_mosaic, trxy_mosaic, evcxy_mosaic,                &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          chleafxy_mosaic, chucxy_mosaic, chv2xy_mosaic, chb2xy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          rs_mosaic,                                                            &      ! Added by Aaron A. OUT NOAH MP ONLY
+                          TR_URB2D_mosaic,TB_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                          TG_URB2D_mosaic,TC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                          QC_URB2D_mosaic,UC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                          TRL_URB3D_mosaic,TBL_URB3D_mosaic,                                    & !H urban  Aaron A. Mosaic
+                          TGL_URB3D_mosaic,                                                     & !H urban  Aaron A. Mosaic
+                          SH_URB2D_mosaic,LH_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
+                          G_URB2D_mosaic,RN_URB2D_mosaic,                                       & !H urban  Aaron A. Mosaic
+                          TS_URB2D_mosaic,                                                      & !H urban  Aaron A. Mosaic
+                          TS_RUL2D_mosaic,                                                      & !H urban  Aaron A. Mosaic
+                          cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
+                          chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
+                          tr_urb2d,       tb_urb2d,       tg_urb2d,                             & !H urban
+                          tc_urb2d,       qc_urb2d,       uc_urb2d,                             & !H urban
+                          xxxr_urb2d,     xxxb_urb2d,     xxxg_urb2d, xxxc_urb2d,               & !H urban
+                          trl_urb3d,      tbl_urb3d,      tgl_urb3d,                            & !H urban
+                          sh_urb2d,       lh_urb2d,        g_urb2d,   rn_urb2d,  ts_urb2d,      & !H urban
+                          psim_urb2d,     psih_urb2d,      u10_urb2d,  v10_urb2d,               & !O urban
+                          GZ1OZ0_urb2d,     AKMS_URB2D,                                         & !O urban
+                          th2_urb2d,       q2_urb2d,      ust_urb2d,                            & !O urban
+                          declin_urb,      omg_urb2d,                                           & !I urban
+                          num_roof_layers,      num_wall_layers,      num_road_layers,          & !I urban
+                          dzr,            dzb,            dzg,                                  & !I urban
+                          cmcr_urb2d,      tgr_urb2d,     tgrl_urb3d,  smr_urb3d,               & !H urban
+                          drelr_urb2d,    drelb_urb2d,    drelg_urb2d,                          & !H urban
+                          flxhumr_urb2d,  flxhumb_urb2d,  flxhumg_urb2d,                        & !H urban
+                          julday,             julyr,                                            &
+                          frc_urb2d,    utype_urb2d,                                            & !I urban
+                          chs,           chs2,           cqs2,                                  & !H
+                          num_urban_ndm,  urban_map_zrd,  urban_map_zwd, urban_map_gd,          & !I multi-layer urban
+                          urban_map_zd,  urban_map_zdf,   urban_map_bd, urban_map_wd,           & !I multi-layer urban
+                          urban_map_gbd,  urban_map_fbd,                                        & !I multi-layer urban
+                          num_urban_hi,                                                         & !I multi-layer urban
+                          trb_urb4d,      tw1_urb4d,      tw2_urb4d,  tgb_urb4d,                & !H multi-layer urban
+                          tlev_urb3d,     qlev_urb3d,                                           & !H multi-layer urban
+                          tw1lev_urb3d,   tw2lev_urb3d,                                         & !H multi-layer urban
+                          tglev_urb3d,    tflev_urb3d,                                          & !H multi-layer urban
+                          sf_ac_urb3d,    lf_ac_urb3d,    cm_ac_urb3d,                          & !H multi-layer urban
+                          sfvent_urb3d,   lfvent_urb3d,                                         & !H multi-layer urban
+                          sfwin1_urb3d,   sfwin2_urb3d,                                         & !H multi-layer urban
+                          sfw1_urb3d,     sfw2_urb3d,      sfr_urb3d,  sfg_urb3d,               & !H multi-layer urban
+                          lp_urb2d,       hi_urb2d,       lb_urb2d,  hgt_urb2d,                 & !H multi-layer urban
+                          mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
+                          th_phy,            rho,          p_phy,        ust,                   & !I multi-layer urban
+                          gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
+                          a_u_bep,        a_v_bep,        a_t_bep,    a_q_bep,                  & !O multi-layer urban
+                          a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
+                          b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
+                          dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
+                  MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL )
+
+
+!-----------------------------------------------------------------------
+! This was added by Aaron A.
+! The goal is to mirror the sub-heterogeneity scheme (commonly called MOSAIC)
+! that has been implemented within the WRF framework. This is the following outline
+! of the code:
+! Declare all model variables
+! Declare loop over each of the number of land catagories
+! Move data from the mosaic variables to single variables
+! Loop over each of then land catagories (and the urban models)
+! Create spatially averaged variables (still in loop)
+! Finish land use loop
+! Send the averaged intermediate variable to the named variables to be output
+! **Note that we are going to be passing along BOTH the mosaic variables and the named variables
+!-----------------------------------------------------------------------
+! Synthesize both the normal calls and the urban calls (USE functions)
+!-----------------------------------------------------------------------
+        USE MODULE_SF_NOAHMPLSM
+        USE module_sf_noahmp_glacier
+        USE NOAHMP_TABLES, ONLY: ISICE_TABLE, CO2_TABLE, O2_TABLE, DEFAULT_CROP_TABLE, ISCROP_TABLE, ISURBAN_TABLE, NATURAL_TABLE, &
+                                 LOW_DENSITY_RESIDENTIAL_TABLE, HIGH_DENSITY_RESIDENTIAL_TABLE, HIGH_INTENSITY_INDUSTRIAL_TABLE
+        USE module_sf_urban
+        USE module_ra_gfdleta, ONLY: cal_mon_day
+        USE module_model_constants, only: KARMAN, CP, XLV
+!-----------------------------------------------------------------------
+        IMPLICIT NONE
+!-----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!       NOAH-MP DECLIRATIONS
+!-----------------------------------------------------------------------
+
+! IN only
+
+    INTEGER,                                         INTENT(IN   ) ::  ITIMESTEP ! timestep number
+    INTEGER,                                         INTENT(IN   ) ::  YR        ! 4-digit year
+    REAL,                                            INTENT(IN   ) ::  JULIAN    ! Julian day
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  COSZIN    ! cosine zenith angle
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLAT      ! latitude [rad]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLONG     ! latitude [rad]
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  DZ8W      ! thickness of atmo layers [m]
+    REAL,                                            INTENT(IN   ) ::  DT        ! timestep [s]
+    REAL,    DIMENSION(1:nsoil),                     INTENT(IN   ) ::  DZS       ! thickness of soil layers [m]
+    INTEGER,                                         INTENT(IN   ) ::  NSOIL     ! number of soil layers
+    REAL,                                            INTENT(IN   ) ::  DX        ! horizontal grid spacing [m]
+    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  IVGTYP    ! vegetation type !needed to be modified
+    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  ISLTYP    ! soil type
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  VEGFRA    ! vegetation fraction []
+    REAL,    DIMENSION( ims:ime ,         jms:jme ), INTENT(IN   ) ::  VEGMAX    ! annual max vegetation fraction []
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TMN       ! deep soil temperature [K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLAND     ! =2 ocean; =1 land/seaice
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XICE      ! fraction of grid that is seaice
+    REAL,                                            INTENT(IN   ) ::  XICE_THRES! fraction of grid determining seaice
+    INTEGER,                                         INTENT(IN   ) ::  IDVEG     ! dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_CRS  ! canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_BTR  ! soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_RUN  ! runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_SFC  ! surface layer drag coeff (CH & CM) (1->M-O; 2->Chen97)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_FRZ  ! supercooled liquid water (1-> NY06; 2->Koren99)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_INF  ! frozen soil permeability (1-> NY06; 2->Koren99)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_RAD  ! radiation transfer (1->gap=F(3D,cosz); 2->gap=0; 3->gap=1-Fveg)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_ALB  ! snow surface albedo (1->BATS; 2->CLASS)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_SNF  ! rainfall & snowfall (1-Jordan91; 2->BATS; 3->Noah)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_TBOT ! lower boundary of soil temperature (1->zero-flux; 2->Noah)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_STC  ! snow/soil temperature time scheme
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_GLA  ! glacier option (1->phase change; 2->simple)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_RSF  ! surface resistance (1->Sakaguchi/Zeng; 2->Seller; 3->mod Sellers; 4->1+snow)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_SOIL ! soil configuration option
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_PEDO ! soil pedotransfer function option
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_CROP ! crop model option (0->none; 1->Liu et al.; 2->Gecros)
+    INTEGER,                                         INTENT(IN   ) ::  IZ0TLND   ! option of Chen adjustment of Czil (not used)
+    INTEGER,                                         INTENT(IN   ) ::  sf_urban_physics   ! urban physics option
+    REAL,    DIMENSION( ims:ime,       8, jms:jme ), INTENT(IN   ) ::  SOILCOMP  ! soil sand and clay percentage
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SOILCL1   ! soil texture in layer 1
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SOILCL2   ! soil texture in layer 2
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SOILCL3   ! soil texture in layer 3
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SOILCL4   ! soil texture in layer 4
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  T3D       ! 3D atmospheric temperature valid at mid-levels [K]
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  QV3D      ! 3D water vapor mixing ratio [kg/kg_dry]
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  U_PHY     ! 3D U wind component [m/s]
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  V_PHY     ! 3D V wind component [m/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SWDOWN    ! solar down at surface [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  GLW       ! longwave down at surface [W m-2]
+    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  P8W3D     ! 3D pressure, valid at interface [Pa]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  PRECIP_IN ! total input precipitation [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SR        ! frozen precipitation ratio [-]
+
+!Optional Detailed Precipitation Partitioning Inputs
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_RAINC  ! convective precipitation entering land model [mm] ! MB/AN : v3.7
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_RAINNC ! large-scale precipitation entering land model [mm]! MB/AN : v3.7
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_SHCV   ! shallow conv precip entering land model [mm]      ! MB/AN : v3.7
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_SNOW   ! snow precipitation entering land model [mm]       ! MB/AN : v3.7
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_GRAUP  ! graupel precipitation entering land model [mm]    ! MB/AN : v3.7
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ), OPTIONAL ::  MP_HAIL   ! hail precipitation entering land model [mm]       ! MB/AN : v3.7
+
+! Crop Model
+    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  CROPCAT   ! crop catagory
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  PLANTING  ! planting date
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  HARVEST   ! harvest date
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SEASON_GDD! growing season GDD
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GRAINXY   ! mass of grain XING [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GDDXY     ! growing degree days XING (based on 10C)
+ INTEGER,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  PGSXY
+
+! gecros model
+    REAL,    DIMENSION( ims:ime,       60,jms:jme ), INTENT(INOUT) :: gecros_state !  gecros crop
+
+#ifdef WRF_HYDRO
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  sfcheadrt,INFXSRT,soldrain   ! for WRF-Hydro
+#endif
+
+! INOUT (with generic LSM equivalent)
+
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TSK       ! surface radiative temperature [K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  HFX       ! sensible heat flux [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QFX       ! latent heat flux [kg s-1 m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  LH        ! latent heat flux [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  GRDFLX    ! ground/snow heat flux [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SMSTAV    ! soil moisture avail. [not used]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SMSTOT    ! total soil water [mm][not used]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SFCRUNOFF ! accumulated surface runoff [m]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  UDRUNOFF  ! accumulated sub-surface runoff [m]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ALBEDO    ! total grid albedo []
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNOWC     ! snow cover fraction []
+    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(INOUT) ::  SMOIS     ! volumetric soil moisture [m3/m3]
+    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(INOUT) ::  SH2O      ! volumetric liquid soil moisture [m3/m3]
+    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(INOUT) ::  TSLB      ! soil temperature [K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNOW      ! snow water equivalent [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNOWH     ! physical snow depth [m]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CANWAT    ! total canopy water + ice [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACSNOM    ! accumulated snow melt leaving pack
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACSNOW    ! accumulated snow on grid
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  EMISS     ! surface bulk emissivity
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QSFC      ! bulk surface specific humidity
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  Z0        ! combined z0 sent to coupled model
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ZNT       ! combined z0 sent to coupled model
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  RS        ! Total stomatal resistance (s/m)
+
+    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ISNOWXY   ! actual no. of snow layers
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TVXY      ! vegetation leaf temperature
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TGXY      ! bulk ground surface temperature
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CANICEXY  ! canopy-intercepted ice (mm)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CANLIQXY  ! canopy-intercepted liquid water (mm)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  EAHXY     ! canopy air vapor pressure (pa)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TAHXY     ! canopy air temperature (k)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CMXY      ! bulk momentum drag coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CHXY      ! bulk sensible heat exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  FWETXY    ! wetted or snowed fraction of the canopy (-)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNEQVOXY  ! snow mass at last time step(mm h2o)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ALBOLDXY  ! snow albedo at last time step (-)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QSNOWXY   ! snowfall on the ground [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WSLAKEXY  ! lake water storage [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ZWTXY     ! water table depth [m]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WAXY      ! water in the "aquifer" [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WTXY      ! groundwater storage [mm]
+    REAL,    DIMENSION( ims:ime,-2:0,     jms:jme ), INTENT(INOUT) ::  TSNOXY    ! snow temperature [K]
+    REAL,    DIMENSION( ims:ime,-2:NSOIL, jms:jme ), INTENT(INOUT) ::  ZSNSOXY   ! snow layer depth [m]
+    REAL,    DIMENSION( ims:ime,-2:0,     jms:jme ), INTENT(INOUT) ::  SNICEXY   ! snow layer ice [mm]
+    REAL,    DIMENSION( ims:ime,-2:0,     jms:jme ), INTENT(INOUT) ::  SNLIQXY   ! snow layer liquid water [mm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  LFMASSXY  ! leaf mass [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  RTMASSXY  ! mass of fine roots [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  STMASSXY  ! stem mass [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WOODXY    ! mass of wood (incl. woody roots) [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  STBLCPXY  ! stable carbon in deep soil [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  FASTCPXY  ! short-lived carbon, shallow soil [g/m2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  XLAIXY    ! leaf area index
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  XSAIXY    ! stem area index
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TAUSSXY   ! snow age factor
+    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(INOUT) ::  SMOISEQ   ! eq volumetric soil moisture [m3/m3]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SMCWTDXY  ! soil moisture content in the layer to the water table when deep
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  DEEPRECHXY ! recharge to the water table when deep
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  RECHXY    ! recharge to the water table (diagnostic)
+
+! OUT (with no Noah LSM equivalent)
+
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  T2MVXY    ! 2m temperature of vegetation part
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  T2MBXY    ! 2m temperature of bare ground part
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  Q2MVXY    ! 2m mixing ratio of vegetation part
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  Q2MBXY    ! 2m mixing ratio of bare ground part
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  TRADXY    ! surface radiative temperature (k)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  NEEXY     ! net ecosys exchange (g/m2/s CO2)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  GPPXY     ! gross primary assimilation [g/m2/s C]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  NPPXY     ! net primary productivity [g/m2/s C]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FVEGXY    ! Noah-MP vegetation fraction [-]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSFXY   ! surface runoff [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSBXY   ! subsurface runoff [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  ECANXY    ! evaporation of intercepted water (mm/s)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EDIRXY    ! soil surface evaporation rate (mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  ETRANXY   ! transpiration rate (mm/s)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FSAXY     ! total absorbed solar radiation (w/m2)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FIRAXY    ! total net longwave rad (w/m2) [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  APARXY    ! photosyn active energy by canopy (w/m2)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PSNXY     ! total photosynthesis (umol co2/m2/s) [+]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SAVXY     ! solar rad absorbed by veg. (w/m2)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SAGXY     ! solar rad absorbed by ground (w/m2)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RSSUNXY   ! sunlit leaf stomatal resistance (s/m)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RSSHAXY   ! shaded leaf stomatal resistance (s/m)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  BGAPXY    ! between gap fraction
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  WGAPXY    ! within gap fraction
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  TGVXY     ! under canopy ground temperature[K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  TGBXY     ! bare ground temperature [K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHVXY     ! sensible heat exchange coefficient vegetated
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHBXY     ! sensible heat exchange coefficient bare-ground
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SHGXY     ! veg ground sen. heat [w/m2]   [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SHCXY     ! canopy sen. heat [w/m2]   [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SHBXY     ! bare sensible heat [w/m2]     [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EVGXY     ! veg ground evap. heat [w/m2]  [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EVBXY     ! bare soil evaporation [w/m2]  [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  GHVXY     ! veg ground heat flux [w/m2]  [+ to soil]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  GHBXY     ! bare ground heat flux [w/m2] [+ to soil]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  IRGXY     ! veg ground net LW rad. [w/m2] [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  IRCXY     ! canopy net LW rad. [w/m2] [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  IRBXY     ! bare net longwave rad. [w/m2] [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  TRXY      ! transpiration [w/m2]  [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EVCXY     ! canopy evaporation heat [w/m2]  [+ to atm]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHLEAFXY  ! leaf exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHUCXY    ! under canopy exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHV2XY    ! veg 2m exchange coefficient
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHB2XY    ! bare 2m exchange coefficient
+
+
+    INTEGER,  INTENT(IN   )   ::     ids,ide, jds,jde, kds,kde,  &  ! d -> domain
+         &                           ims,ime, jms,jme, kms,kme,  &  ! m -> memory
+         &                           its,ite, jts,jte, kts,kte      ! t -> tile
+
+   ! 1D equivalent of 2D/3D field
+
+! IN only
+
+    REAL                                :: COSZ         ! cosine zenith angle
+    REAL                                :: LAT          ! latitude [rad]
+    REAL                                :: Z_ML         ! model height [m]
+    INTEGER                             :: VEGTYP       ! vegetation type
+    INTEGER,    DIMENSION(NSOIL)        :: SOILTYP      ! soil type
+    INTEGER                             :: CROPTYPE     ! crop type
+    REAL                                :: FVEG         ! vegetation fraction [-]
+    REAL                                :: FVGMAX       ! annual max vegetation fraction []
+    REAL                                :: TBOT         ! deep soil temperature [K]
+    REAL                                :: T_ML         ! temperature valid at mid-levels [K]
+    REAL                                :: Q_ML         ! water vapor mixing ratio [kg/kg_dry]
+    REAL                                :: U_ML         ! U wind component [m/s]
+    REAL                                :: V_ML         ! V wind component [m/s]
+    REAL                                :: SWDN         ! solar down at surface [W m-2]
+    REAL                                :: LWDN         ! longwave down at surface [W m-2]
+    REAL                                :: P_ML         ! pressure, valid at interface [Pa]
+    REAL                                :: PSFC         ! surface pressure [Pa]
+    REAL                                :: PRCP         ! total precipitation entering  [mm]         ! MB/AN : v3.7
+    REAL                                :: PRCPCONV     ! convective precipitation entering  [mm]    ! MB/AN : v3.7
+    REAL                                :: PRCPNONC     ! non-convective precipitation entering [mm] ! MB/AN : v3.7
+    REAL                                :: PRCPSHCV     ! shallow convective precip entering  [mm]   ! MB/AN : v3.7
+    REAL                                :: PRCPSNOW     ! snow entering land model [mm]              ! MB/AN : v3.7
+    REAL                                :: PRCPGRPL     ! graupel entering land model [mm]           ! MB/AN : v3.7
+    REAL                                :: PRCPHAIL     ! hail entering land model [mm]              ! MB/AN : v3.7
+    REAL                                :: PRCPOTHR     ! other precip, e.g. fog [mm]                ! MB/AN : v3.7
+
+! INOUT (with generic LSM equivalent)
+
+    REAL                                :: FSH          ! total sensible heat (w/m2) [+ to atm]
+    REAL                                :: SSOIL        ! soil heat heat (w/m2)
+    REAL                                :: SALB         ! surface albedo (-)
+    REAL                                :: FSNO         ! snow cover fraction (-)
+    REAL,   DIMENSION( 1:NSOIL)         :: SMCEQ        ! eq vol. soil moisture (m3/m3)
+    REAL,   DIMENSION( 1:NSOIL)         :: SMC          ! vol. soil moisture (m3/m3)
+    REAL,   DIMENSION( 1:NSOIL)         :: SMH2O        ! vol. soil liquid water (m3/m3)
+    REAL,   DIMENSION(-2:NSOIL)         :: STC          ! snow/soil tmperatures
+    REAL                                :: SWE          ! snow water equivalent (mm)
+    REAL                                :: SNDPTH       ! snow depth (m)
+    REAL                                :: EMISSI       ! net surface emissivity
+    REAL                                :: QSFC1D       ! bulk surface specific humidity
+
+! INOUT (with no Noah LSM equivalent)
+
+    INTEGER                             :: ISNOW        ! actual no. of snow layers
+    REAL                                :: TV           ! vegetation canopy temperature
+    REAL                                :: TG           ! ground surface temperature
+    REAL                                :: CANICE       ! canopy-intercepted ice (mm)
+    REAL                                :: CANLIQ       ! canopy-intercepted liquid water (mm)
+    REAL                                :: EAH          ! canopy air vapor pressure (pa)
+    REAL                                :: TAH          ! canopy air temperature (k)
+    REAL                                :: CM           ! momentum drag coefficient
+    REAL                                :: CH           ! sensible heat exchange coefficient
+    REAL                                :: FWET         ! wetted or snowed fraction of the canopy (-)
+    REAL                                :: SNEQVO       ! snow mass at last time step(mm h2o)
+    REAL                                :: ALBOLD       ! snow albedo at last time step (-)
+    REAL                                :: QSNOW        ! snowfall on the ground [mm/s]
+    REAL                                :: WSLAKE       ! lake water storage [mm]
+    REAL                                :: ZWT          ! water table depth [m]
+    REAL                                :: WA           ! water in the "aquifer" [mm]
+    REAL                                :: WT           ! groundwater storage [mm]
+    REAL                                :: SMCWTD       ! soil moisture content in the layer to the water table when deep
+    REAL                                :: DEEPRECH     ! recharge to the water table when deep
+    REAL                                :: RECH         ! recharge to the water table (diagnostic)
+    REAL, DIMENSION(-2:NSOIL)           :: ZSNSO        ! snow layer depth [m]
+    REAL, DIMENSION(-2:              0) :: SNICE        ! snow layer ice [mm]
+    REAL, DIMENSION(-2:              0) :: SNLIQ        ! snow layer liquid water [mm]
+    REAL                                :: LFMASS       ! leaf mass [g/m2]
+    REAL                                :: RTMASS       ! mass of fine roots [g/m2]
+    REAL                                :: STMASS       ! stem mass [g/m2]
+    REAL                                :: WOOD         ! mass of wood (incl. woody roots) [g/m2]
+    REAL                                :: GRAIN        ! mass of grain XING [g/m2]
+    REAL                                :: GDD          ! mass of grain XING[g/m2]
+    INTEGER                             :: PGS          !stem respiration [g/m2/s]
+    REAL                                :: STBLCP       ! stable carbon in deep soil [g/m2]
+    REAL                                :: FASTCP       ! short-lived carbon, shallow soil [g/m2]
+    REAL                                :: PLAI         ! leaf area index
+    REAL                                :: PSAI         ! stem area index
+    REAL                                :: TAUSS        ! non-dimensional snow age
+
+! OUT (with no Noah LSM equivalent)
+
+    REAL                                :: Z0WRF        ! combined z0 sent to coupled model
+    REAL                                :: T2MV         ! 2m temperature of vegetation part
+    REAL                                :: T2MB         ! 2m temperature of bare ground part
+    REAL                                :: Q2MV         ! 2m mixing ratio of vegetation part
+    REAL                                :: Q2MB         ! 2m mixing ratio of bare ground part
+    REAL                                :: TRAD         ! surface radiative temperature (k)
+    REAL                                :: NEE          ! net ecosys exchange (g/m2/s CO2)
+    REAL                                :: GPP          ! gross primary assimilation [g/m2/s C]
+    REAL                                :: NPP          ! net primary productivity [g/m2/s C]
+    REAL                                :: FVEGMP       ! greenness vegetation fraction [-]
+    REAL                                :: RUNSF        ! surface runoff [mm/s]
+    REAL                                :: RUNSB        ! subsurface runoff [mm/s]
+    REAL                                :: ECAN         ! evaporation of intercepted water (mm/s)
+    REAL                                :: ETRAN        ! transpiration rate (mm/s)
+    REAL                                :: ESOIL        ! soil surface evaporation rate (mm/s]
+    REAL                                :: FSA          ! total absorbed solar radiation (w/m2)
+    REAL                                :: FIRA         ! total net longwave rad (w/m2) [+ to atm]
+    REAL                                :: APAR         ! photosyn active energy by canopy (w/m2)
+    REAL                                :: PSN          ! total photosynthesis (umol co2/m2/s) [+]
+    REAL                                :: SAV          ! solar rad absorbed by veg. (w/m2)
+    REAL                                :: SAG          ! solar rad absorbed by ground (w/m2)
+    REAL                                :: RSSUN        ! sunlit leaf stomatal resistance (s/m)
+    REAL                                :: RSSHA        ! shaded leaf stomatal resistance (s/m)
+    REAL, DIMENSION(1:2)                :: ALBSND       ! snow albedo (direct)
+    REAL, DIMENSION(1:2)                :: ALBSNI       ! snow albedo (diffuse)
+    REAL                                :: RB           ! leaf boundary layer resistance (s/m)
+    REAL                                :: LAISUN       ! sunlit leaf area index (m2/m2)
+    REAL                                :: LAISHA       ! shaded leaf area index (m2/m2)
+    REAL                                :: BGAP         ! between gap fraction
+    REAL                                :: WGAP         ! within gap fraction
+    REAL                                :: TGV          ! under canopy ground temperature[K]
+    REAL                                :: TGB          ! bare ground temperature [K]
+    REAL                                :: CHV          ! sensible heat exchange coefficient vegetated
+    REAL                                :: CHB          ! sensible heat exchange coefficient bare-ground
+    REAL                                :: IRC          ! canopy net LW rad. [w/m2] [+ to atm]
+    REAL                                :: IRG          ! veg ground net LW rad. [w/m2] [+ to atm]
+    REAL                                :: SHC          ! canopy sen. heat [w/m2]   [+ to atm]
+    REAL                                :: SHG          ! veg ground sen. heat [w/m2]   [+ to atm]
+    REAL                                :: EVG          ! veg ground evap. heat [w/m2]  [+ to atm]
+    REAL                                :: GHV          ! veg ground heat flux [w/m2]  [+ to soil]
+    REAL                                :: IRB          ! bare net longwave rad. [w/m2] [+ to atm]
+    REAL                                :: SHB          ! bare sensible heat [w/m2]     [+ to atm]
+    REAL                                :: EVB          ! bare evaporation heat [w/m2]  [+ to atm]
+    REAL                                :: GHB          ! bare ground heat flux [w/m2] [+ to soil]
+    REAL                                :: TR           ! transpiration [w/m2]  [+ to atm]
+    REAL                                :: EVC          ! canopy evaporation heat [w/m2]  [+ to atm]
+    REAL                                :: CHLEAF       ! leaf exchange coefficient
+    REAL                                :: CHUC         ! under canopy exchange coefficient
+    REAL                                :: CHV2         ! veg 2m exchange coefficient
+    REAL                                :: CHB2         ! bare 2m exchange coefficient
+    REAL                                :: PAHV         ! precipitation advected heat - vegetation net (W/m2)
+    REAL                                :: PAHG         ! precipitation advected heat - under canopy net (W/m2)
+    REAL                                :: PAHB         ! precipitation advected heat - bare ground net (W/m2)
+    REAL                                :: PAH          ! precipitation advected heat - total (W/m2)
+
+! Intermediate terms
+
+    REAL                                :: FPICE        ! snow fraction of precip
+    REAL                                :: FCEV         ! canopy evaporation heat (w/m2) [+ to atm]
+    REAL                                :: FGEV         ! ground evaporation heat (w/m2) [+ to atm]
+    REAL                                :: FCTR         ! transpiration heat flux (w/m2) [+ to atm]
+    REAL                                :: QSNBOT       ! snowmelt out bottom of pack [mm/s]
+    REAL                                :: PONDING      ! snowmelt with no pack [mm]
+    REAL                                :: PONDING1     ! snowmelt with no pack [mm]
+    REAL                                :: PONDING2     ! snowmelt with no pack [mm]
+
+! Local terms
+
+    REAL, DIMENSION(1:60)               :: gecros1d     !  gecros crop
+    REAL                                :: gecros_dd ,gecros_tbem,gecros_emb ,gecros_ema, &
+                                           gecros_ds1,gecros_ds2 ,gecros_ds1x,gecros_ds2x
+
+    REAL                                :: FSR          ! total reflected solar radiation (w/m2)
+    REAL, DIMENSION(-2:0)               :: FICEOLD      ! snow layer ice fraction []
+    REAL                                :: CO2PP        ! CO2 partial pressure [Pa]
+    REAL                                :: O2PP         ! O2 partial pressure [Pa]
+    REAL, DIMENSION(1:NSOIL)            :: ZSOIL        ! depth to soil interfaces [m]
+    REAL                                :: FOLN         ! nitrogen saturation [%]
+
+    REAL                                :: QC           ! cloud specific humidity for MYJ [not used]
+    REAL                                :: PBLH         ! PBL height for MYJ [not used]
+    REAL                                :: DZ8W1D       ! model level heights for MYJ [not used]
+
+    INTEGER                             :: I
+    INTEGER                             :: J
+    INTEGER                             :: K
+    INTEGER                             :: ICE
+    INTEGER                             :: SLOPETYP
+    LOGICAL                             :: IPRINT
+
+    INTEGER                             :: SOILCOLOR          ! soil color index
+    INTEGER                             :: IST          ! surface type 1-soil; 2-lake
+    INTEGER                             :: YEARLEN
+    REAL                                :: SOLAR_TIME
+    INTEGER                             :: JMONTH, JDAY
+
+    INTEGER, PARAMETER                  :: NSNOW = 3    ! number of snow layers fixed to 3
+    REAL, PARAMETER                     :: undefined_value = -1.E36
+
+    REAL, DIMENSION( 1:nsoil ) :: SAND
+    REAL, DIMENSION( 1:nsoil ) :: CLAY
+    REAL, DIMENSION( 1:nsoil ) :: ORGM
+
+    type(noahmp_parameters) :: parameters
+
+!-----------------------------------------------------------------------
+!   DECLARIATIONS - URBAN
+!-----------------------------------------------------------------------
+
+!input variables surface driver --> lsm
+
+     INTEGER,                                                INTENT(IN   ) :: num_roof_layers
+     INTEGER,                                                INTENT(IN   ) :: num_wall_layers
+     INTEGER,                                                INTENT(IN   ) :: num_road_layers
+
+     INTEGER,        DIMENSION( ims:ime, jms:jme ),          INTENT(IN   ) :: UTYPE_URB2D
+     REAL,           DIMENSION( ims:ime, jms:jme ),          INTENT(INOUT) :: FRC_URB2D !Added by Aaron A.
+
+     REAL, OPTIONAL, DIMENSION(1:num_roof_layers),           INTENT(IN   ) :: DZR
+     REAL, OPTIONAL, DIMENSION(1:num_wall_layers),           INTENT(IN   ) :: DZB
+     REAL, OPTIONAL, DIMENSION(1:num_road_layers),           INTENT(IN   ) :: DZG
+     REAL, OPTIONAL,                                         INTENT(IN   ) :: DECLIN_URB
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),          INTENT(IN   ) :: OMG_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) :: TH_PHY
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) :: P_PHY
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) :: RHO
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),          INTENT(INOUT) :: UST
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),          INTENT(INOUT) :: CHS, CHS2, CQS2
+     INTEGER,  INTENT(IN   )   ::  julday, julyr                  !urban
+! local variables lsm --> urban
+
+     INTEGER :: UTYPE_URB ! urban type [urban=1, suburban=2, rural=3]
+     REAL    :: TA_URB       ! potential temp at 1st atmospheric level [K]
+     REAL    :: QA_URB       ! mixing ratio at 1st atmospheric level  [kg/kg]
+     REAL    :: UA_URB       ! wind speed at 1st atmospheric level    [m/s]
+     REAL    :: U1_URB       ! u at 1st atmospheric level             [m/s]
+     REAL    :: V1_URB       ! v at 1st atmospheric level             [m/s]
+     REAL    :: SSG_URB      ! downward total short wave radiation    [W/m/m]
+     REAL    :: LLG_URB      ! downward long wave radiation           [W/m/m]
+     REAL    :: RAIN_URB     ! precipitation                          [mm/h]
+     REAL    :: RHOO_URB     ! air density                            [kg/m^3]
+     REAL    :: ZA_URB       ! first atmospheric level                [m]
+     REAL    :: DELT_URB     ! time step                              [s]
+     REAL    :: SSGD_URB     ! downward direct short wave radiation   [W/m/m]
+     REAL    :: SSGQ_URB     ! downward diffuse short wave radiation  [W/m/m]
+     REAL    :: XLAT_URB     ! latitude                               [deg]
+     REAL    :: COSZ_URB     ! cosz
+     REAL    :: OMG_URB      ! hour angle
+     REAL    :: ZNT_URB      ! roughness length                       [m]
+     REAL    :: TR_URB
+     REAL    :: TB_URB
+     REAL    :: TG_URB
+     REAL    :: TC_URB
+     REAL    :: QC_URB
+     REAL    :: UC_URB
+     REAL    :: XXXR_URB
+     REAL    :: XXXB_URB
+     REAL    :: XXXG_URB
+     REAL    :: XXXC_URB
+     REAL, DIMENSION(1:num_roof_layers) :: TRL_URB  ! roof layer temp [K]
+     REAL, DIMENSION(1:num_wall_layers) :: TBL_URB  ! wall layer temp [K]
+     REAL, DIMENSION(1:num_road_layers) :: TGL_URB  ! road layer temp [K]
+     LOGICAL  :: LSOLAR_URB
+
+!===hydrological variable for single layer UCM===
+
+     REAL    :: DRELR_URB
+     REAL    :: DRELB_URB
+     REAL    :: DRELG_URB
+     REAL    :: FLXHUMR_URB
+     REAL    :: FLXHUMB_URB
+     REAL    :: FLXHUMG_URB
+     REAL    :: CMCR_URB
+     REAL    :: TGR_URB
+
+     REAL, DIMENSION(1:num_roof_layers) :: SMR_URB  ! green roof layer moisture
+     REAL, DIMENSION(1:num_roof_layers) :: TGRL_URB ! green roof layer temp [K]
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: DRELR_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: DRELB_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: DRELG_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: FLXHUMR_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: FLXHUMB_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: FLXHUMG_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: CMCR_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                    INTENT(INOUT) :: TGR_URB2D
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_roof_layers, jms:jme ), INTENT(INOUT) :: TGRL_URB3D
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_roof_layers, jms:jme ), INTENT(INOUT) :: SMR_URB3D
+
+
+! state variable surface_driver <--> lsm <--> urban
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: TR_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: TB_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: TG_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: TC_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: QC_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: UC_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: XXXR_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: XXXB_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: XXXG_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: XXXC_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: SH_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: LH_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: G_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: RN_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: TS_URB2D
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_roof_layers, jms:jme ), INTENT(INOUT) :: TRL_URB3D
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_wall_layers, jms:jme ), INTENT(INOUT) :: TBL_URB3D
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_road_layers, jms:jme ), INTENT(INOUT) :: TGL_URB3D
+
+! output variable lsm --> surface_driver
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: PSIM_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: PSIH_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: GZ1OZ0_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: U10_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: V10_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: TH2_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: Q2_URB2D
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: AKMS_URB2D
+     REAL,           DIMENSION( ims:ime, jms:jme ), INTENT(OUT) :: UST_URB2D
+
+
+! output variables urban --> lsm
+
+     REAL :: TS_URB           ! surface radiative temperature    [K]
+     REAL :: QS_URB           ! surface humidity                 [-]
+     REAL :: SH_URB           ! sensible heat flux               [W/m/m]
+     REAL :: LH_URB           ! latent heat flux                 [W/m/m]
+     REAL :: LH_KINEMATIC_URB ! latent heat flux, kinetic  [kg/m/m/s]
+     REAL :: SW_URB           ! upward short wave radiation flux [W/m/m]
+     REAL :: ALB_URB          ! time-varying albedo            [fraction]
+     REAL :: LW_URB           ! upward long wave radiation flux  [W/m/m]
+     REAL :: G_URB            ! heat flux into the ground        [W/m/m]
+     REAL :: RN_URB           ! net radiation                    [W/m/m]
+     REAL :: PSIM_URB         ! shear f for momentum             [-]
+     REAL :: PSIH_URB         ! shear f for heat                 [-]
+     REAL :: GZ1OZ0_URB       ! shear f for heat                 [-]
+     REAL :: U10_URB          ! wind u component at 10 m         [m/s]
+     REAL :: V10_URB          ! wind v component at 10 m         [m/s]
+     REAL :: TH2_URB          ! potential temperature at 2 m     [K]
+     REAL :: Q2_URB           ! humidity at 2 m                  [-]
+     REAL :: CHS_URB
+     REAL :: CHS2_URB
+     REAL :: UST_URB
+
+! NUDAPT Parameters urban --> lam
+
+     REAL :: mh_urb
+     REAL :: stdh_urb
+     REAL :: lp_urb
+     REAL :: hgt_urb
+     REAL, DIMENSION(4) :: lf_urb
+
+! Noah UA changes
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CMR_SFCDIF
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CHR_SFCDIF
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CMGR_SFCDIF
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CHGR_SFCDIF
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CMC_SFCDIF
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: CHC_SFCDIF
+
+! Variables for multi-layer UCM
+
+     REAL, OPTIONAL,                                                    INTENT(IN   ) :: GMT
+     INTEGER,                                                           INTENT(IN   ) :: num_urban_ndm
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_zrd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_zwd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_gd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_zd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_zdf
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_bd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_wd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_gbd
+     INTEGER,                                                           INTENT(IN   ) :: urban_map_fbd
+     INTEGER,                                                           INTENT(IN   ) :: NUM_URBAN_HI
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_hi, jms:jme ),     INTENT(IN   ) :: hi_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: lp_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: lb_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: hgt_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: mh_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: stdh_urb2d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 4, jms:jme ),                  INTENT(IN   ) :: lf_urb2d
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zrd, jms:jme ),    INTENT(INOUT) :: trb_urb4d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zwd, jms:jme ),    INTENT(INOUT) :: tw1_urb4d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zwd, jms:jme ),    INTENT(INOUT) :: tw2_urb4d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_gd , jms:jme ),    INTENT(INOUT) :: tgb_urb4d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_bd , jms:jme ),    INTENT(INOUT) :: tlev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_bd , jms:jme ),    INTENT(INOUT) :: qlev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: tw1lev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: tw2lev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_gbd, jms:jme ),    INTENT(INOUT) :: tglev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_fbd, jms:jme ),    INTENT(INOUT) :: tflev_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: lf_ac_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: sf_ac_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: cm_ac_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: sfvent_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: lfvent_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: sfwin1_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: sfwin2_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zd , jms:jme ),    INTENT(INOUT) :: sfw1_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zd , jms:jme ),    INTENT(INOUT) :: sfw2_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),    INTENT(INOUT) :: sfr_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_ndm, jms:jme ),    INTENT(INOUT) :: sfg_urb3d
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_u_bep   !Implicit momemtum component X-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_v_bep   !Implicit momemtum component Y-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_t_bep   !Implicit component pot. temperature
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_q_bep   !Implicit momemtum component X-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_e_bep   !Implicit component TKE
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_u_bep   !Explicit momentum component X-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_v_bep   !Explicit momentum component Y-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_t_bep   !Explicit component pot. temperature
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_q_bep   !Implicit momemtum component Y-direction
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_e_bep   !Explicit component TKE
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: vl_bep    !Fraction air volume in grid cell
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: dlg_bep   !Height above ground
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: sf_bep    !Fraction air at the face of grid cell
+     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: dl_u_bep  !Length scale
+
+! Local variables for multi-layer UCM
+
+     REAL,    DIMENSION( its:ite, jts:jte) :: HFX_RURAL,GRDFLX_RURAL          ! ,LH_RURAL,RN_RURAL
+     REAL,    DIMENSION( its:ite, jts:jte) :: QFX_RURAL                       ! ,QSFC_RURAL,UMOM_RURAL,VMOM_RURAL
+     REAL,    DIMENSION( its:ite, jts:jte) :: ALB_RURAL,EMISS_RURAL,TSK_RURAL ! ,UST_RURAL
+     REAL,    DIMENSION( its:ite, jts:jte) :: HFX_URB,UMOM_URB,VMOM_URB
+     REAL,    DIMENSION( its:ite, jts:jte) :: QFX_URB
+     REAL,    DIMENSION( its:ite, jts:jte) :: EMISS_URB
+     REAL,    DIMENSION( its:ite, jts:jte) :: RL_UP_URB
+     REAL,    DIMENSION( its:ite, jts:jte) :: RS_ABS_URB
+     REAL,    DIMENSION( its:ite, jts:jte) :: GRDFLX_URB
+
+     REAL :: SIGMA_SB,RL_UP_RURAL,RL_UP_TOT,RS_ABS_TOT,UMOM,VMOM
+     REAL :: r1,r2,r3
+     REAL :: CMR_URB, CHR_URB, CMC_URB, CHC_URB, CMGR_URB, CHGR_URB
+     REAL :: frc_urb,lb_urb
+     REAL :: check
+
+!-----------------------------------------------------------------------
+!NOAH-MP MOSAIC Related Variables added to decliration (Aaron A. based on Dan Li)
+!-----------------------------------------------------------------------
+     INTEGER, INTENT(IN) :: NLCAT
+     INTEGER, INTENT(IN) :: noahmp_mosaic_scheme                                       !This tells us that the mosaic scheme is active
+     INTEGER, INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
+     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
+     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
+
+     INTEGER, DIMENSION( ims:ime, NLCAT, jms:jme ), INTENT(INOUT) :: mosaic_cat_index !This is the re-ordered mosaic catagory data
+
+     !variables with dimensions 1:mosaic_cat
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TSK_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: HFX_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: QFX_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: LH_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TMN_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: GRDFLX_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SFCRUNOFF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: UDRUNOFF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ALBEDO_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOWC_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CANWAT_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOW_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOWH_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ACSNOM_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ACSNOW_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: EMISS_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: QSFC_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: Z0_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ZNT_mosaic
+
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: canicexy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: canliqxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: eahxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tahxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: cmxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fwetxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: sneqvoxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: alboldxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: qsnowxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wslakexy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: zwtxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: waxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wtxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: lfmassxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rtmassxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stmassxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: woodxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: grainxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gddxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: pgsxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stblcpxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fastcpxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: xsaixy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: xlai_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: taussxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: smcwtdxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: deeprechxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rechxy_mosaic
+
+     !Variables that are NOAH MP output
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tradxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: neexy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gppxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: nppxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fvegxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsfxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ecanxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: edirxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: etranxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fsaxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: firaxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: aparxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: psnxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: savxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: sagxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rssunxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rsshaxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: bgapxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wgapxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shgxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shcxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evgxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghvxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irgxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ircxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irbxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: trxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evcxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chleafxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chucxy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chv2xy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chb2xy_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rs_mosaic
+
+     !snow variables, which have dimensions of 7*mosaic cat and 3 * number of mosaic cats
+      INTEGER, DIMENSION(ims:ime, 1:mosaic_cat, jms:jme), OPTIONAL, INTENT(INOUT) :: isnowxy_mosaic     !actual no. of snow layers
+      REAL, DIMENSION(ims:ime, 1:7*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: zsnsoxy_mosaic  !snow layer depth [m] **These have not been adjusted for indexing, Added in main driver
+      REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: tsnoxy_mosaic   !snow temperature [K] **These have not been adjusted for indexing, Added in main driver
+      REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snicexy_mosaic  !snow layer ice [mm] **These have not been adjusted for indexing, Added in main driver
+      REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snliqxy_mosaic  !snow layer liquid water [mm] **These have not been adjusted for indexing, Added in main driver
+
+     !variables that are for the soil layers
+      REAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: TSLB_mosaic
+      REAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SMOIS_mosaic
+      REAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SH2O_mosaic
+      REAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT):: SMOISEQ_mosaic
+
+    !variables for 2d urban model
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TB_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TG_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TC_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: QC_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SH_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: LH_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: G_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: RN_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_RUL2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: UC_URB2D_mosaic
+      !values that are needed for the
+      REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TRL_URB3D_mosaic
+      REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
+      REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
+
+      ! THESE ARE INTERMEDIATES, THEY WILL BE USED TO KEEP TRACK OF ALL MOSAIC VALUES
+      REAL, DIMENSION( ims:ime, jms:jme ) :: TSK_mosaic_avg, HFX_mosaic_avg, QFX_mosaic_avg, LH_mosaic_avg,  & ! These are in and out LSM options
+            GRDFLX_mosaic_avg, SFCRUNOFF_mosaic_sum, UDRUNOFF_mosaic_sum, ALBEDO_mosaic_avg,                 &
+            SNOWC_mosaic_avg, CANWAT_mosaic_avg, SNOW_mosaic_avg, SNOWH_mosaic_avg, ACSNOM_mosaic_avg,       &
+            ACSNOW_mosaic_avg, EMISS_mosaic_avg, QSFC_mosaic_avg, Z0_mosaic_avg, ZNT_mosaic_avg, TMN_mosaic_avg
+
+      REAL, DIMENSION( ims:ime, jms:jme ) :: tvxy_mosaic_avg, tgxy_mosaic_avg, canicexy_mosaic_avg,             &
+            canliqxy_mosaic_avg, eahxy_mosaic_avg, tahxy_mosaic_avg, cmxy_mosaic_avg, chxy_mosaic_avg,          &
+            fwetxy_mosaic_avg, sneqvoxy_mosaic_avg, alboldxy_mosaic_avg, qsnowxy_mosaic_avg,                    &
+            wslakexy_mosaic_avg, zwtxy_mosaic_avg, waxy_mosaic_avg, wtxy_mosaic_avg, lfmassxy_mosaic_avg,       &
+            rtmassxy_mosaic_avg, stmassxy_mosaic_avg, woodxy_mosaic_avg, grainxy_mosaic_avg, gddxy_mosaic_avg,  &
+            pgsxy_mosaic_avg, stblcpxy_mosaic_avg, fastcpxy_mosaic_avg, xsaixy_mosaic_avg, xlai_mosaic_avg,     &
+            taussxy_mosaic_avg, rechxy_mosaic_avg, deeprechxy_mosaic_avg, smcwtdxy_mosaic_avg
+
+      REAL, DIMENSION( ims:ime, jms:jme ) :: t2mvxy_mosaic_avg, t2mbxy_mosaic_avg, q2mvxy_mosaic_avg,           &
+            q2mbxy_mosaic_avg, tradxy_mosaic_avg, neexy_mosaic_avg, gppxy_mosaic_avg, nppxy_mosaic_avg,         &
+            fvegxy_mosaic_avg, runsfxy_mosaic_avg, runsbxy_mosaic_avg, ecanxy_mosaic_avg, edirxy_mosaic_avg,    &
+            etranxy_mosaic_avg, fsaxy_mosaic_avg, firaxy_mosaic_avg, aparxy_mosaic_avg, psnxy_mosaic_avg,       &
+            savxy_mosaic_avg, sagxy_mosaic_avg, rssunxy_mosaic_avg, rsshaxy_mosaic_avg, bgapxy_mosaic_avg,      &
+            wgapxy_mosaic_avg, tgvxy_mosaic_avg, tgbxy_mosaic_avg, chvxy_mosaic_avg, chbxy_mosaic_avg,          &
+            shgxy_mosaic_avg, shcxy_mosaic_avg, shbxy_mosaic_avg, evgxy_mosaic_avg, evbxy_mosaic_avg,           &
+            ghvxy_mosaic_avg, ghbxy_mosaic_avg,                                                                 &
+            irgxy_mosaic_avg, ircxy_mosaic_avg, irbxy_mosaic_avg, trxy_mosaic_avg, evcxy_mosaic_avg,            &
+            chleafxy_mosaic_avg, chucxy_mosaic_avg, chv2xy_mosaic_avg, chb2xy_mosaic_avg, rs_mosaic_avg
+
+     INTEGER, DIMENSION( ims:ime, jms:jme ) :: isnowxy_mosaic_avg
+
+
+      REAL, DIMENSION( ims:ime, 1:NSOIL, jms:jme )                     ::  TSLB_mosaic_avg,SMOIS_mosaic_avg,SH2O_mosaic_avg,SMOISEQ_mosaic_avg
+
+      REAL, DIMENSION( ims:ime, -2:0, jms:jme) :: tsnoxy_mosaic_avg, snicexy_mosaic_avg, snliqxy_mosaic_avg
+
+      REAL, DIMENSION( ims:ime, -2:NSOIL, jms:jme) :: zsnsoxy_mosaic_avg
+
+      ! DO THESE NEED TO BE ADDED?????
+     INTEGER, DIMENSION( ims:ime, jms:jme ) ::    IVGTYP_dominant
+     INTEGER ::  mosaic_i, URBAN_METHOD, zo_avg_option,LAYER
+     REAL :: FAREA
+     LOGICAL :: IPRINT_mosaic !may not be needed Aaron A.
+
+     !------------------------------------------------------------------
+     !Begin code calls
+     !------------------------------------------------------------------
+
+     ! This is the normal NOAH-MP calls (471 to 518)
+
+     CALL NOAHMP_OPTIONS(IDVEG, IOPT_CRS, IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ, &
+                     IOPT_INF, IOPT_RAD, IOPT_ALB, IOPT_SNF, IOPT_TBOT, IOPT_STC, &
+                     IOPT_RSF, IOPT_SOIL, IOPT_PEDO, IOPT_CROP )
+
+     IPRINT         = .false.                       ! debug printout
+     IPRINT_mosaic  = .false.                       ! debug mosaic printout
+
+     YEARLEN = 365
+     if (mod(YR,4) == 0) then
+        YEARLEN = 366
+        if (mod(YR,100) == 0) then
+            YEARLEN = 365
+            if (mod(YR,400) == 0) then
+                YEARLEN = 366
+            endif
+        endif
+     endif
+
+
+     ZSOIL(1) = -DZS(1)                             ! depth to soil interfaces (<0) [m]
+     DO K = 2, NSOIL
+        ZSOIL(K) = - DZS(K) + ZSOIL(K-1)
+     END DO
+
+
+     JLOOP : DO J=jts,jte                           ! outer J loop
+
+       IF(ITIMESTEP == 1)THEN
+          DO I=its,ite
+             IF((XLAND(I,J)-1.5) >= 0.) THEN    ! Open water case
+                IF(XICE(I,J) == 1. .AND. IPRINT) PRINT *,' sea-ice at water point, I=',I,'J=',J
+                SMSTAV(I,J) = 1.0
+                SMSTOT(I,J) = 1.0
+                DO K = 1, NSOIL
+                   SMOIS(I,K,J) = 1.0
+                    TSLB(I,K,J) = 273.16
+                ENDDO
+             ELSE
+                IF(XICE(I,J) == 1.) THEN        ! Sea-ice case
+                   SMSTAV(I,J) = 1.0
+                   SMSTOT(I,J) = 1.0
+                   DO K = 1, NSOIL
+                      SMOIS(I,K,J) = 1.0
+                   ENDDO
+                ENDIF
+             ENDIF
+          ENDDO
+       ENDIF                                                               ! end of initialization over ocean
+
+!-----------------------------------------------------------------------
+!Begein the inner for loop
+!-----------------------------------------------------------------------
+
+     ILOOP : DO I= its, ite                         ! outer I loop
+
+           IF (XICE(I,J) >= XICE_THRES) THEN
+       ICE = 1                            ! Sea-ice point
+
+       SH2O  (i,1:NSOIL,j) = 1.0
+       XLAIXY(i,j)         = 0.01
+
+       CYCLE ILOOP ! Skip any processing at sea-ice points
+
+    ELSE
+
+       IF((XLAND(I,J)-1.5) >= 0.) CYCLE ILOOP   ! Open water case
+
+        IF (((XLAND(I,J)-1.5).LT.0) .AND. (XICE(I,J) < XICE_THRES) ) THEN
+
+            IVGTYP_dominant(I,J)=IVGTYP(I,J)                            ! SAVE THE DOMINANT Vegitation
+
+
+            ! INITIALIZE THE AREA-AVERAGED variables (all average variables thtat I added)
+
+            TSK_mosaic_avg(i,j) = 0.0
+            HFX_mosaic_avg(i,j) = 0.0
+            QFX_mosaic_avg(i,j) = 0.0
+            LH_mosaic_avg(i,j)  = 0.0
+            TMN_mosaic_avg(i,j) = 0.0
+            GRDFLX_mosaic_avg(i,j) = 0.0
+            SFCRUNOFF_mosaic_sum(i,j) = 0.0
+            UDRUNOFF_mosaic_sum(i,j) = 0.0
+            ALBEDO_mosaic_avg(i,j) = 0.0
+            SNOWC_mosaic_avg(i,j) = 0.0
+            CANWAT_mosaic_avg(i,j) = 0.0
+            SNOW_mosaic_avg(i,j) = 0.0
+            ACSNOM_mosaic_avg(i,j) = 0.0
+            ACSNOW_mosaic_avg(i,j) = 0.0
+            EMISS_mosaic_avg(i,j) = 0.0
+            QSFC_mosaic_avg(i,j) = 0.0
+            Z0_mosaic_avg(i,j) = 0.0
+            ZNT_mosaic_avg(i,j) = 0.0
+
+
+            isnowxy_mosaic_avg(i,j) = 0
+            tvxy_mosaic_avg(i,j) = 0.0
+            tgxy_mosaic_avg(i,j) = 0.0
+            canicexy_mosaic_avg(i,j) = 0.0
+            canliqxy_mosaic_avg(i,j) = 0.0
+            eahxy_mosaic_avg(i,j) = 0.0
+            tahxy_mosaic_avg(i,j) = 0.0
+            cmxy_mosaic_avg(i,j) = 0.0
+            chxy_mosaic_avg(i,j) = 0.0
+            fwetxy_mosaic_avg(i,j) = 0.0
+            sneqvoxy_mosaic_avg(i,j) = 0.0
+            alboldxy_mosaic_avg(i,j) = 0.0
+            qsnowxy_mosaic_avg(i,j) = 0.0
+            wslakexy_mosaic_avg(i,j) = 0.0
+            zwtxy_mosaic_avg(i,j) = 0.0
+            waxy_mosaic_avg(i,j) = 0.0
+            wtxy_mosaic_avg(i,j) = 0.0
+            lfmassxy_mosaic_avg(i,j) = 0.0
+            rtmassxy_mosaic_avg(i,j) = 0.0
+            stmassxy_mosaic_avg(i,j) = 0.0
+            woodxy_mosaic_avg(i,j) = 0.0
+            grainxy_mosaic_avg(i,j) = 0.0
+            pgsxy_mosaic_avg(i,j) = 0.0
+            stblcpxy_mosaic_avg(i,j) = 0.0
+            fastcpxy_mosaic_avg(i,j) = 0.0
+            xsaixy_mosaic_avg(i,j) = 0.0
+            xlai_mosaic_avg(i,j) = 0.0
+            taussxy_mosaic_avg(i,j) = 0.0
+            smcwtdxy_mosaic_avg(i,j) = 0.0
+            deeprechxy_mosaic_avg(i,j) = 0.0
+            rechxy_mosaic_avg(i,j) = 0.0
+
+
+            t2mvxy_mosaic_avg(i,j) = 0.0
+            t2mbxy_mosaic_avg(i,j) = 0.0
+            q2mvxy_mosaic_avg(i,j) = 0.0
+            q2mbxy_mosaic_avg(i,j) = 0.0
+            tradxy_mosaic_avg(i,j) = 0.0
+            neexy_mosaic_avg(i,j) = 0.0
+            gppxy_mosaic_avg(i,j) = 0.0
+            nppxy_mosaic_avg(i,j) = 0.0
+            fvegxy_mosaic_avg(i,j) = 0.0
+            runsfxy_mosaic_avg(i,j) = 0.0
+            runsbxy_mosaic_avg(i,j) = 0.0
+            ecanxy_mosaic_avg(i,j) = 0.0
+            edirxy_mosaic_avg(i,j) = 0.0
+            etranxy_mosaic_avg(i,j) = 0.0
+            fsaxy_mosaic_avg(i,j) = 0.0
+            firaxy_mosaic_avg(i,j) = 0.0
+            aparxy_mosaic_avg(i,j) = 0.0
+            psnxy_mosaic_avg(i,j) = 0.0
+            savxy_mosaic_avg(i,j) = 0.0
+            sagxy_mosaic_avg(i,j) = 0.0
+            rssunxy_mosaic_avg(i,j) = 0.0
+            rsshaxy_mosaic_avg(i,j) = 0.0
+            bgapxy_mosaic_avg(i,j) = 0.0
+            wgapxy_mosaic_avg(i,j) = 0.0
+            tgvxy_mosaic_avg(i,j) = 0.0
+            tgbxy_mosaic_avg(i,j) = 0.0
+            chvxy_mosaic_avg(i,j) = 0.0
+            chbxy_mosaic_avg(i,j) = 0.0
+            shgxy_mosaic_avg(i,j) = 0.0
+            shcxy_mosaic_avg(i,j) = 0.0
+            shbxy_mosaic_avg(i,j) = 0.0
+            evgxy_mosaic_avg(i,j) = 0.0
+            evbxy_mosaic_avg(i,j) = 0.0
+            ghvxy_mosaic_avg(i,j) = 0.0
+            ghbxy_mosaic_avg(i,j) = 0.0
+            irgxy_mosaic_avg(i,j) = 0.0
+            ircxy_mosaic_avg(i,j) = 0.0
+            irbxy_mosaic_avg(i,j) = 0.0
+            trxy_mosaic_avg(i,j) = 0.0
+            evcxy_mosaic_avg(i,j) = 0.0
+            chleafxy_mosaic_avg(i,j) = 0.0
+            chucxy_mosaic_avg(i,j) = 0.0
+            chv2xy_mosaic_avg(i,j) = 0.0
+            chb2xy_mosaic_avg(i,j) = 0.0
+            rs_mosaic_avg(i,j) = 0.0
+
+            !Loops over the SOIL Layers
+            DO LAYER=1,NSOIL
+
+                TSLB_mosaic_avg(i,LAYER,j) = 0.0
+                SMOIS_mosaic_avg(i,LAYER,j) = 0.0
+                SH2O_mosaic_avg(i,LAYER,j) = 0.0
+                smoiseq_mosaic_avg(i,LAYER,j) = 0.0
+
+            ENDDO
+
+            DO LAYER=-2,0
+
+                tsnoxy_mosaic_avg(i,LAYER,j) = 0.0
+                snicexy_mosaic_avg(i,LAYER,j) = 0.0
+                snliqxy_mosaic_avg(i,LAYER,j) = 0.0
+
+            ENDDO
+
+            DO LAYER=-2,NSOIL
+
+                zsnsoxy_mosaic_avg(i,LAYER,j) = 0.0
+
+            ENDDO
+
+            !We now add a loop over the mosaic catagories!
+
+            MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
+
+
+            IF ((I.eq.1).AND.(J.eq.1)) THEN
+            WRITE(*,*) LANDUSEF2(I,mosaic_i,J)
+            ENDIF
+            ! We need to move from our 3D data to the 2D data sets
+            !These are the IN/Out values that have an LSM equivelant
+            IVGTYP(I,J) = mosaic_cat_index(I,mosaic_i,J)
+            TSK(I,J) = TSK_mosaic(I,mosaic_i,J)
+            HFX(I,J) = HFX_mosaic(I,mosaic_i,J)
+            QFX(I,J) = QFX_mosaic(I,mosaic_i,J)
+            LH(I,J) = LH_mosaic(I,mosaic_i,J)
+            TMN(I,J) = TMN_mosaic(I,mosaic_i,J)
+            GRDFLX(I,J) = GRDFLX_mosaic(I,mosaic_i,J) !do not need SMSTAV (not used)
+            SFCRUNOFF(I,J) = SFCRUNOFF_mosaic(I,mosaic_i,J) !do not need SMSTOT (not used)
+            UDRUNOFF(I,J) = UDRUNOFF_mosaic(I,mosaic_i,J)
+            ALBEDO(I,J) = ALBEDO_mosaic(I,mosaic_i,J)
+            SNOWC(I,J) = SNOWC_mosaic(I,mosaic_i,J)
+
+            !These are the soil variables
+            DO LAYER=1,NSOIL
+
+                SMOIS(I,LAYER,J) = SMOIS_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                SH2O(I,LAYER,J) = SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                TSLB(I,LAYER,J) = TSLB_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+
+            ENDDO
+
+            SNOW(I,J) = SNOW_mosaic(I,mosaic_i,J)
+            SNOWH(I,J) = SNOWH_mosaic(I,mosaic_i,J)
+            CANWAT(I,J) = CANWAT_mosaic(I,mosaic_i,J)
+            ACSNOM(I,J) = ACSNOM_mosaic(I,mosaic_i,J)
+            ACSNOW(I,J) = ACSNOW_mosaic(I,mosaic_i,J)
+            EMISS(I,J) = EMISS_mosaic(I,mosaic_i,J)
+            QSFC(I,J) = QSFC_mosaic(I,mosaic_i,J)
+            ZNT(I,J) = ZNT_mosaic(I,mosaic_i,J)
+            Z0(I,J) = Z0_mosaic(I,mosaic_i,J)
+            RS(I,J) = rs_mosaic(I,mosaic_i,J)
+
+            !These are IN/OUT variables that do not have an LSM equivelant
+            ISNOWXY(I,J) = isnowxy_mosaic(I,mosaic_i,J)
+            TVXY(I,J) = tvxy_mosaic(I,mosaic_i,J)
+            TGXY(I,J) = tgxy_mosaic(I,mosaic_i,J)
+            CANICEXY(I,J) = canicexy_mosaic(I,mosaic_i,J)
+            CANLIQXY(I,J) = canliqxy_mosaic(I,mosaic_i,J)
+            EAHXY(I,J) = eahxy_mosaic(I,mosaic_i,J)
+            TAHXY(I,J) = tahxy_mosaic(I,mosaic_i,J)
+            CMXY(I,J) = cmxy_mosaic(I,mosaic_i,J)
+            CHXY(I,J) = chxy_mosaic(I,mosaic_i,J)
+            FWETXY(I,J) = fwetxy_mosaic(I,mosaic_i,J)
+            SNEQVOXY(I,J) = sneqvoxy_mosaic(I,mosaic_i,J)
+            ALBOLDXY(I,J) = alboldxy_mosaic(I,mosaic_i,J)
+            QSNOWXY(I,J) = qsnowxy_mosaic(I,mosaic_i,J)
+            WSLAKEXY(I,J) = wslakexy_mosaic(I,mosaic_i,J)
+            ZWTXY(I,J) = zwtxy_mosaic(I,mosaic_i,J)
+            WAXY(I,J) = waxy_mosaic(I,mosaic_i,J)
+            WTXY(I,J) = wtxy_mosaic(I,mosaic_i,J)
+            LFMASSXY(I,J) = lfmassxy_mosaic(I,mosaic_i,J)
+            RTMASSXY(I,J) = rtmassxy_mosaic(I,mosaic_i,J)
+            STMASSXY(I,J) = stmassxy_mosaic(I,mosaic_i,J)
+            WOODXY(I,J) = woodxy_mosaic(I,mosaic_i,J)
+            GRAINXY(I,J) = grainxy_mosaic(I,mosaic_i,J)
+            GDDXY(I,J) = gddxy_mosaic(I,mosaic_i,J)
+            PGSXY(I,J) = pgsxy_mosaic(I,mosaic_i,J)
+            STBLCPXY(I,J) = stblcpxy_mosaic(I,mosaic_i,J)
+            FASTCPXY(I,J) = fastcpxy_mosaic(I,mosaic_i,J)
+            XLAIXY(I,J) = xlai_mosaic(I,mosaic_i,J)
+            XSAIXY(I,J) = xsaixy_mosaic(I,mosaic_i,J)
+            DEEPRECHXY(I,J) = deeprechxy_mosaic(I,mosaic_i,J)
+            RECHXY(I,J) = rechxy_mosaic(I,mosaic_i,J)
+
+            !SNOW VARIABLES
+
+            DO LAYER=-2,0
+                TSNOXY(I,LAYER,J) = tsnoxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+                SNICEXY(I,LAYER,J) = snicexy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+                SNLIQXY(I,LAYER,J) = snliqxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+            ENDDO
+
+            DO LAYER=-2,NSOIL
+                ZSNSOXY(I,LAYER,J) = zsnsoxy_mosaic(I,7*(mosaic_i - 1)+LAYER,J)
+            ENDDO
+
+
+            ! do not need to add any of the OUTPUT values. These will be captured in the post processing steps!
+
+            !Add in a (WE got here) Print statement
+
+            IF(IPRINT_mosaic) THEN
+
+                PRINT *, 'BEFORE NOAHMPLSM in NOAHMPDRIVER.F'
+                PRINT *, 'mosaic_cat', mosaic_cat, 'IVGTYP',IVGTYP(i,j), 'TSK',TSK(i,j),'HFX',HFX(i,j), 'QSFC', QSFC(i,j),   &
+                   'CANWAT', CANWAT(i,j), 'SNOW',SNOW(i,j), 'ALBEDO',ALBEDO(i,j), 'TSLB',TSLB(i,1,j),'CHS',CHS(i,j),'ZNT',ZNT(i,j)
+
+
+            ENDIF
+
+
+            !-----------------------------------------------------------------------
+            ! insert the NOAHMP MODEL and the URBAN models
+            !-----------------------------------------------------------------------
+
+!     2D to 1D
+
+! IN only
+
+       COSZ   = COSZIN  (I,J)                         ! cos zenith angle []
+       LAT    = XLAT  (I,J)                           ! latitude [rad]
+       Z_ML   = 0.5*DZ8W(I,1,J)                       ! DZ8W: thickness of full levels; ZLVL forcing height [m]
+       VEGTYP = IVGTYP(I,J)                           ! vegetation type
+       if(iopt_soil == 1) then
+         SOILTYP= ISLTYP(I,J)                         ! soil type same in all layers
+       elseif(iopt_soil == 2) then
+         SOILTYP(1) = nint(SOILCL1(I,J))              ! soil type in layer1
+         SOILTYP(2) = nint(SOILCL2(I,J))              ! soil type in layer2
+         SOILTYP(3) = nint(SOILCL3(I,J))              ! soil type in layer3
+         SOILTYP(4) = nint(SOILCL4(I,J))              ! soil type in layer4
+       elseif(iopt_soil == 3) then
+         SOILTYP= ISLTYP(I,J)                         ! to initialize with default
+       end if
+
+       FVEG   = VEGFRA(I,J)/100.                      ! vegetation fraction [0-1]
+       FVGMAX = VEGMAX (I,J)/100.                     ! Vegetation fraction annual max [0-1]
+       TBOT = TMN(I,J)                                ! Fixed deep soil temperature for land
+       T_ML   = T3D(I,1,J)                            ! temperature defined at intermediate level [K]
+       Q_ML   = QV3D(I,1,J)/(1.0+QV3D(I,1,J))         ! convert from mixing ratio to specific humidity [kg/kg]
+       U_ML   = U_PHY(I,1,J)                          ! u-wind at interface [m/s]
+       V_ML   = V_PHY(I,1,J)                          ! v-wind at interface [m/s]
+       SWDN   = SWDOWN(I,J)                           ! shortwave down from SW scheme [W/m2]
+       LWDN   = GLW(I,J)                              ! total longwave down from LW scheme [W/m2]
+       P_ML   =(P8W3D(I,KTS+1,J)+P8W3D(I,KTS,J))*0.5  ! surface pressure defined at intermediate level [Pa]
+                                                  !    consistent with temperature, mixing ratio
+       PSFC   = P8W3D(I,1,J)                          ! surface pressure defined a full levels [Pa]
+       PRCP   = PRECIP_IN (I,J) / DT                  ! timestep total precip rate (glacier) [mm/s]! MB: v3.7
+
+       CROPTYPE = 0
+       IF (IOPT_CROP > 0 .AND. VEGTYP == ISCROP_TABLE) CROPTYPE = DEFAULT_CROP_TABLE ! default croptype is generic dynamic vegetation crop
+       IF (IOPT_CROP > 0 .AND. CROPCAT(I,J) > 0) THEN
+         CROPTYPE = CROPCAT(I,J)                      ! crop type
+         VEGTYP = ISCROP_TABLE
+         FVGMAX = 0.95
+         FVEG   = 0.95
+       END IF
+
+       IF (PRESENT(MP_RAINC) .AND. PRESENT(MP_RAINNC) .AND. PRESENT(MP_SHCV) .AND. &
+           PRESENT(MP_SNOW)  .AND. PRESENT(MP_GRAUP)  .AND. PRESENT(MP_HAIL)   ) THEN
+
+         PRCPCONV  = MP_RAINC (I,J)/DT                ! timestep convective precip rate [mm/s]     ! MB: v3.7
+         PRCPNONC  = MP_RAINNC(I,J)/DT                ! timestep non-convective precip rate [mm/s] ! MB: v3.7
+         PRCPSHCV  = MP_SHCV(I,J)  /DT                ! timestep shallow conv precip rate [mm/s]   ! MB: v3.7
+         PRCPSNOW  = MP_SNOW(I,J)  /DT                ! timestep snow precip rate [mm/s]           ! MB: v3.7
+         PRCPGRPL  = MP_GRAUP(I,J) /DT                ! timestep graupel precip rate [mm/s]        ! MB: v3.7
+         PRCPHAIL  = MP_HAIL(I,J)  /DT                ! timestep hail precip rate [mm/s]           ! MB: v3.7
+
+         PRCPOTHR  = PRCP - PRCPCONV - PRCPNONC - PRCPSHCV ! take care of other (fog) contained in rainbl
+         PRCPOTHR  = MAX(0.0,PRCPOTHR)
+         PRCPNONC  = PRCPNONC + PRCPOTHR
+         PRCPSNOW  = PRCPSNOW + SR(I,J)  * PRCPOTHR
+       ELSE
+         PRCPCONV  = 0.
+         PRCPNONC  = PRCP
+         PRCPSHCV  = 0.
+         PRCPSNOW  = SR(I,J) * PRCP
+         PRCPGRPL  = 0.
+         PRCPHAIL  = 0.
+       ENDIF
+
+! IN/OUT fields
+
+       ISNOW                 = ISNOWXY (I,J)                ! snow layers []
+       SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
+       SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
+       STC  (-NSNOW+1:    0) = TSNOXY  (I,-NSNOW+1:    0,J) ! snow temperatures [K]
+       STC  (      1:NSOIL)  = TSLB    (I,      1:NSOIL,J)  ! soil temperatures [K]
+       SWE                   = SNOW    (I,J)                ! snow water equivalent [mm]
+       SNDPTH                = SNOWH   (I,J)                ! snow depth [m]
+       QSFC1D                = QSFC    (I,J)
+
+! INOUT (with no Noah LSM equivalent)
+
+       TV                    = TVXY    (I,J)                ! leaf temperature [K]
+       TG                    = TGXY    (I,J)                ! ground temperature [K]
+       CANLIQ                = CANLIQXY(I,J)                ! canopy liquid water [mm]
+       CANICE                = CANICEXY(I,J)                ! canopy frozen water [mm]
+       EAH                   = EAHXY   (I,J)                ! canopy vapor pressure [Pa]
+       TAH                   = TAHXY   (I,J)                ! canopy temperature [K]
+       CM                    = CMXY    (I,J)                ! avg. momentum exchange (MP only) [m/s]
+       CH                    = CHXY    (I,J)                ! avg. heat exchange (MP only) [m/s]
+       FWET                  = FWETXY  (I,J)                ! canopy fraction wet or snow
+       SNEQVO                = SNEQVOXY(I,J)                ! SWE previous timestep
+       ALBOLD                = ALBOLDXY(I,J)                ! albedo previous timestep, for snow aging
+       QSNOW                 = QSNOWXY (I,J)                ! snow falling on ground
+       WSLAKE                = WSLAKEXY(I,J)                ! lake water storage (can be neg.) (mm)
+       ZWT                   = ZWTXY   (I,J)                ! depth to water table [m]
+       WA                    = WAXY    (I,J)                ! water storage in aquifer [mm]
+       WT                    = WTXY    (I,J)                ! water in aquifer&saturated soil [mm]
+       ZSNSO(-NSNOW+1:NSOIL) = ZSNSOXY (I,-NSNOW+1:NSOIL,J) ! depth to layer interface
+       SNICE(-NSNOW+1:    0) = SNICEXY (I,-NSNOW+1:    0,J) ! snow layer ice content
+       SNLIQ(-NSNOW+1:    0) = SNLIQXY (I,-NSNOW+1:    0,J) ! snow layer water content
+       LFMASS                = LFMASSXY(I,J)                ! leaf mass
+       RTMASS                = RTMASSXY(I,J)                ! root mass
+       STMASS                = STMASSXY(I,J)                ! stem mass
+       WOOD                  = WOODXY  (I,J)                ! mass of wood (incl. woody roots) [g/m2]
+       STBLCP                = STBLCPXY(I,J)                ! stable carbon pool
+       FASTCP                = FASTCPXY(I,J)                ! fast carbon pool
+       PLAI                  = XLAIXY  (I,J)                ! leaf area index [-] (no snow effects)
+       PSAI                  = XSAIXY  (I,J)                ! stem area index [-] (no snow effects)
+       TAUSS                 = TAUSSXY (I,J)                ! non-dimensional snow age
+       SMCEQ(       1:NSOIL) = SMOISEQ (I,       1:NSOIL,J)
+       SMCWTD                = SMCWTDXY(I,J)
+       RECH                  = 0.
+       DEEPRECH              = 0.
+
+       if(iopt_crop == 2) then   ! gecros crop model
+
+         gecros1d(1:60)      = gecros_state(I,1:60,J)       ! Gecros variables 2D -> local
+
+         if(croptype == 1) then
+           gecros_dd   =  2.5
+           gecros_tbem =  2.0
+           gecros_emb  = 10.2
+           gecros_ema  = 40.0
+           gecros_ds1  =  2.1 !BBCH 92
+           gecros_ds2  =  2.0 !BBCH 90
+           gecros_ds1x =  0.0
+           gecros_ds2x = 10.0
+         end if
+
+         if(croptype == 2) then
+           gecros_dd   =  5.0
+           gecros_tbem =  8.0
+           gecros_emb  = 15.0
+           gecros_ema  =  6.0
+           gecros_ds1  =  1.78  !BBCH 85
+           gecros_ds2  =  1.63  !BBCH 80
+           gecros_ds1x =  0.0
+           gecros_ds2x = 14.0
+         end if
+
+       end if
+
+       SLOPETYP     = 1                               ! set underground runoff slope term
+       IST          = 1                               ! MP surface type: 1 = land; 2 = lake
+       SOILCOLOR    = 4                               ! soil color: assuming a middle color category ?????????
+
+       IF(any(SOILTYP == 14) .AND. XICE(I,J) == 0.) THEN
+          IF(IPRINT) PRINT *, ' SOIL TYPE FOUND TO BE WATER AT A LAND-POINT'
+          IF(IPRINT) PRINT *, i,j,'RESET SOIL in surfce.F'
+          SOILTYP = 7
+       ENDIF
+
+       IF( IVGTYP(I,J) == ISURBAN_TABLE                  .or. IVGTYP(I,J) == LOW_DENSITY_RESIDENTIAL_TABLE .or. &
+           IVGTYP(I,J) == HIGH_DENSITY_RESIDENTIAL_TABLE .or. IVGTYP(I,J) == HIGH_INTENSITY_INDUSTRIAL_TABLE ) THEN
+
+         IF(SF_URBAN_PHYSICS == 0 ) THEN
+           VEGTYP = ISURBAN_TABLE
+         ELSE
+           VEGTYP = NATURAL_TABLE  ! set urban vegetation type based on table natural
+           FVGMAX = 0.96
+         ENDIF
+
+       ENDIF
+
+! placeholders for 3D soil
+!       parameters%bexp   = BEXP_3D  (I,1:NSOIL,J) ! C-H B exponent
+!       parameters%smcdry = SMCDRY_3D(I,1:NSOIL,J) ! Soil Moisture Limit: Dry
+!       parameters%smcwlt = SMCWLT_3D(I,1:NSOIL,J) ! Soil Moisture Limit: Wilt
+!       parameters%smcref = SMCREF_3D(I,1:NSOIL,J) ! Soil Moisture Limit: Reference
+!       parameters%smcmax = SMCMAX_3D(I,1:NSOIL,J) ! Soil Moisture Limit: Max
+!       parameters%dksat  = DKSAT_3D (I,1:NSOIL,J) ! Saturated Soil Conductivity
+!       parameters%dwsat  = DWSAT_3D (I,1:NSOIL,J) ! Saturated Soil Diffusivity
+!       parameters%psisat = PSISAT_3D(I,1:NSOIL,J) ! Saturated Matric Potential
+!       parameters%quartz = QUARTZ_3D(I,1:NSOIL,J) ! Soil quartz content
+!       parameters%refdk  = REFDK_2D (I,J)         ! Reference Soil Conductivity
+!       parameters%refkdt = REFKDT_2D(I,J)         ! Soil Infiltration Parameter
+
+       CALL TRANSFER_MP_PARAMETERS(VEGTYP,SOILTYP,SLOPETYP,SOILCOLOR,CROPTYPE,parameters)
+
+       if(iopt_soil == 3 .and. .not. parameters%urban_flag) then
+
+    sand = 0.01 * soilcomp(i,1:4,j)
+    clay = 0.01 * soilcomp(i,5:8,j)
+        orgm = 0.0
+
+        if(opt_pedo == 1) call pedotransfer_sr2006(nsoil,sand,clay,orgm,parameters)
+
+       end if
+
+       GRAIN = GRAINXY (I,J)                ! mass of grain XING [g/m2]
+       GDD   = GDDXY (I,J)                  ! growing degree days XING
+       PGS   = PGSXY (I,J)                  ! growing degree days XING
+
+       if(iopt_crop == 1 .and. croptype > 0) then
+         parameters%PLTDAY = PLANTING(I,J)
+     parameters%HSDAY  = HARVEST (I,J)
+     parameters%GDDS1  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS1
+     parameters%GDDS2  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS2
+     parameters%GDDS3  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS3
+     parameters%GDDS4  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS4
+     parameters%GDDS5  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS5
+       end if
+
+!=== hydrological processes for vegetation in urban model ===
+!=== irrigate vegetaion only in urban area, MAY-SEP, 9-11pm
+
+       IF( IVGTYP(I,J) == ISURBAN_TABLE                  .or. IVGTYP(I,J) == LOW_DENSITY_RESIDENTIAL_TABLE .or. &
+           IVGTYP(I,J) == HIGH_DENSITY_RESIDENTIAL_TABLE .or. IVGTYP(I,J) == HIGH_INTENSITY_INDUSTRIAL_TABLE ) THEN
+
+         IF(SF_URBAN_PHYSICS > 0 .AND. IRI_SCHEME == 1 ) THEN
+         SOLAR_TIME = (JULIAN - INT(JULIAN))*24 + XLONG(I,J)/15.0
+         IF(SOLAR_TIME < 0.) SOLAR_TIME = SOLAR_TIME + 24.
+             CALL CAL_MON_DAY(INT(JULIAN),YR,JMONTH,JDAY)
+             IF (SOLAR_TIME >= 21. .AND. SOLAR_TIME <= 23. .AND. JMONTH >= 5 .AND. JMONTH <= 9) THEN
+                SMC(1) = max(SMC(1),parameters%SMCREF(1))
+                SMC(2) = max(SMC(2),parameters%SMCREF(2))
+             ENDIF
+         ENDIF
+
+       ENDIF
+
+
+! Initialized local
+
+       FICEOLD = 0.0
+       FICEOLD(ISNOW+1:0) = SNICEXY(I,ISNOW+1:0,J) &  ! snow ice fraction
+           /(SNICEXY(I,ISNOW+1:0,J)+SNLIQXY(I,ISNOW+1:0,J))
+       CO2PP  = CO2_TABLE * P_ML                      ! partial pressure co2 [Pa]
+       O2PP   = O2_TABLE  * P_ML                      ! partial pressure  o2 [Pa]
+       FOLN   = 1.0                                   ! for now, set to nitrogen saturation
+       QC     = undefined_value                       ! test dummy value
+       PBLH   = undefined_value                       ! test dummy value ! PBL height
+       DZ8W1D = DZ8W (I,1,J)                          ! thickness of atmospheric layers
+
+       IF(VEGTYP == 25) FVEG = 0.0                  ! Set playa, lava, sand to bare
+       IF(VEGTYP == 25) PLAI = 0.0
+       IF(VEGTYP == 26) FVEG = 0.0                  ! hard coded for USGS
+       IF(VEGTYP == 26) PLAI = 0.0
+       IF(VEGTYP == 27) FVEG = 0.0
+       IF(VEGTYP == 27) PLAI = 0.0
+
+       IF ( VEGTYP == ISICE_TABLE ) THEN
+         ICE = -1                           ! Land-ice point
+         CALL NOAHMP_OPTIONS_GLACIER(IOPT_ALB  ,IOPT_SNF  ,IOPT_TBOT, IOPT_STC, IOPT_GLA )
+
+         TBOT = MIN(TBOT,263.15)                      ! set deep temp to at most -10C
+         CALL NOAHMP_GLACIER(     I,       J,    COSZ,   NSNOW,   NSOIL,      DT, & ! IN : Time/Space/Model-related
+                               T_ML,    P_ML,    U_ML,    V_ML,    Q_ML,    SWDN, & ! IN : Forcing
+                               PRCP,    LWDN,    TBOT,    Z_ML, FICEOLD,   ZSOIL, & ! IN : Forcing
+                              QSNOW,  SNEQVO,  ALBOLD,      CM,      CH,   ISNOW, & ! IN/OUT :
+                                SWE,     SMC,   ZSNSO,  SNDPTH,   SNICE,   SNLIQ, & ! IN/OUT :
+                                 TG,     STC,   SMH2O,   TAUSS,  QSFC1D,          & ! IN/OUT :
+                                FSA,     FSR,    FIRA,     FSH,    FGEV,   SSOIL, & ! OUT :
+                               TRAD,   ESOIL,   RUNSF,   RUNSB,     SAG,    SALB, & ! OUT :
+                              QSNBOT,PONDING,PONDING1,PONDING2,    T2MB,    Q2MB, & ! OUT :
+                  EMISSI,  FPICE,    CHB2 &                             ! OUT :
+#ifdef WRF_HYDRO
+                              , sfcheadrt(i,j)                                      &
+#endif
+                              )
+
+         FSNO   = 1.0
+         TV     = undefined_value     ! Output from standard Noah-MP undefined for glacier points
+         TGB    = TG
+         CANICE = undefined_value
+         CANLIQ = undefined_value
+         EAH    = undefined_value
+         TAH    = undefined_value
+         FWET   = undefined_value
+         WSLAKE = undefined_value
+!         ZWT    = undefined_value
+         WA     = undefined_value
+         WT     = undefined_value
+         LFMASS = undefined_value
+         RTMASS = undefined_value
+         STMASS = undefined_value
+         WOOD   = undefined_value
+         GRAIN  = undefined_value
+         GDD    = undefined_value
+         STBLCP = undefined_value
+         FASTCP = undefined_value
+         PLAI   = undefined_value
+         PSAI   = undefined_value
+         T2MV   = undefined_value
+         Q2MV   = undefined_value
+         NEE    = undefined_value
+         GPP    = undefined_value
+         NPP    = undefined_value
+         FVEGMP = 0.0
+         ECAN   = undefined_value
+         ETRAN  = undefined_value
+         APAR   = undefined_value
+         PSN    = undefined_value
+         SAV    = undefined_value
+         RSSUN  = undefined_value
+         RSSHA  = undefined_value
+         RB     = undefined_value
+         LAISUN = undefined_value
+         LAISHA = undefined_value
+         RS(I,J)= undefined_value
+         BGAP   = undefined_value
+         WGAP   = undefined_value
+         TGV    = undefined_value
+         CHV    = undefined_value
+         CHB    = CH
+         IRC    = undefined_value
+         IRG    = undefined_value
+         SHC    = undefined_value
+         SHG    = undefined_value
+         EVG    = undefined_value
+         GHV    = undefined_value
+         IRB    = FIRA
+         SHB    = FSH
+         EVB    = FGEV
+         GHB    = SSOIL
+         TR     = undefined_value
+         EVC    = undefined_value
+         CHLEAF = undefined_value
+         CHUC   = undefined_value
+         CHV2   = undefined_value
+         FCEV   = undefined_value
+         FCTR   = undefined_value
+         Z0WRF  = 0.002
+         QFX(I,J) = ESOIL
+         LH (I,J) = FGEV
+
+
+    ELSE
+         ICE=0                              ! Neither sea ice or land ice.
+         CALL NOAHMP_SFLX (parameters, &
+            I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
+            DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
+            FVEG    , FVGMAX  , VEGTYP  , ICE     , IST     , CROPTYPE, & ! IN : Vegetation/Soil characteristics
+            SMCEQ   ,                                                   & ! IN : Vegetation/Soil characteristics
+            T_ML    , P_ML    , PSFC    , U_ML    , V_ML    , Q_ML    , & ! IN : Forcing
+            QC      , SWDN    , LWDN    ,                               & ! IN : Forcing
+        PRCPCONV, PRCPNONC, PRCPSHCV, PRCPSNOW, PRCPGRPL, PRCPHAIL, & ! IN : Forcing
+            TBOT    , CO2PP   , O2PP    , FOLN    , FICEOLD , Z_ML    , & ! IN : Forcing
+            ALBOLD  , SNEQVO  ,                                         & ! IN/OUT :
+            STC     , SMH2O   , SMC     , TAH     , EAH     , FWET    , & ! IN/OUT :
+            CANLIQ  , CANICE  , TV      , TG      , QSFC1D  , QSNOW   , & ! IN/OUT :
+            ISNOW   , ZSNSO   , SNDPTH  , SWE     , SNICE   , SNLIQ   , & ! IN/OUT :
+            ZWT     , WA      , WT      , WSLAKE  , LFMASS  , RTMASS  , & ! IN/OUT :
+            STMASS  , WOOD    , STBLCP  , FASTCP  , PLAI    , PSAI    , & ! IN/OUT :
+            CM      , CH      , TAUSS   ,                               & ! IN/OUT :
+            GRAIN   , GDD     , PGS     ,                               & ! IN/OUT
+            SMCWTD  ,DEEPRECH , RECH    ,                               & ! IN/OUT : Added by Aaron A.
+            GECROS1D,                                                   & ! IN/OUT :
+            Z0WRF   ,                                                   &
+            FSA     , FSR     , FIRA    , FSH     , SSOIL   , FCEV    , & ! OUT :
+            FGEV    , FCTR    , ECAN    , ETRAN   , ESOIL   , TRAD    , & ! OUT :
+            TGB     , TGV     , T2MV    , T2MB    , Q2MV    , Q2MB    , & ! OUT :
+            RUNSF   , RUNSB   , APAR    , PSN     , SAV     , SAG     , & ! OUT : !changed by Aaron A.
+            FSNO    , NEE     , GPP     , NPP     , FVEGMP  , SALB    , & ! OUT :
+            QSNBOT  , PONDING , PONDING1, PONDING2, RSSUN   , RSSHA   , & ! OUT :
+            ALBSND  , ALBSNI  ,                                         & ! OUT :
+            BGAP    , WGAP    , CHV     , CHB     , EMISSI  ,           & ! OUT :
+            SHG     , SHC     , SHB     , EVG     , EVB     , GHV     , & ! OUT :
+        GHB     , IRG     , IRC     , IRB     , TR      , EVC     , & ! OUT :
+        CHLEAF  , CHUC    , CHV2    , CHB2    , FPICE   , PAHV    , &
+            PAHG    , PAHB    , PAH     , LAISUN  , LAISHA  , RB        &
+#ifdef WRF_HYDRO
+            , sfcheadrt(i,j)                               &
+#endif
+            )            ! OUT :
+
+            QFX(I,J) = ECAN + ESOIL + ETRAN
+            LH       (I,J)                = FCEV + FGEV + FCTR
+
+   ENDIF ! glacial split ends
+
+#ifdef WRF_HYDRO
+!AD_CHANGE: Glacier cells can produce small negative subsurface runoff for mass balance.
+!           This will crash channel routing, so only pass along positive runoff.
+            soldrain(i,j) = max(RUNSB*dt, 0.)        !mm , underground runoff
+            INFXSRT(i,j) = RUNSF*dt        !mm , surface runoff
+#endif
+!THESE ARE MOVING FROM 1D TO 2D DATA SETS!!!!
+! INPUT/OUTPUT
+
+             TSK      (I,J)                = TRAD
+             HFX      (I,J)                = FSH
+             GRDFLX   (I,J)                = SSOIL
+         SMSTAV   (I,J)                = 0.0  ! [maintained as Noah consistency]
+             SMSTOT   (I,J)                = 0.0  ! [maintained as Noah consistency]
+             SFCRUNOFF(I,J)                = SFCRUNOFF(I,J) + RUNSF * DT
+             UDRUNOFF (I,J)                = UDRUNOFF(I,J)  + RUNSB * DT
+             IF ( SALB > -999 ) THEN
+                ALBEDO(I,J)                = SALB
+             ENDIF
+             SNOWC    (I,J)                = FSNO
+
+
+             SMOIS    (I,      1:NSOIL,J)  = SMC   (      1:NSOIL)
+             SH2O     (I,      1:NSOIL,J)  = SMH2O (      1:NSOIL)
+             TSLB     (I,      1:NSOIL,J)  = STC   (      1:NSOIL)
+             SNOW     (I,J)                = SWE
+             SNOWH    (I,J)                = SNDPTH
+             CANWAT   (I,J)                = CANLIQ + CANICE
+             ACSNOW   (I,J)                = ACSNOW(I,J) +  PRECIP_IN(I,J) * FPICE
+             ACSNOM   (I,J)                = ACSNOM(I,J) + QSNBOT*DT + PONDING + PONDING1 + PONDING2
+             EMISS    (I,J)                = EMISSI
+             QSFC     (I,J)                = QSFC1D
+
+             ISNOWXY  (I,J)                = ISNOW
+             TVXY     (I,J)                = TV
+             TGXY     (I,J)                = TG
+             CANLIQXY (I,J)                = CANLIQ
+             CANICEXY (I,J)                = CANICE
+             EAHXY    (I,J)                = EAH
+             TAHXY    (I,J)                = TAH
+             CMXY     (I,J)                = CM
+             CHXY     (I,J)                = CH
+             FWETXY   (I,J)                = FWET
+             SNEQVOXY (I,J)                = SNEQVO
+             ALBOLDXY (I,J)                = ALBOLD
+             QSNOWXY  (I,J)                = QSNOW
+             WSLAKEXY (I,J)                = WSLAKE
+             ZWTXY    (I,J)                = ZWT
+             WAXY     (I,J)                = WA
+             WTXY     (I,J)                = WT
+             TSNOXY   (I,-NSNOW+1:    0,J) = STC   (-NSNOW+1:    0)
+             ZSNSOXY  (I,-NSNOW+1:NSOIL,J) = ZSNSO (-NSNOW+1:NSOIL)
+             SNICEXY  (I,-NSNOW+1:    0,J) = SNICE (-NSNOW+1:    0)
+             SNLIQXY  (I,-NSNOW+1:    0,J) = SNLIQ (-NSNOW+1:    0)
+             LFMASSXY (I,J)                = LFMASS
+             RTMASSXY (I,J)                = RTMASS
+             STMASSXY (I,J)                = STMASS
+             WOODXY   (I,J)                = WOOD
+             STBLCPXY (I,J)                = STBLCP
+             FASTCPXY (I,J)                = FASTCP
+             XLAIXY   (I,J)                = PLAI
+             XSAIXY   (I,J)                = PSAI
+             TAUSSXY  (I,J)                = TAUSS
+
+! OUTPUT
+
+             Z0       (I,J)                = Z0WRF
+             ZNT      (I,J)                = Z0WRF
+             T2MVXY   (I,J)                = T2MV
+             T2MBXY   (I,J)                = T2MB
+             Q2MVXY   (I,J)                = Q2MV/(1.0 - Q2MV)  ! specific humidity to mixing ratio
+             Q2MBXY   (I,J)                = Q2MB/(1.0 - Q2MB)  ! consistent with registry def of Q2
+             TRADXY   (I,J)                = TRAD
+             NEEXY    (I,J)                = NEE
+             GPPXY    (I,J)                = GPP
+             NPPXY    (I,J)                = NPP
+             FVEGXY   (I,J)                = FVEGMP
+             RUNSFXY  (I,J)                = RUNSF
+             RUNSBXY  (I,J)                = RUNSB
+             ECANXY   (I,J)                = ECAN
+             EDIRXY   (I,J)                = ESOIL
+             ETRANXY  (I,J)                = ETRAN
+             FSAXY    (I,J)                = FSA
+             FIRAXY   (I,J)                = FIRA
+             APARXY   (I,J)                = APAR
+             PSNXY    (I,J)                = PSN
+             SAVXY    (I,J)                = SAV
+             SAGXY    (I,J)                = SAG
+             RSSUNXY  (I,J)                = RSSUN
+             RSSHAXY  (I,J)                = RSSHA
+             LAISUN                        = MAX(LAISUN, 0.0)
+             LAISHA                        = MAX(LAISHA, 0.0)
+             RB                            = MAX(RB, 0.0)
+! New Calculation of total Canopy/Stomatal Conductance Based on Bonan et al. (2011)
+! -- Inverse of Canopy Resistance (below)
+             IF(RSSUN .le. 0.0 .or. RSSHA .le. 0.0 .or. LAISUN .eq. 0.0 .or. LAISHA .eq. 0.0) THEN
+                RS    (I,J)                = 0.0
+             ELSE
+                RS    (I,J)                = ((1.0/(RSSUN+RB)*LAISUN) + ((1.0/(RSSHA+RB))*LAISHA))
+                RS    (I,J)                = 1.0/RS(I,J) !Resistance
+             ENDIF
+             BGAPXY   (I,J)                = BGAP
+             WGAPXY   (I,J)                = WGAP
+             TGVXY    (I,J)                = TGV
+             TGBXY    (I,J)                = TGB
+             CHVXY    (I,J)                = CHV
+             CHBXY    (I,J)                = CHB
+             IRCXY    (I,J)                = IRC
+             IRGXY    (I,J)                = IRG
+             SHCXY    (I,J)                = SHC
+             SHGXY    (I,J)                = SHG
+             EVGXY    (I,J)                = EVG
+             GHVXY    (I,J)                = GHV
+             IRBXY    (I,J)                = IRB
+             SHBXY    (I,J)                = SHB
+             EVBXY    (I,J)                = EVB
+             GHBXY    (I,J)                = GHB
+             TRXY     (I,J)                = TR
+             EVCXY    (I,J)                = EVC
+             CHLEAFXY (I,J)                = CHLEAF
+             CHUCXY   (I,J)                = CHUC
+             CHV2XY   (I,J)                = CHV2
+             CHB2XY   (I,J)                = CHB2
+             RECHXY   (I,J)                = RECHXY(I,J) + RECH*1.E3 !RECHARGE TO THE WATER TABLE
+             DEEPRECHXY(I,J)               = DEEPRECHXY(I,J) + DEEPRECH
+             SMCWTDXY(I,J)                 = SMCWTD
+
+             GRAINXY  (I,J) = GRAIN !GRAIN XING
+             GDDXY    (I,J) = GDD   !XING
+         PGSXY    (I,J) = PGS
+
+!END OF THE BASIC NOAHMP CALL!
+
+!-----------------------------------------------------------------------
+!BEGIN URBAN MODEL
+!-----------------------------------------------------------------------
+
+IF (SF_URBAN_PHYSICS == 1) THEN
+
+
+    IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LOW_DENSITY_RESIDENTIAL_TABLE .or. &
+      IVGTYP(I,J) == HIGH_DENSITY_RESIDENTIAL_TABLE .or. IVGTYP(I,J) == HIGH_INTENSITY_INDUSTRIAL_TABLE ) THEN
+
+
+        !  UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
+        !  this need to be changed in the mosaic danli
+
+
+            IF(IVGTYP(I,J)==ISURBAN_TABLE) UTYPE_URB=2
+            IF(IVGTYP(I,J)==LOW_DENSITY_RESIDENTIAL_TABLE) UTYPE_URB=1
+            IF(IVGTYP(I,J)==HIGH_DENSITY_RESIDENTIAL_TABLE) UTYPE_URB=2
+            IF(IVGTYP(I,J)==HIGH_INTENSITY_INDUSTRIAL_TABLE) UTYPE_URB=3
+
+        !we also need to correctly allocate the fractional urban type
+
+        FRC_URB2D(I,J) = FRC_URB_TBL(UTYPE_URB)
+
+
+
+    TA_URB    = T3D(I,1,J)                                ! [K]
+    QA_URB    = QV3D(I,1,J)/(1.0+QV3D(I,1,J))             ! [kg/kg]
+    UA_URB    = SQRT(U_PHY(I,1,J)**2.+V_PHY(I,1,J)**2.)
+    U1_URB    = U_PHY(I,1,J)
+    V1_URB    = V_PHY(I,1,J)
+    IF(UA_URB < 1.) UA_URB=1.                             ! [m/s]
+    SSG_URB   = SWDOWN(I,J)                               ! [W/m/m]
+    SSGD_URB  = 0.8*SWDOWN(I,J)                           ! [W/m/m]
+    SSGQ_URB  = SSG_URB-SSGD_URB                          ! [W/m/m]
+    LLG_URB   = GLW(I,J)                                  ! [W/m/m]
+    RAIN_URB  = PRECIP_IN(I,J)                               ! [mm]
+    RHOO_URB  = (P8W3D(I,KTS+1,J)+P8W3D(I,KTS,J))*0.5 / (287.04 * TA_URB * (1.0+ 0.61 * QA_URB)) ![kg/m/m/m]
+    ZA_URB    = 0.5*DZ8W(I,1,J)                           ! [m]
+    DELT_URB  = DT                                        ! [sec]
+    XLAT_URB  = XLAT(I,J)                           ! [deg]
+    COSZ_URB  = COSZIN(I,J)
+    OMG_URB   = OMG_URB2D(I,J)
+    ZNT_URB   = ZNT(I,J)
+
+    LSOLAR_URB = .FALSE.
+
+
+    !We need to move from 3D mosaid variables to 2D data sets
+
+    TR_URB2D(I,J) = TR_URB2D_mosaic(I,mosaic_i,J)
+    TB_URB2D(I,J) = TB_URB2D_mosaic(I,mosaic_i,J)
+    TG_URB2D(I,J) = TG_URB2D_mosaic(I,mosaic_i,J)
+    TC_URB2D(I,J) = TC_URB2D_mosaic(I,mosaic_i,J)
+    QC_URB2D(I,J) = QC_URB2D_mosaic(I,mosaic_i,J)
+    UC_URB2D(I,J) = QC_URB2D_mosaic(I,mosaic_i,J)
+    TS_URB2D(I,J) = TS_URB2D_mosaic(I,mosaic_i,J)
+
+    DO LAYER = 1,num_roof_layers
+        TRL_URB3D(I,LAYER,J) = TRL_URB3D_mosaic(I,(mosaic_i - 1)*num_roof_layers+LAYER,J)
+    END DO
+    DO LAYER = 1,num_wall_layers
+        TBL_URB3D(I,LAYER,J) = TBL_URB3D_mosaic(I,(mosaic_i - 1)*num_wall_layers+LAYER,J)
+    END DO
+    DO LAYER = 1,num_road_layers
+        TGL_URB3D(I,LAYER,J) = TGL_URB3D_mosaic(I,(mosaic_i - 1)*num_road_layers+LAYER,J)
+    END DO
+
+    ! Mosaic values from 2D to 1D
+
+    TR_URB = TR_URB2D(I,J)
+    TB_URB = TB_URB2D(I,J)
+    TG_URB = TG_URB2D(I,J)
+    TC_URB = TC_URB2D(I,J)
+    QC_URB = QC_URB2D(I,J)
+    UC_URB = UC_URB2D(I,J)
+
+    TGR_URB     = TGR_URB2D(I,J)
+    CMCR_URB    = CMCR_URB2D(I,J)
+    FLXHUMR_URB = FLXHUMR_URB2D(I,J)
+    FLXHUMB_URB = FLXHUMB_URB2D(I,J)
+    FLXHUMG_URB = FLXHUMG_URB2D(I,J)
+    DRELR_URB   = DRELR_URB2D(I,J)
+    DRELB_URB   = DRELB_URB2D(I,J)
+    DRELG_URB   = DRELG_URB2D(I,J)
+
+    DO K = 1,num_roof_layers
+      TRL_URB(K) = TRL_URB3D(I,K,J)
+      SMR_URB(K) = SMR_URB3D(I,K,J)
+      TGRL_URB(K)= TGRL_URB3D(I,K,J)
+    END DO
+
+    DO K = 1,num_wall_layers
+      TBL_URB(K) = TBL_URB3D(I,K,J)
+    END DO
+
+    DO K = 1,num_road_layers
+      TGL_URB(K) = TGL_URB3D(I,K,J)
+    END DO
+
+    XXXR_URB = XXXR_URB2D(I,J)
+    XXXB_URB = XXXB_URB2D(I,J)
+    XXXG_URB = XXXG_URB2D(I,J)
+    XXXC_URB = XXXC_URB2D(I,J)
+
+! Limits to avoid dividing by small number
+    IF (CHS(I,J) < 1.0E-02) THEN
+      CHS(I,J)  = 1.0E-02
+    ENDIF
+    IF (CHS2(I,J) < 1.0E-02) THEN
+      CHS2(I,J)  = 1.0E-02
+    ENDIF
+    IF (CQS2(I,J) < 1.0E-02) THEN
+      CQS2(I,J)  = 1.0E-02
+    ENDIF
+
+    CHS_URB  = CHS(I,J)
+    CHS2(I,J)= CQS2(I,J)
+    CHS2_URB = CHS2(I,J)
+    IF (PRESENT(CMR_SFCDIF)) THEN
+      CMR_URB = CMR_SFCDIF(I,J)
+      CHR_URB = CHR_SFCDIF(I,J)
+      CMGR_URB = CMGR_SFCDIF(I,J)
+      CHGR_URB = CHGR_SFCDIF(I,J)
+      CMC_URB = CMC_SFCDIF(I,J)
+      CHC_URB = CHC_SFCDIF(I,J)
+    ENDIF
+
+! NUDAPT for SLUCM
+
+    MH_URB   = MH_URB2D(I,J)
+    STDH_URB = STDH_URB2D(I,J)
+    LP_URB   = LP_URB2D(I,J)
+    HGT_URB  = HGT_URB2D(I,J)
+    LF_URB   = 0.0
+    DO K = 1,4
+      LF_URB(K) = LF_URB2D(I,K,J)
+    ENDDO
+    FRC_URB  = FRC_URB2D(I,J)
+    LB_URB   = LB_URB2D(I,J)
+
+IF (julday.eq.198) THEN
+WRITE(*,*) ' I = ' , I , 'J = ', J, 'TBP = ', TB_URB, 'TGP = ', TG_URB, 'MOSAIC CAT', mosaic_i, 'VEG TYPE = ', IVGTYP(I,J)
+ENDIF
+! Call urban
+
+    CALL cal_mon_day(julday,julyr,jmonth,jday)
+    CALL urban(LSOLAR_URB,                                                             & ! I
+          num_roof_layers, num_wall_layers, num_road_layers,                           & ! C
+                DZR,        DZB,        DZG, & ! C
+          UTYPE_URB,     TA_URB,     QA_URB,     UA_URB,   U1_URB,  V1_URB, SSG_URB,   & ! I
+           SSGD_URB,   SSGQ_URB,    LLG_URB,   RAIN_URB, RHOO_URB,                     & ! I
+             ZA_URB, DECLIN_URB,   COSZ_URB,    OMG_URB,                               & ! I
+           XLAT_URB,   DELT_URB,    ZNT_URB,                                           & ! I
+            CHS_URB,   CHS2_URB,                                                       & ! I
+             TR_URB,     TB_URB,     TG_URB,     TC_URB,   QC_URB,   UC_URB,           & ! H
+            TRL_URB,    TBL_URB,    TGL_URB,                                           & ! H
+           XXXR_URB,   XXXB_URB,   XXXG_URB,   XXXC_URB,                               & ! H
+             TS_URB,     QS_URB,     SH_URB,     LH_URB, LH_KINEMATIC_URB,             & ! O
+             SW_URB,    ALB_URB,     LW_URB,      G_URB,   RN_URB, PSIM_URB, PSIH_URB, & ! O
+         GZ1OZ0_URB,                                                                   & !O
+            CMR_URB,    CHR_URB,    CMC_URB,    CHC_URB,                               &
+            U10_URB,    V10_URB,    TH2_URB,     Q2_URB,                               & ! O
+            UST_URB,     mh_urb,   stdh_urb,     lf_urb,   lp_urb,                     & ! 0
+            hgt_urb,    frc_urb,     lb_urb,      check, CMCR_URB,TGR_URB,             & ! H
+           TGRL_URB,    SMR_URB,   CMGR_URB,   CHGR_URB,   jmonth,                     & ! H
+          DRELR_URB,  DRELB_URB,                                                       & ! H
+          DRELG_URB,FLXHUMR_URB,FLXHUMB_URB,FLXHUMG_URB )
+
+TS_URB2D(I,J) = TS_URB
+
+    ALBEDO(I,J)   = FRC_URB2D(I,J) * ALB_URB + (1-FRC_URB2D(I,J)) * ALBEDO(I,J)        ![-]
+    HFX(I,J)      = FRC_URB2D(I,J) * SH_URB  + (1-FRC_URB2D(I,J)) * HFX(I,J)           ![W/m/m]
+    QFX(I,J)      = FRC_URB2D(I,J) * LH_KINEMATIC_URB &
+                       + (1-FRC_URB2D(I,J))* QFX(I,J)                                  ![kg/m/m/s]
+    LH(I,J)       = FRC_URB2D(I,J) * LH_URB  + (1-FRC_URB2D(I,J)) * LH(I,J)            ![W/m/m]
+    GRDFLX(I,J)   = FRC_URB2D(I,J) * (G_URB) + (1-FRC_URB2D(I,J)) * GRDFLX(I,J)        ![W/m/m]
+    TSK(I,J)      = FRC_URB2D(I,J) * TS_URB  + (1-FRC_URB2D(I,J)) * TSK(I,J)           ![K]
+    !Q1            = QSFC(I,J)/(1.0+QSFC(I,J))
+    !Q1            = FRC_URB2D(I,J) * QS_URB  + (1-FRC_URB2D(I,J)) * Q1                 ![-]
+
+! Convert QSFC back to mixing ratio
+
+!    QSFC(I,J)     = Q1/(1.0-Q1)
+    QSFC(I,J)     = FRC_URB2D(I,J)*QS_URB+(1-FRC_URB2D(I,J))*QSFC(I,J)               !!   QSFC(I,J)=QSFC1D
+    UST(I,J)      = FRC_URB2D(I,J) * UST_URB + (1-FRC_URB2D(I,J)) * UST(I,J)     ![m/s]
+
+
+! Renew Urban State Variables
+
+    TR_URB2D(I,J) = TR_URB
+    TB_URB2D(I,J) = TB_URB
+    TG_URB2D(I,J) = TG_URB
+    TC_URB2D(I,J) = TC_URB
+    QC_URB2D(I,J) = QC_URB
+    UC_URB2D(I,J) = UC_URB
+
+    TGR_URB2D(I,J)     = TGR_URB
+    CMCR_URB2D(I,J)    = CMCR_URB
+    FLXHUMR_URB2D(I,J) = FLXHUMR_URB
+    FLXHUMB_URB2D(I,J) = FLXHUMB_URB
+    FLXHUMG_URB2D(I,J) = FLXHUMG_URB
+    DRELR_URB2D(I,J)   = DRELR_URB
+    DRELB_URB2D(I,J)   = DRELB_URB
+    DRELG_URB2D(I,J)   = DRELG_URB
+
+    DO K = 1,num_roof_layers
+      TRL_URB3D(I,K,J) = TRL_URB(K)
+      SMR_URB3D(I,K,J) = SMR_URB(K)
+      TGRL_URB3D(I,K,J)= TGRL_URB(K)
+    END DO
+    DO K = 1,num_wall_layers
+      TBL_URB3D(I,K,J) = TBL_URB(K)
+    END DO
+    DO K = 1,num_road_layers
+      TGL_URB3D(I,K,J) = TGL_URB(K)
+    END DO
+
+    XXXR_URB2D(I,J)    = XXXR_URB
+    XXXB_URB2D(I,J)    = XXXB_URB
+    XXXG_URB2D(I,J)    = XXXG_URB
+    XXXC_URB2D(I,J)    = XXXC_URB
+
+    SH_URB2D(I,J)      = SH_URB
+    LH_URB2D(I,J)      = LH_URB
+    G_URB2D(I,J)       = G_URB
+    RN_URB2D(I,J)      = RN_URB
+    PSIM_URB2D(I,J)    = PSIM_URB
+    PSIH_URB2D(I,J)    = PSIH_URB
+    GZ1OZ0_URB2D(I,J)  = GZ1OZ0_URB
+    U10_URB2D(I,J)     = U10_URB
+    V10_URB2D(I,J)     = V10_URB
+    TH2_URB2D(I,J)     = TH2_URB
+    Q2_URB2D(I,J)      = Q2_URB
+    UST_URB2D(I,J)     = UST_URB
+    AKMS_URB2D(I,J)    = KARMAN * UST_URB2D(I,J)/(GZ1OZ0_URB2D(I,J)-PSIM_URB2D(I,J))
+    IF (PRESENT(CMR_SFCDIF)) THEN
+      CMR_SFCDIF(I,J)  = CMR_URB
+      CHR_SFCDIF(I,J)  = CHR_URB
+      CMGR_SFCDIF(I,J) = CMGR_URB
+      CHGR_SFCDIF(I,J) = CHGR_URB
+      CMC_SFCDIF(I,J)  = CMC_URB
+      CHC_SFCDIF(I,J)  = CHC_URB
+    ENDIF
+
+
+    !We also need to reinstate the 2d to 3d variables for the next times step
+
+    TR_URB2D_mosaic(I,mosaic_i,J) = TR_URB2D(I,J)
+    TB_URB2D_mosaic(I,mosaic_i,J) = TB_URB2D(I,J)
+    TG_URB2D_mosaic(I,mosaic_i,J) = TG_URB2D(I,J)
+    TC_URB2D_mosaic(I,mosaic_i,J) = TC_URB2D(I,J)
+    QC_URB2D_mosaic(I,mosaic_i,J) = QC_URB2D(I,J)
+    UC_URB2D_mosaic(I,mosaic_i,J) = UC_URB2D(I,J)
+    TS_URB2D_mosaic(I,mosaic_i,J) = TS_URB2D(I,J)
+    TS_RUL2D_mosaic(I,mosaic_i,J) = TSK(I,J)
+
+        DO LAYER = 1,num_roof_layers
+            TRL_URB3D_mosaic(I,(mosaic_i - 1)*num_roof_layers + LAYER, J) = TRL_URB3D(I,LAYER,J)
+        END DO
+        DO LAYER = 1,num_wall_layers
+            TBL_URB3D_mosaic(I,(mosaic_i - 1)*num_wall_layers + LAYER, J) = TBL_URB3D(I,LAYER,J)
+        END DO
+        DO LAYER = 1,num_road_layers
+            TGL_URB3D_mosaic(I,(mosaic_i - 1)*num_roof_layers + LAYER, J) = TGL_URB3D(I,LAYER,J)
+        END DO
+
+
+        SH_URB2D_mosaic(I,mosaic_i,J) = SH_URB2D(I,J)
+        LH_URB2D_mosaic(I,mosaic_i,J) = LH_URB2D(I,J)
+        G_URB2D_mosaic(I,mosaic_i,J) = G_URB2D(I,J)
+        RN_URB2D_mosaic(I,mosaic_i,J) = RN_URB2D(I,J)
+
+  ENDIF                                 ! urban land used type block
+
+ENDIF
+!-----------------------------------------------------------------------
+! Done with the NOAH-UCM MOSAIC based off of DAN LI Aaron A.
+!-----------------------------------------------------------------------
+    !we are now moving back from 2D data to 3D data
+
+    !IN/OUT with generic LSM equivielants
+    TSK_mosaic(I,mosaic_i,J) = TSK(I,J)
+    HFX_mosaic(I,mosaic_i,J) = HFX(I,J)
+    QFX_mosaic(I,mosaic_i,J) = QFX(I,J)
+    LH_mosaic(I,mosaic_i,J) = LH(I,J)
+    TMN_mosaic(I,mosaic_i,J) = TMN(I,J)
+    GRDFLX_mosaic(I,mosaic_i,J) = GRDFLX(I,J)
+    SFCRUNOFF_mosaic(I,mosaic_i,J) = SFCRUNOFF(I,J)
+    UDRUNOFF_mosaic(I,mosaic_i,J) = UDRUNOFF(I,J)
+    ALBEDO_mosaic(I,mosaic_i,J) = ALBEDO(I,J)
+    SNOWC_mosaic(I,mosaic_i,J) = SNOWC(I,J)
+    SNOW_mosaic(I,mosaic_i,J) = SNOW(I,J)
+    SNOWH_mosaic(I,mosaic_i,J) = SNOWH(I,J)
+    CANWAT_mosaic(I,mosaic_i,J) = CANWAT(I,J)
+    ACSNOM_mosaic(I,mosaic_i,J) = ACSNOM(I,J)
+    ACSNOW_mosaic(I,mosaic_i,J) = ACSNOW(I,J)
+    EMISS_mosaic(I,mosaic_i,J) = EMISS(I,J)
+    QSFC_mosaic(I,mosaic_i,J) = QSFC(I,J)
+    Z0_mosaic(I,mosaic_i,J) = Z0(I,J)
+    ZNT_mosaic(I,mosaic_i,J) = ZNT(I,J)
+    rs_mosaic(I,mosaic_i,J) = RS(I,J)
+
+    !These are the soil variables
+            DO LAYER=1,NSOIL
+
+                SMOIS_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = SMOIS(I,LAYER,J)
+                SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = SH2O(I,LAYER,J)
+                TSLB_mosaic(I,NSOIL*(mosaic_i - 1) + LAYER,J) = TSLB(I,LAYER,J)
+                SMOISEQ_mosaic(I,NSOIL*(mosaic_i - 1) + LAYER,J) = SMOISEQ(I,LAYER,J)
+
+            ENDDO
+
+
+    !IN/OUT with no GENERIC LSM
+
+    isnowxy_mosaic(I,mosaic_i,J) = ISNOWXY(I,J)
+    tvxy_mosaic(I,mosaic_i,J) = TVXY(I,J)
+    tgxy_mosaic(I,mosaic_i,J) = TGXY(I,J)
+    canicexy_mosaic(I,mosaic_i,J) = CANICEXY(I,J)
+    canliqxy_mosaic(I,mosaic_i,J) = CANLIQXY(I,J)
+    eahxy_mosaic(I,mosaic_i,J) = EAHXY(I,J)
+    tahxy_mosaic(I,mosaic_i,J) = TAHXY(I,J)
+    cmxy_mosaic(I,mosaic_i,J) = CMXY(I,J)
+    chxy_mosaic(I,mosaic_i,J) = CHXY(I,J)
+    fwetxy_mosaic(I,mosaic_i,J) = FWETXY(I,J)
+    sneqvoxy_mosaic(I,mosaic_i,J) = SNEQVOXY(I,J)
+    alboldxy_mosaic(I,mosaic_i,J) = ALBOLDXY(I,J)
+    qsnowxy_mosaic(I,mosaic_i,J) = QSNOWXY(I,J)
+    wslakexy_mosaic(I,mosaic_i,J) = WSLAKEXY(I,J)
+    zwtxy_mosaic(I,mosaic_i,J) = ZWTXY(I,J)
+    waxy_mosaic(I,mosaic_i,J) = WAXY(I,J)
+    wtxy_mosaic(I,mosaic_i,J) = WTXY(I,J)
+    lfmassxy_mosaic(I,mosaic_i,J) = LFMASSXY(I,J)
+    rtmassxy_mosaic(I,mosaic_i,J) = RTMASSXY(I,J)
+    stmassxy_mosaic(I,mosaic_i,J) = STMASSXY(I,J)
+    woodxy_mosaic(I,mosaic_i,J) = WOODXY(I,J)
+    grainxy_mosaic(I,mosaic_i,J) = GRAINXY(I,J)
+    gddxy_mosaic(I,mosaic_i,J) = GDDXY(I,J)
+    pgsxy_mosaic(I,mosaic_i,J) = PGSXY(I,J)
+    stblcpxy_mosaic(I,mosaic_i,J) = STBLCPXY(I,J)
+    fastcpxy_mosaic(I,mosaic_i,J) = FASTCPXY(I,J)
+    xlai_mosaic(I,mosaic_i,J) = XLAIXY(I,J)
+    xsaixy_mosaic(I,mosaic_i,J) = XSAIXY(I,J)
+    taussxy_mosaic(I,mosaic_i,J) = TAUSSXY(I,J)
+    smcwtdxy_mosaic(I,mosaic_i,J) = SMCWTDXY(I,J)
+    deeprechxy_mosaic(I,mosaic_i,J) = DEEPRECHXY(I,J)
+    rechxy_mosaic(I,mosaic_i,J) = RECHXY(I,J)
+
+    !OUT ONLY
+
+    t2mvxy_mosaic(I,mosaic_i,J) = T2MVXY(I,J)
+    t2mbxy_mosaic(I,mosaic_i,J) = T2MBXY(I,J)
+    q2mvxy_mosaic(I,mosaic_i,J) = Q2MVXY(I,J)
+    q2mbxy_mosaic(I,mosaic_i,J) = Q2MBXY(I,J)
+    tradxy_mosaic(I,mosaic_i,J) = TRADXY(I,J)
+    neexy_mosaic(I,mosaic_i,J) = NEEXY(I,J)
+    gppxy_mosaic(I,mosaic_i,J) = GPPXY(I,J)
+    nppxy_mosaic(I,mosaic_i,J) = NPPXY(I,J)
+    fvegxy_mosaic(I,mosaic_i,J) = FVEGXY(I,J)
+    runsfxy_mosaic(I,mosaic_i,J) = RUNSFXY(I,J)
+    runsbxy_mosaic(I,mosaic_i,J) = RUNSBXY(I,J)
+    ecanxy_mosaic(I,mosaic_i,J) = ECANXY(I,J)
+    edirxy_mosaic(I,mosaic_i,J) = EDIRXY(I,J)
+    etranxy_mosaic(I,mosaic_i,J) = ETRANXY(I,J)
+    fsaxy_mosaic(I,mosaic_i,J) = FSAXY(I,J)
+    firaxy_mosaic(I,mosaic_i,J) = FIRAXY(I,J)
+    aparxy_mosaic(I,mosaic_i,J) = APARXY(I,J)
+    psnxy_mosaic(I,mosaic_i,J) = PSNXY(I,J)
+    savxy_mosaic(I,mosaic_i,J) = SAVXY(I,J)
+    sagxy_mosaic(I,mosaic_i,J) = SAGXY(I,J)
+    rssunxy_mosaic(I,mosaic_i,J) = RSSUNXY(I,J)
+    rsshaxy_mosaic(I,mosaic_i,J) = RSSHAXY(I,J)
+    bgapxy_mosaic(I,mosaic_i,J) = BGAPXY(I,J)
+    wgapxy_mosaic(I,mosaic_i,J) = WGAPXY(I,J)
+    tgvxy_mosaic(I,mosaic_i,J) = TGVXY(I,J)
+    tgbxy_mosaic(I,mosaic_i,J) = TGBXY(I,J)
+    chvxy_mosaic(I,mosaic_i,J) = CHVXY(I,J)
+    chbxy_mosaic(I,mosaic_i,J) = CHBXY(I,J)
+    shgxy_mosaic(I,mosaic_i,J) = SHGXY(I,J)
+    shcxy_mosaic(I,mosaic_i,J) = SHCXY(I,J)
+    shbxy_mosaic(I,mosaic_i,J) = SHBXY(I,J)
+    evgxy_mosaic(I,mosaic_i,J) = EVGXY(I,J)
+    evbxy_mosaic(I,mosaic_i,J) = EVBXY(I,J)
+    ghvxy_mosaic(I,mosaic_i,J) = GHVXY(I,J)
+    ghbxy_mosaic(I,mosaic_i,J) = GHBXY(I,J)
+    irgxy_mosaic(I,mosaic_i,J) = IRGXY(I,J)
+    ircxy_mosaic(I,mosaic_i,J) = IRCXY(I,J)
+    irbxy_mosaic(I,mosaic_i,J) = IRBXY(I,J)
+    trxy_mosaic(I,mosaic_i,J) = TRXY(I,J)
+    evcxy_mosaic(I,mosaic_i,J) = EVCXY(I,J)
+    chleafxy_mosaic(I,mosaic_i,J) = CHLEAFXY(I,J)
+    chucxy_mosaic(I,mosaic_i,J) = CHUCXY(I,J)
+    chv2xy_mosaic(I,mosaic_i,J) = CHV2XY(I,J)
+    chb2xy_mosaic(I,mosaic_i,J) = CHB2XY(I,J)
+
+
+    !SNOW VARIABLES
+
+        DO LAYER=-2,0
+            tsnoxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = TSNOXY(I,LAYER,J)
+            snicexy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNICEXY(I,LAYER,J)
+            snliqxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNLIQXY(I,LAYER,J)
+        ENDDO
+
+        DO LAYER=-2,NSOIL
+            zsnsoxy_mosaic(I,7*(mosaic_i - 1) + LAYER, J) = ZSNSOXY(I,LAYER,J)
+        ENDDO
+
+
+    !-------------------------------------------------------------------
+    !We now do Grid Averaging!!!!
+    !-------------------------------------------------------------------
+
+    FAREA = landusef2(I,mosaic_i,J) !This logical option is going to be used multiply
+
+    TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
+
+    HFX_mosaic_avg(I,J) = HFX_mosaic_avg(I,J) + HFX_mosaic(I,mosaic_i,J)*FAREA
+    QFX_mosaic_avg(I,J) = QFX_mosaic_avg(I,J) + QFX_mosaic(I,mosaic_i,J)*FAREA
+    LH_mosaic_avg(I,J) =  LH_mosaic_avg(I,J)  + LH_mosaic(I,mosaic_i,J)*FAREA
+    TMN_mosaic_avg(I,J) = TMN_mosaic_avg(I,J) + TMN_mosaic(I,mosaic_i,J)*FAREA
+    GRDFLX_mosaic_avg(I,J) = GRDFLX_mosaic_avg(I,J) + GRDFLX_mosaic(I,mosaic_i,J)*FAREA
+    SFCRUNOFF_mosaic_sum(I,J) = SFCRUNOFF_mosaic_sum(I,J) + SFCRUNOFF_mosaic(I,mosaic_i,J)*FAREA
+    UDRUNOFF_mosaic_sum(I,J) = UDRUNOFF_mosaic_sum(I,J) + UDRUNOFF_mosaic(I,mosaic_i,J)*FAREA
+    ALBEDO_mosaic_avg(I,J) = ALBEDO_mosaic_avg(I,J) + ALBEDO_mosaic(I,mosaic_i,J)*FAREA
+    SNOWC_mosaic_avg(I,J) = SNOWC_mosaic_avg(I,J) + SNOWC_mosaic(I,mosaic_i,J)*FAREA
+    CANWAT_mosaic_avg(I,J) = CANWAT_mosaic_avg(I,J) + CANWAT_mosaic(I,mosaic_i,J)*FAREA
+    SNOW_mosaic_avg(I,J) = SNOW_mosaic_avg(I,J) + SNOW_mosaic(I,mosaic_i,J)*FAREA
+    SNOWH_mosaic_avg(I,J) = SNOWH_mosaic_avg(I,J) + SNOWH_mosaic(I,mosaic_i,J)*FAREA
+    ACSNOM_mosaic_avg(I,J) = ACSNOM_mosaic_avg(I,J) + ACSNOM_mosaic(I,mosaic_i,J)*FAREA
+    ACSNOW_mosaic_avg(I,J) = ACSNOW_mosaic_avg(I,J) +  ACSNOW_mosaic(I,mosaic_i,J)*FAREA
+    EMISS_mosaic_avg(I,J) = EMISS_mosaic_avg(I,J) + EMISS_mosaic(I,mosaic_i,J)*FAREA
+    QSFC_mosaic_avg(I,J) = QSFC_mosaic_avg(I,J) + QSFC_mosaic(I,mosaic_i,J)*FAREA
+    Z0_mosaic_avg(I,J) = Z0_mosaic_avg(I,J) + Z0_mosaic(I,mosaic_i,J)*FAREA
+    ZNT_mosaic_avg(I,J) = ZNT_mosaic_avg(I,J) + ZNT_mosaic(I,mosaic_i,J)*FAREA
+    rs_mosaic_avg(I,J) = rs_mosaic_avg(I,J) + rs_mosaic(I,mosaic_i,J)*FAREA
+
+    DO LAYER=1,NSOIL
+
+        TSLB_mosaic_avg(I,LAYER,J) = TSLB_mosaic_avg(I,LAYER,J) + TSLB_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
+        SMOIS_mosaic_avg(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J) + SMOIS_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
+        SH2O_mosaic_avg(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J) + SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
+        SMOISEQ_mosaic_avg(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J) + SMOISEQ_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
+
+    ENDDO
+
+    !IN OUT LSM NO LSM EQUIVELANTS
+    isnowxy_mosaic_avg(I,J) = isnowxy_mosaic_avg(I,J) + isnowxy_mosaic(I,mosaic_i,J) !not normalized by the area because it is an integer
+    tvxy_mosaic_avg(I,J) = tvxy_mosaic_avg(I,J) + tvxy_mosaic(I,mosaic_i,J)*FAREA
+    tgxy_mosaic_avg(I,J) = tgxy_mosaic_avg(I,J) + tgxy_mosaic(I,mosaic_i,J)*FAREA
+    canicexy_mosaic_avg(I,J) = canicexy_mosaic_avg(I,J) + canicexy_mosaic(I,mosaic_i,J)*FAREA
+    canliqxy_mosaic_avg(I,J) = canliqxy_mosaic_avg(I,J) + canliqxy_mosaic(I,mosaic_i,J)*FAREA
+    eahxy_mosaic_avg(I,J) = eahxy_mosaic_avg(I,J) + eahxy_mosaic(I,mosaic_i,J)*FAREA
+    tahxy_mosaic_avg(I,J) = tahxy_mosaic_avg(I,J) + tahxy_mosaic(I,mosaic_i,J)*FAREA
+    cmxy_mosaic_avg(I,J) = cmxy_mosaic_avg(I,J) + cmxy_mosaic(I,mosaic_i,J)*FAREA
+    chxy_mosaic_avg(I,J) = chxy_mosaic_avg(I,J) + chxy_mosaic(I,mosaic_i,J)*FAREA
+    fwetxy_mosaic_avg(I,J) = fwetxy_mosaic_avg(I,J) + fwetxy_mosaic(I,mosaic_i,J)*FAREA
+    sneqvoxy_mosaic_avg(I,J) = sneqvoxy_mosaic_avg(I,J) + sneqvoxy_mosaic(I,mosaic_i,J)*FAREA
+    alboldxy_mosaic_avg(I,J) = alboldxy_mosaic_avg(I,J) + alboldxy_mosaic(I,mosaic_i,J)*FAREA
+    qsnowxy_mosaic_avg(I,J) = qsnowxy_mosaic_avg(I,J) + qsnowxy_mosaic(I,mosaic_i,J)*FAREA
+    wslakexy_mosaic_avg(I,J) = wslakexy_mosaic_avg(I,J) + wslakexy_mosaic(I,mosaic_i,J)*FAREA
+    zwtxy_mosaic_avg(I,J) = zwtxy_mosaic_avg(I,J) + zwtxy_mosaic(I,mosaic_i,J)*FAREA
+    waxy_mosaic_avg(I,J) = waxy_mosaic_avg(I,J) + waxy_mosaic(I,mosaic_i,J)*FAREA
+    wtxy_mosaic_avg(I,J) = wtxy_mosaic_avg(I,J) + wtxy_mosaic(I,mosaic_i,J)*FAREA
+    lfmassxy_mosaic_avg(I,J) = lfmassxy_mosaic_avg(I,J) + lfmassxy_mosaic(I,mosaic_i,J)*FAREA
+    rtmassxy_mosaic_avg(I,J) = rtmassxy_mosaic_avg(I,J) + rtmassxy_mosaic(I,mosaic_i,J)*FAREA
+    stmassxy_mosaic_avg(I,J) = stmassxy_mosaic_avg(I,J) + stmassxy_mosaic(I,mosaic_i,J)*FAREA
+    woodxy_mosaic_avg(I,J) = woodxy_mosaic_avg(I,J) + woodxy_mosaic(I,mosaic_i,J)*FAREA
+    grainxy_mosaic_avg(I,J) = grainxy_mosaic_avg(I,J) + grainxy_mosaic(I,mosaic_i,J)*FAREA
+    gddxy_mosaic_avg(I,J) = gddxy_mosaic_avg(I,J) + gddxy_mosaic(I,mosaic_i,J)*FAREA
+    pgsxy_mosaic_avg(I,J) = pgsxy_mosaic_avg(I,J) + pgsxy_mosaic(I,mosaic_i,J)*FAREA
+    stblcpxy_mosaic_avg(I,J) = stblcpxy_mosaic_avg(I,J) + stblcpxy_mosaic(I,mosaic_i,J)*FAREA
+    fastcpxy_mosaic_avg(I,J) = fastcpxy_mosaic_avg(I,J) + fastcpxy_mosaic(I,mosaic_i,J)*FAREA
+    xsaixy_mosaic_avg(I,J) = xsaixy_mosaic_avg(I,J) + xsaixy_mosaic(I,mosaic_i,J)*FAREA
+    xlai_mosaic_avg(I,J) = xlai_mosaic_avg(I,J) + xlai_mosaic(I,mosaic_i,J)*FAREA
+    taussxy_mosaic_avg(I,J) = taussxy_mosaic_avg(I,J) + taussxy_mosaic(I,mosaic_i,J)*FAREA
+    rechxy_mosaic_avg(I,J) = rechxy_mosaic_avg(I,J) + rechxy_mosaic(I,mosaic_i,J)*FAREA
+    deeprechxy_mosaic_avg(I,J) = deeprechxy_mosaic_avg(I,J) + deeprechxy_mosaic(I,mosaic_i,J)*FAREA
+    smcwtdxy_mosaic_avg(I,J) = smcwtdxy_mosaic_avg(I,J) + smcwtdxy_mosaic(I,mosaic_i,J)*FAREA
+
+    !OUT LSM EQUIVELANTS
+
+    t2mvxy_mosaic_avg(I,J) = t2mvxy_mosaic_avg(I,J) + t2mvxy_mosaic(I,mosaic_i,J)*FAREA*fvegxy_mosaic(I,mosaic_i,J)
+    t2mbxy_mosaic_avg(I,J) = t2mbxy_mosaic_avg(I,J) + t2mbxy_mosaic(I,mosaic_i,J)*FAREA*(1-fvegxy_mosaic(I,mosaic_i,J))
+    q2mvxy_mosaic_avg(I,J) = q2mvxy_mosaic_avg(I,J) + q2mvxy_mosaic(I,mosaic_i,J)*FAREA
+    q2mbxy_mosaic_avg(I,J) = q2mbxy_mosaic_avg(I,J) + q2mbxy_mosaic(I,mosaic_i,J)*FAREA
+    tradxy_mosaic_avg(I,J) = tradxy_mosaic_avg(I,J) + tradxy_mosaic(I,mosaic_i,J)*FAREA
+    neexy_mosaic_avg(I,J) = neexy_mosaic_avg(I,J) + neexy_mosaic(I,mosaic_i,J)*FAREA
+    gppxy_mosaic_avg(I,J) = gppxy_mosaic_avg(I,J) + gppxy_mosaic(I,mosaic_i,J)*FAREA
+    nppxy_mosaic_avg(I,J) = nppxy_mosaic_avg(I,J) + nppxy_mosaic(I,mosaic_i,J)*FAREA
+    fvegxy_mosaic_avg(I,J) = fvegxy_mosaic_avg(I,J) + fvegxy_mosaic(I,mosaic_i,J)*FAREA
+    runsfxy_mosaic_avg(I,J) = runsfxy_mosaic_avg(I,J) + runsfxy_mosaic(I,mosaic_i,J)*FAREA
+    runsbxy_mosaic_avg(I,J) = runsbxy_mosaic_avg(I,J) + runsbxy_mosaic(I,mosaic_i,J)*FAREA
+    ecanxy_mosaic_avg(I,J) = ecanxy_mosaic_avg(I,J) + ecanxy_mosaic(I,mosaic_i,J)*FAREA
+    edirxy_mosaic_avg(I,J) = edirxy_mosaic_avg(I,J) + edirxy_mosaic(I,mosaic_i,J)*FAREA
+    etranxy_mosaic_avg(I,J) = etranxy_mosaic_avg(I,J) + etranxy_mosaic(I,mosaic_i,J)*FAREA
+    fsaxy_mosaic_avg(I,J) = fsaxy_mosaic_avg(I,J) + fsaxy_mosaic(I,mosaic_i,J)*FAREA
+    firaxy_mosaic_avg(I,J) = firaxy_mosaic_avg(I,J) + firaxy_mosaic(I,mosaic_i,J)*FAREA
+    aparxy_mosaic_avg(I,J) = aparxy_mosaic_avg(I,J) + aparxy_mosaic(I,mosaic_i,J)*FAREA
+    psnxy_mosaic_avg(I,J) = psnxy_mosaic_avg(I,J) + psnxy_mosaic(I,mosaic_i,J)*FAREA
+    savxy_mosaic_avg(I,J) = savxy_mosaic_avg(I,J) + savxy_mosaic(I,mosaic_i,J)*FAREA
+    sagxy_mosaic_avg(I,J) = sagxy_mosaic_avg(I,J) + sagxy_mosaic(I,mosaic_i,J)*FAREA
+    rssunxy_mosaic_avg(I,J) = rssunxy_mosaic_avg(I,J) + rssunxy_mosaic(I,mosaic_i,J)*FAREA
+    rsshaxy_mosaic_avg(I,J) = rsshaxy_mosaic_avg(I,J) + rsshaxy_mosaic(I,mosaic_i,J)*FAREA
+    bgapxy_mosaic_avg(I,J) = bgapxy_mosaic_avg(I,J) + bgapxy_mosaic(I,mosaic_i,J)*FAREA
+    wgapxy_mosaic_avg(I,J) = wgapxy_mosaic_avg(I,J) + wgapxy_mosaic(I,mosaic_i,J)*FAREA
+    tgvxy_mosaic_avg(I,J) = tgvxy_mosaic_avg(I,J) + tgvxy_mosaic(I,mosaic_i,J)*FAREA
+    tgbxy_mosaic_avg(I,J) = tgbxy_mosaic_avg(I,J) + tgbxy_mosaic(I,mosaic_i,J)*FAREA
+    chvxy_mosaic_avg(I,J) = chvxy_mosaic_avg(I,J) + chvxy_mosaic(I,mosaic_i,J)*FAREA
+    chbxy_mosaic_avg(I,J) = chbxy_mosaic_avg(I,J) + chbxy_mosaic(I,mosaic_i,J)*FAREA
+    shgxy_mosaic_avg(I,J) = shgxy_mosaic_avg(I,J) + shgxy_mosaic(I,mosaic_i,J)*FAREA
+    shcxy_mosaic_avg(I,J) = shcxy_mosaic_avg(I,J) + shcxy_mosaic(I,mosaic_i,J)*FAREA
+    shbxy_mosaic_avg(I,J) = shbxy_mosaic_avg(I,J) + shbxy_mosaic(I,mosaic_i,J)*FAREA
+    evgxy_mosaic_avg(I,J) = evgxy_mosaic_avg(I,J) + evgxy_mosaic(I,mosaic_i,J)*FAREA
+    evbxy_mosaic_avg(I,J) = evbxy_mosaic_avg(I,J) + evbxy_mosaic(I,mosaic_i,J)*FAREA
+    ghvxy_mosaic_avg(I,J) = ghvxy_mosaic_avg(I,J) + ghvxy_mosaic(I,mosaic_i,J)*FAREA
+    ghbxy_mosaic_avg(I,J) = ghbxy_mosaic_avg(I,J) + ghbxy_mosaic(I,mosaic_i,J)*FAREA
+    irgxy_mosaic_avg(I,J) = irgxy_mosaic_avg(I,J) + irgxy_mosaic(I,mosaic_i,J)*FAREA
+    ircxy_mosaic_avg(I,J) = ircxy_mosaic_avg(I,J) + ircxy_mosaic(I,mosaic_i,J)*FAREA
+    irbxy_mosaic_avg(I,J) = irbxy_mosaic_avg(I,J) + irbxy_mosaic(I,mosaic_i,J)*FAREA
+    trxy_mosaic_avg(I,J) = trxy_mosaic_avg(I,J) + trxy_mosaic(I,mosaic_i,J)*FAREA
+    evcxy_mosaic_avg(I,J) = evcxy_mosaic_avg(I,J) +evcxy_mosaic(I,mosaic_i,J)*FAREA
+    chleafxy_mosaic_avg(I,J) = chleafxy_mosaic_avg(I,J) + chleafxy_mosaic(I,mosaic_i,J)*FAREA
+    chucxy_mosaic_avg(I,J) = chucxy_mosaic_avg(I,J) + chucxy_mosaic(I,mosaic_i,J)*FAREA
+    chv2xy_mosaic_avg(I,J) = chv2xy_mosaic_avg(I,J) + chv2xy_mosaic(I,mosaic_i,J)*FAREA
+    chb2xy_mosaic_avg(I,J) = chb2xy_mosaic_avg(I,J) + chb2xy_mosaic(I,mosaic_i,J)*FAREA
+
+   END DO MOSAIC_LOOP  !Loop over each of the mosaic variables
+
+    !-------------------------------------------------------------------
+    !WE now send the Mosaic Values to 2D variables so they can be called in other routines
+    !-------------------------------------------------------------------
+
+    IVGTYP(I,J) = IVGTYP_dominant(I,J) !dominant vegetation catagory
+    TSK(I,J) = TSK_mosaic_avg(I,J)
+    HFX(I,J) = HFX_mosaic_avg(I,J)
+    QFX(I,J) = QFX_mosaic_avg(I,J)
+    LH(I,J) = LH_mosaic_avg(I,J)
+    GRDFLX(I,J) = GRDFLX_mosaic_avg(I,J)
+    SFCRUNOFF(I,J) = SFCRUNOFF_mosaic_sum(I,J)
+    UDRUNOFF(I,J) = UDRUNOFF_mosaic_sum(I,J)
+    ALBEDO(I,J) = ALBEDO_mosaic_avg(I,J)
+    SNOWC(I,J) = SNOWC_mosaic_avg(I,J)
+    SNOW(I,J) = SNOW_mosaic_avg(I,J)
+    SNOWH(I,J) = SNOWH_mosaic_avg(I,J)
+    CANWAT(I,J) = CANWAT_mosaic_avg(I,J)
+    ACSNOM(I,J) = ACSNOM_mosaic_avg(I,J)
+    ACSNOW(I,J) = ACSNOW_mosaic_avg(I,J)
+    EMISS(I,J) = EMISS_mosaic_avg(I,J)
+    QSFC(I,J) = QSFC_mosaic_avg(I,J)
+    Z0(I,J) = Z0_mosaic_avg(I,J)
+    ZNT(I,J) = ZNT_mosaic_avg(I,J)
+    RS(I,J) = rs_mosaic_avg(I,J)
+
+    DO LAYER=1,NSOIL
+
+        TSLB(I,LAYER,J) = TSLB_mosaic_avg(I,LAYER,J)
+        SMOIS(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J)
+        SH2O(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J)
+        SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J)
+
+    ENDDO
+
+    ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
+    TVXY(I,J) = tvxy_mosaic_avg(I,J)
+    TGXY(I,J) = tgxy_mosaic_avg(I,J)
+    CANICEXY(I,J) = canicexy_mosaic_avg(I,J)
+    CANLIQXY(I,J) = canliqxy_mosaic_avg(I,J)
+    EAHXY(I,J) = eahxy_mosaic_avg(I,J)
+    TAHXY(I,J) = tahxy_mosaic_avg(I,J)
+    CMXY(I,J) = cmxy_mosaic_avg(I,J)
+    CHXY(I,J) = chxy_mosaic_avg(I,J)
+    FWETXY(I,J) = fwetxy_mosaic_avg(I,J)
+    SNEQVOXY(I,J) = sneqvoxy_mosaic_avg(I,J)
+    ALBOLDXY(I,J) = alboldxy_mosaic_avg(I,J)
+    QSNOWXY(I,J) = qsnowxy_mosaic_avg(I,J)
+    WSLAKEXY(I,J) = wslakexy_mosaic_avg(I,J)
+    ZWTXY(I,J) = zwtxy_mosaic_avg(I,J)
+    WAXY(I,J) = waxy_mosaic_avg(I,J)
+    WTXY(I,J) = wtxy_mosaic_avg(I,J)
+    LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)
+    RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)
+    STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)
+    WOODXY(I,J) = woodxy_mosaic_avg(I,J)
+    GRAINXY(I,J) = grainxy_mosaic_avg(I,J)
+    GDDXY(I,J) = gddxy_mosaic_avg(I,J)
+    PGSXY(I,J) = pgsxy_mosaic_avg(I,J)
+    STBLCPXY(I,J) = stblcpxy_mosaic_avg(I,J)
+    FASTCPXY(I,J) = fastcpxy_mosaic_avg(I,J)
+    XLAIXY(I,J) = xlai_mosaic_avg(I,J)
+    XSAIXY(I,J) = xsaixy_mosaic_avg(I,J)
+    TAUSSXY(I,J) = taussxy_mosaic_avg(I,J)
+    SMCWTDXY(I,J) = smcwtdxy_mosaic_avg(I,J)
+    DEEPRECHXY(I,J) = deeprechxy_mosaic_avg(I,J)
+    RECHXY(I,J) = rechxy_mosaic_avg(I,J)
+
+    !out variables only
+
+    T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)
+    T2MBXY(I,J) = t2mbxy_mosaic_avg(I,J)
+    Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)
+    Q2MBXY(I,J) = q2mbxy_mosaic_avg(I,J)
+    TRADXY(I,J) = tradxy_mosaic_avg(I,J)
+    NEEXY(I,J) = neexy_mosaic_avg(I,J)
+    GPPXY(I,J) = gppxy_mosaic_avg(I,J)
+    NPPXY(I,J) = nppxy_mosaic_avg(I,J)
+    FVEGXY(I,J) = fvegxy_mosaic_avg(I,J)
+    RUNSFXY(I,J) = runsfxy_mosaic_avg(I,J)
+    RUNSBXY(I,J) = runsbxy_mosaic_avg(I,J)
+    ECANXY(I,J) = ecanxy_mosaic_avg(I,J)
+    EDIRXY(I,J) = edirxy_mosaic_avg(I,J)
+    ETRANXY(I,J) = etranxy_mosaic_avg(I,J)
+    FSAXY(I,J) = fsaxy_mosaic_avg(I,J)
+    FIRAXY(I,J) = firaxy_mosaic_avg(I,J)
+    APARXY(I,J) = aparxy_mosaic_avg(I,J)
+    PSNXY(I,J) = psnxy_mosaic_avg(I,J)
+    SAVXY(I,J) = savxy_mosaic_avg(I,J)
+    SAGXY(I,J) = sagxy_mosaic_avg(I,J)
+    RSSUNXY(I,J) = rssunxy_mosaic_avg(I,J)
+    RSSHAXY(I,J) = rsshaxy_mosaic_avg(I,J)
+    BGAPXY(I,J) = bgapxy_mosaic_avg(I,J)
+    WGAPXY(I,J) = wgapxy_mosaic_avg(I,J)
+    TGVXY(I,J) = tgvxy_mosaic_avg(I,J)
+    TGBXY(I,J) = tgbxy_mosaic_avg(I,J)
+    CHVXY(I,J) = chvxy_mosaic_avg(I,J)
+    CHBXY(I,J) = chbxy_mosaic_avg(I,J)
+    SHBXY(I,J) = shbxy_mosaic_avg(I,J)
+    SHCXY(I,J) = shcxy_mosaic_avg(I,J)
+    SHGXY(I,J) = shbxy_mosaic_avg(I,J)
+    EVGXY(I,J) = evgxy_mosaic_avg(I,J)
+    EVBXY(I,J) = evbxy_mosaic_avg(I,J)
+    GHVXY(I,J) = ghvxy_mosaic_avg(I,J)
+    GHBXY(I,J) = ghbxy_mosaic_avg(I,J)
+    IRGXY(I,J) = irgxy_mosaic_avg(I,J)
+    IRCXY(I,J) = ircxy_mosaic_avg(I,J)
+    IRBXY(I,J) = irbxy_mosaic_avg(I,J)
+    TRXY(I,J) = trxy_mosaic_avg(I,J)
+    EVCXY(I,J) = evcxy_mosaic_avg(I,J)
+    CHLEAFXY(I,J) = chleafxy_mosaic_avg(I,J)
+    CHUCXY(I,J) = chucxy_mosaic_avg(I,J)
+    CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)
+    CHB2XY(I,J) = chb2xy_mosaic_avg(I,J)
+
+    ENDIF !THis will need to be modified in WRF
+    ENDIF
+ ENDDO ILOOP !END of the I LOOP
+ ENDDO JLOOP !END of the J LOOP
+
+END SUBROUTINE NOAHMPLSM_MOSAIC
 
 
 END MODULE module_sf_noahmpdrv
