@@ -4167,6 +4167,10 @@ IF (ITIME > 0) THEN
     call system_clock(count=count_after_sflx, count_rate=clock_rate)
     sflx_count_sum = sflx_count_sum + ( count_after_sflx - count_before_sflx )
 
+ENDIF ! End If skipping first time step
+
+ENDIF ! End mosaic if else swap 
+
 ! Output for history
      OUTPUT_FOR_HISTORY: if (output_timestep > 0) then
         if (mod(ITIME*noah_timestep, output_timestep) == 0 .and. .not. skip_first_output ) then
