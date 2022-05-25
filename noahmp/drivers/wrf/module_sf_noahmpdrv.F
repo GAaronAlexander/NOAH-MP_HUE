@@ -4467,6 +4467,16 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
           TGL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,3,J)
           TGL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,4,J)
 
+          TGRL_URB3D_mosaic(I,4*(mosaic_i-1)+1,J)=TSLB(I,1,J)+0.
+          TGRL_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=0.5*(TSLB(I,1,J)+TSLB(I,2,J))
+          TGRL_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=TSLB(I,2,J)+0.
+          TGRL_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=TSLB(I,2,J)+(TSLB(I,3,J)-TSLB(I,2,J))*0.29
+
+          SMR_URB3D_mosaic(I,4*(mosaic_i-1)+1,J)=0.2
+          SMR_URB3D_mosaic(I,4*(mosaic_i-1)+2,J)=0.2
+          SMR_URB3D_mosaic(I,4*(mosaic_i-1)+3,J)=0.2
+          SMR_URB3D_mosaic(I,4*(mosaic_i-1)+4,J)=0.2
+
           CMR_SFCDIF_mosaic(I,mosaic_i,J)=0.
           CHR_SFCDIF_mosaic(I,mosaic_i,J)=0.
           CMC_SFCDIF_mosaic(I,mosaic_i,J)=0.
@@ -4477,8 +4487,18 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
           XXXR_URB2D_mosaic(I,mosaic_i,J)=0.
           XXXB_URB2D_mosaic(I,mosaic_i,J)=0.
           XXXG_URB2D_mosaic(I,mosaic_i,J)=0.
-          CMCR_URB2D_mosaic
-          TGR_URB2D_mosaic
+          CMCR_URB2D_mosaic(I,mosaic_i,J)=0.
+
+          TGR_URB2D_mosaic(I,mosaic_i,J)=TSK(I,J)+0.
+
+          DRELR_URB2D_mosaic(I,mosaic_i,J)=0.
+          DRELB_URB2D_mosaic(I,mosaic_i,J)=0.
+          DRELG_URB2D_mosaic(I,mosaic_i,J)=0.
+
+          FLXHUMR_URB2D_mosaic(I,mosaic_i,J)=0.
+          FLXHUMB_URB2D_mosaic(I,mosaic_i,J)=0.
+          FLXHUMG_URB2D_mosaic(I,mosaic_i,J)=0.
+
 
             ENDDO
           ENDDO
@@ -4504,9 +4524,6 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
 !--------------------------------
   END SUBROUTINE NOAHMP_MOSAIC_INIT
 !--------------------------------
-
-
-
 
 
 
