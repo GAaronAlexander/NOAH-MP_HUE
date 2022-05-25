@@ -4169,7 +4169,7 @@ IF (ITIME > 0) THEN
 
 ENDIF ! End If skipping first time step
 
-ENDIF ! End mosaic if else swap 
+ENDIF ! End mosaic if else swap
 
 ! Output for history
      OUTPUT_FOR_HISTORY: if (output_timestep > 0) then
@@ -4299,7 +4299,8 @@ ENDIF ! End mosaic if else swap
               call add_to_output(t2mvxy_mosaic , "T2MV_MOS", "Mosaic 2m Air Temp vegetated",       "K", "MOS1"             )
               call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "MOS1"             )
               call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "MOS1"           )
-              call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weight", "[-]", "MOS1")
+              call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weights, add up to 1", "[-]", "MOS1")
+              call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS". "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
           !MOSAIC
         ENDIF
         ! additional NoahMP output
