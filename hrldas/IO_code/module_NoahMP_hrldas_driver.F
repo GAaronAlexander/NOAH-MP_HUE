@@ -1848,8 +1848,9 @@ ENDIF
 
 IF(noahmp_mosaic_scheme == 1) THEN
   ALLOCATE ( LANDUSEF         (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) ! Fractioanl land-use data allocated. Written by Aaron A.
-  ALLOCATE ( LANDUSEF2        (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) !This is the landuse fraction that is normalized after the initlization
+  ALLOCATE ( LANDUSEF2        (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) !This is the landuse fraction that is normalized after the initlization (and will be used to average)
   ALLOCATE ( mosaic_cat_index (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) !This is the actual catagory (for NLCD: 1 - 40). Used to call correct land use parameters
+                                                                                       !
 
   ALLOCATE ( TSK_mosaic       (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) ) ! surface radiative temperature [K]
   ALLOCATE ( HFX_mosaic       (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) ) ! sensible heat flux [W m-2]
@@ -4012,9 +4013,9 @@ IF (ITIME > 0) THEN
  call system_clock(count=count_before_sflx, count_rate=clock_rate)
 
  CALL noahmplsm_mosaic(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
-                   DZ8W,       DTBL,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
- 	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
- 		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
+                   DZ8W,       DTBL,       DZS,    NUM_SOIL_LAYERS,       DX,            & ! IN : Model configuration
+ 	                 IVGTYP,   ISLTYP,    VEGFRA,   GVFMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
+ 		               XLAND,     XICE,XICE_THRESHOLD,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
  	       PLANTING,  HARVEST,SEASON_GDD,                               &
                   IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
                IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
@@ -4022,9 +4023,9 @@ IF (ITIME > 0) THEN
                IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, noahmp_HUE_iopt, soilstep,  &
                 IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
  	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
-                    T3D,     QV3D,     U_PHY,    V_PHY,   SWDOWN,      GLW,  & ! IN : Forcing
- 		 P8W3D,PRECIP_IN,        SR,                                & ! IN : Forcing
-               IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
+                    T_PHY,     QV_CURR,     U_PHY,    V_PHY,   SWDOWN,      SWDDIR,  & ! IN : Forcing
+ 		                 P8W, RAINBL,        SR,                                & ! IN : Forcing
+                     IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
                     TSK,      HFX,      QFX,        LH,   GRDFLX,    SMSTAV, & ! IN/OUT LSM eqv
                  SMSTOT,SFCRUNOFF, UDRUNOFF,    ALBEDO,    SNOWC,     SMOIS, & ! IN/OUT LSM eqv
  		  SH2O,     TSLB,     SNOW,     SNOWH,   CANWAT,    ACSNOM, & ! IN/OUT LSM eqv
@@ -4163,6 +4164,8 @@ IF (ITIME > 0) THEN
 
 
 
+    call system_clock(count=count_after_sflx, count_rate=clock_rate)
+    sflx_count_sum = sflx_count_sum + ( count_after_sflx - count_before_sflx )
 
 ! Output for history
      OUTPUT_FOR_HISTORY: if (output_timestep > 0) then
