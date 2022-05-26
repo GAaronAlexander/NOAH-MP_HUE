@@ -4645,7 +4645,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
                           TGRL_URB3D_mosaic, SMR_URB3D_mosaic, DRELR_URB2D_mosaic,              &
                           DRELB_URB2D_mosaic, DRELG_URB2D_mosaic, FLXHUMR_URB2D_mosaic,         &
                           FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,
-                          
+
                           cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
                           chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
                           tr_urb2d,       tb_urb2d,       tg_urb2d,                             & !H urban
@@ -4705,11 +4705,14 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
 ! Synthesize both the normal calls and the urban calls (USE functions)
 !-----------------------------------------------------------------------
         USE MODULE_SF_NOAHMPLSM
+    !    USE MODULE_SF_NOAHMPLSM, only: noahmp_options, NOAHMP_SFLX, noahmp_parameters
         USE module_sf_noahmp_glacier
         USE NOAHMP_TABLES, ONLY: ISICE_TABLE, CO2_TABLE, O2_TABLE, DEFAULT_CROP_TABLE, ISCROP_TABLE, ISURBAN_TABLE, NATURAL_TABLE, &
-                                 LOW_DENSITY_RESIDENTIAL_TABLE, HIGH_DENSITY_RESIDENTIAL_TABLE, HIGH_INTENSITY_INDUSTRIAL_TABLE
-        USE module_sf_urban
-        USE module_ra_gfdleta, ONLY: cal_mon_day
+                                 LCZ_1_TABLE,LCZ_2_TABLE,LCZ_3_TABLE,LCZ_4_TABLE,LCZ_5_TABLE,LCZ_6_TABLE,LCZ_7_TABLE,LCZ_8_TABLE,  &
+                                 LCZ_9_TABLE,LCZ_10_TABLE,LCZ_11_TABLE
+
+        USE module_sf_urban,
+        USE module_ra_gfdleta,  only: cal_mon_day
         USE module_model_constants, only: KARMAN, CP, XLV
 !-----------------------------------------------------------------------
         IMPLICIT NONE
@@ -4720,6 +4723,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
 !-----------------------------------------------------------------------
 
 ! IN only
+
 
     INTEGER,                                         INTENT(IN   ) ::  ITIMESTEP ! timestep number
     INTEGER,                                         INTENT(IN   ) ::  YR        ! 4-digit year
@@ -4732,11 +4736,11 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION(1:nsoil),                     INTENT(IN   ) ::  DZS       ! thickness of soil layers [m]
     INTEGER,                                         INTENT(IN   ) ::  NSOIL     ! number of soil layers
     REAL,                                            INTENT(IN   ) ::  DX        ! horizontal grid spacing [m]
-    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  IVGTYP    ! vegetation type !needed to be modified
+    INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  IVGTYP    ! vegetation type
     INTEGER, DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  ISLTYP    ! soil type
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  VEGFRA    ! vegetation fraction []
     REAL,    DIMENSION( ims:ime ,         jms:jme ), INTENT(IN   ) ::  VEGMAX    ! annual max vegetation fraction []
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  TMN       ! deep soil temperature [K]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  TMN       ! deep soil temperature [K]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLAND     ! =2 ocean; =1 land/seaice
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XICE      ! fraction of grid that is seaice
     REAL,                                            INTENT(IN   ) ::  XICE_THRES! fraction of grid determining seaice
@@ -4757,6 +4761,11 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     INTEGER,                                         INTENT(IN   ) ::  IOPT_SOIL ! soil configuration option
     INTEGER,                                         INTENT(IN   ) ::  IOPT_PEDO ! soil pedotransfer function option
     INTEGER,                                         INTENT(IN   ) ::  IOPT_CROP ! crop model option (0->none; 1->Liu et al.; 2->Gecros)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_IRR  ! irrigation scheme (0->none; >1 irrigation scheme ON)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_IRRM ! irrigation method
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_INFDV! infiltration options for dynamic VIC infiltration (1->Philip; 2-> Green-Ampt;3->Smith-Parlange)
+    INTEGER,                                         INTENT(IN   ) ::  IOPT_TDRN ! tile drainage (0-> no tile drainage; 1-> simple tile drainage;2->Hooghoudt's)
+    REAL,                                            INTENT(IN   ) ::  soiltstep ! soil timestep (s), default:0->same as main model timestep
     INTEGER,                                         INTENT(IN   ) ::  IZ0TLND   ! option of Chen adjustment of Czil (not used)
     INTEGER,                                         INTENT(IN   ) ::  sf_urban_physics   ! urban physics option
     REAL,    DIMENSION( ims:ime,       8, jms:jme ), INTENT(IN   ) ::  SOILCOMP  ! soil sand and clay percentage
@@ -4769,6 +4778,8 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  U_PHY     ! 3D U wind component [m/s]
     REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  V_PHY     ! 3D V wind component [m/s]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SWDOWN    ! solar down at surface [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SWDDIF    ! solar down at surface [W m-2]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  SWDDIR    ! solar down at surface [W m-2]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  GLW       ! longwave down at surface [W m-2]
     REAL,    DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN   ) ::  P8W3D     ! 3D pressure, valid at interface [Pa]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  PRECIP_IN ! total input precipitation [mm]
@@ -4792,10 +4803,14 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
  INTEGER,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  PGSXY
 
 ! gecros model
-    REAL,    DIMENSION( ims:ime,       60,jms:jme ), INTENT(INOUT) :: gecros_state !  gecros crop
+    REAL,    DIMENSION( ims:ime,       60,jms:jme ), INTENT(INOUT) ::  gecros_state !  gecros crop
+
+!Tile drain variables
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QTDRAIN
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN)    ::  TD_FRACTION
 
 #ifdef WRF_HYDRO
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  sfcheadrt,INFXSRT,soldrain   ! for WRF-Hydro
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D   ! for WRF-Hydro
 #endif
 
 ! INOUT (with generic LSM equivalent)
@@ -4817,7 +4832,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNOW      ! snow water equivalent [mm]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNOWH     ! physical snow depth [m]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  CANWAT    ! total canopy water + ice [mm]
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACSNOM    ! accumulated snow melt leaving pack
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACSNOM    ! accumulated snow melt (mm)
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACSNOW    ! accumulated snow on grid
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  EMISS     ! surface bulk emissivity
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QSFC      ! bulk surface specific humidity
@@ -4838,6 +4853,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  SNEQVOXY  ! snow mass at last time step(mm h2o)
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ALBOLDXY  ! snow albedo at last time step (-)
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QSNOWXY   ! snowfall on the ground [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QRAINXY   ! rainfall on the ground [mm/s]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WSLAKEXY  ! lake water storage [mm]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ZWTXY     ! water table depth [m]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  WAXY      ! water in the "aquifer" [mm]
@@ -4871,8 +4887,8 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  GPPXY     ! gross primary assimilation [g/m2/s C]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  NPPXY     ! net primary productivity [g/m2/s C]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FVEGXY    ! Noah-MP vegetation fraction [-]
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSFXY   ! surface runoff [mm/s]
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSBXY   ! subsurface runoff [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSFXY   ! surface runoff [mm] per soil timestep
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RUNSBXY   ! subsurface runoff [mm] per soil timestep
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  ECANXY    ! evaporation of intercepted water (mm/s)
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EDIRXY    ! soil surface evaporation rate (mm/s]
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  ETRANXY   ! transpiration rate (mm/s)
@@ -4906,6 +4922,49 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHUCXY    ! under canopy exchange coefficient
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHV2XY    ! veg 2m exchange coefficient
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CHB2XY    ! bare 2m exchange coefficient
+! additional output variables
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHXY     ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHGXY    ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHBXY    ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PAHVXY    ! precipitation advected heat
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QINTSXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QINTRXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QDRIPSXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QDRIPRXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QTHROSXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QTHRORXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QSNSUBXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QSNFROXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QSUBCXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QFROCXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QEVACXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QDEWCXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QFRZCXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QMELTCXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QSNBOTXY  !total liquid water (snowmelt + rain through pack)out of snowpack bottom [mm/s]
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  QMELTXY   !snowmelt due to phase change (mm/s)
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  PONDINGXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FPICEXY    !fraction of ice in precip
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  RAINLSM     !rain rate                   (mm/s)  AJN
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SNOWLSM     !liquid equivalent snow rate (mm/s)  AJN
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FORCTLSM
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FORCQLSM
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FORCPLSM
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FORCZLSM
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  FORCWLSM
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_SSOILXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_QINSURXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_QSEVAXY
+    REAL,    DIMENSION( ims:ime, 1:NSOIL, jms:jme ), INTENT(INOUT) ::  ACC_ETRANIXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  EFLXBXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SOILENERGY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  SNOWENERGY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(OUT  ) ::  CANHSXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_DWATERXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_PRCPXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_ECANXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_ETRANXY
+    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  ACC_EDIRXY
 
 
     INTEGER,  INTENT(IN   )   ::     ids,ide, jds,jde, kds,kde,  &  ! d -> domain
@@ -5346,6 +5405,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
      INTEGER, INTENT(IN) :: NLCAT
      INTEGER, INTENT(IN) :: noahmp_mosaic_scheme                                       !This tells us that the mosaic scheme is active
      INTEGER, INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
+     INTEGER, INTENT(IN) :: noahmp_HUE_iopt                                            !This passed to help to see if we need to use the new physics
      REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
      REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
 
@@ -5451,9 +5511,47 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chb2xy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rs_mosaic
 
+      ! These are additional variables
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHXY_mosaic     ! precipitation advected heat
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHGXY_mosaic    ! precipitation advected heat
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHBXY_mosaic    ! precipitation advected heat
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHVXY_mosaic    ! precipitation advected heat
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTSXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTRXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPSXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPRXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHROSXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHRORXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNSUBXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNFROXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSUBCXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFROCXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QEVACXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDEWCXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFRZCXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTCXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNBOTXY_mosaic  !total liquid water (snowmelt + rain through pack)out of snowpack bottom [mm/s]
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTXY_mosaic   !snowmelt due to phase change (mm/s)
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PONDINGXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  FPICEXY_mosaic    !fraction of ice in precip
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_SSOILXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_QINSURXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_QSEVAXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:NSOIL*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ETRANIXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  EFLXBXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SOILENERGY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SNOWENERGY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  CANHSXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_DWATERXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_PRCPXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ECANXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ETRANXY_mosaic
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_EDIRXY_mosaic
+
+
      !snow variables, which have dimensions of 7*mosaic cat and 3 * number of mosaic cats
       INTEGER, DIMENSION(ims:ime, 1:mosaic_cat, jms:jme), OPTIONAL, INTENT(INOUT) :: isnowxy_mosaic     !actual no. of snow layers
-      REAL, DIMENSION(ims:ime, 1:7*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: zsnsoxy_mosaic  !snow layer depth [m] **These have not been adjusted for indexing, Added in main driver
+      REAL, DIMENSION(ims:ime, 1:(nsoil+3)*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: zsnsoxy_mosaic  !snow layer depth [m] **These have not been adjusted for indexing, Added in main driver
       REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: tsnoxy_mosaic   !snow temperature [K] **These have not been adjusted for indexing, Added in main driver
       REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snicexy_mosaic  !snow layer ice [mm] **These have not been adjusted for indexing, Added in main driver
       REAL, DIMENSION(ims:ime, 1:3*mosaic_cat, jms:jme), OPTIONAL,  INTENT(INOUT) :: snliqxy_mosaic  !snow layer liquid water [mm] **These have not been adjusted for indexing, Added in main driver

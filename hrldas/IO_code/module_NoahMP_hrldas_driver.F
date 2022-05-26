@@ -664,13 +664,6 @@ module module_NoahMP_hrldas_driver
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  QSNBOTXY_mosaic
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  PONDINGXY_mosaic
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FPICEXY_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  RAINLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  SNOWLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FORCTLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FORCQLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FORCPLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FORCZLSM_mosaic
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  FORCWLSM_mosaic
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  ACC_SSOILXY_mosaic
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  ACC_QINSURXY_mosaic
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    ::  ACC_QSEVAXY_mosaic
@@ -1995,13 +1988,6 @@ IF(noahmp_mosaic_scheme == 1) THEN
   ALLOCATE ( QMELTXY_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( PONDINGXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( FPICEXY_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( RAINLSM_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( SNOWLSM_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( FORCTLSM_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( FORCQLSM_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( FORCPLSM_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( FORCZLSM_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( FORCWLSM_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( ACC_SSOILXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
   ALLOCATE ( ACC_QINSURXY_mosaic(XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
   ALLOCATE ( ACC_QSEVAXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
