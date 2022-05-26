@@ -702,7 +702,6 @@ module module_NoahMP_hrldas_driver
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: G_URB2D_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: RN_URB2D_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TS_URB2D_mosaic
-  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: TS_RUL2D_mosaic
 
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CMR_SFCDIF_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: CHR_SFCDIF_mosaic
