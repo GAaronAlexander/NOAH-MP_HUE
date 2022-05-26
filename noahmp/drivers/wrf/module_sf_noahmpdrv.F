@@ -5573,12 +5573,34 @@ SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG,
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: G_URB2D_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: RN_URB2D_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_URB2D_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TS_RUL2D_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: UC_URB2D_mosaic
       !values that are needed for the
       REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TRL_URB3D_mosaic
       REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
       REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
+      REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGRL_URB3D_mosaic
+      REAL, OPTIONAL, DIMENSION( ims:ime, 1:nsoil*mosaic_cat, jms:jme ), INTENT(INOUT) :: SMR_URB3D_mosaic
+
+      ! Additional to be able to restart
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMR_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHR_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMC_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHC_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMGR_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CHGR_SFCDIF_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXB_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXG_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXC_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMCR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TGR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELB_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: DRELG_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMR_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMB_URB2D_mosaic
+      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMG_URB2D_mosaic
+
 
       ! THESE ARE INTERMEDIATES, THEY WILL BE USED TO KEEP TRACK OF ALL MOSAIC VALUES
       REAL, DIMENSION( ims:ime, jms:jme ) :: TSK_mosaic_avg, HFX_mosaic_avg, QFX_mosaic_avg, LH_mosaic_avg,  & ! These are in and out LSM options
