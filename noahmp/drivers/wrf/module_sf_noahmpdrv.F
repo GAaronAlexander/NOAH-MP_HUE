@@ -5987,6 +5987,7 @@ type(noahmp_parameters) :: parameters
                    SMOIS_mosaic_avg(i,LAYER,j) = 0.0
                    SH2O_mosaic_avg(i,LAYER,j) = 0.0
                    smoiseq_mosaic_avg(i,LAYER,j) = 0.0
+                   ACC_ETRANIXY_mosaic_avg(i,LAYER,j) = 0.0
 
                ENDDO
 
@@ -6004,7 +6005,60 @@ type(noahmp_parameters) :: parameters
 
                ENDDO
 
-               !We now add a loop over the mosaic catagories!
+               !! additional varaibles that are going to be averaged
+
+               QINTSXY_mosaic_avg(i,j) = 0.0
+               QINTRXY_mosaic_avg(i,j) = 0.0
+               QDRIPSXY_mosaic_avg(i,j) = 0.0
+               QDRIPRXY_mosaic_avg(i,j) = 0.0
+               QTHROSXY_mosaic_avg(i,j) = 0.0
+               QTHRORXY_mosaic_avg(i,j) = 0.0
+               QSNSUBXY_mosaic_avg(i,j) = 0.0
+               QSNFROXY_mosaic_avg(i,j) = 0.0
+               QSUBCXY_mosaic_avg(i,j) = 0.0
+               QFROCXY_mosaic_avg(i,j) = 0.0
+               QEVACXY_mosaic_avg(i,j) = 0.0
+               QDEWCXY_mosaic_avg(i,j) = 0.0
+               QFRZCXY_mosaic_avg(i,j) = 0.0
+               QMELTCXY_mosaic_avg(i,j) = 0.0
+               QSNBOTXY_mosaic_avg(i,j) = 0.0
+               QMELTXY_mosaic_avg(i,j) = 0.0
+               PONDINGXY_mosaic_avg(i,j) = 0.0
+               PAHXY_mosaic_avg(i,j) = 0.0
+               PAHVXY_mosaic_avg(i,j) = 0.0
+               PAHBXY_mosaic_avg(i,j) = 0.0
+               FPICEXY_mosaic_avg(i,j) = 0.0
+
+               ! Soil and ACC averaged variables
+               ACC_SSOILXY_mosaic_avg(i,j) = 0.0
+               ACC_QINSURXY_mosaic_avg(i,j) = 0.0
+               ACC_QSEVAXY_mosaic_avg(i,j) = 0.0
+               EFLXBXY_mosaic_avg(i,j) = 0.0
+               SOILENERGY_mosaic_avg(i,j) = 0.0
+               SNOWENERGY_mosaic_avg(i,j) = 0.0
+               CANHSXY_mosaic_avg(i,j) = 0.0
+               ACC_DWATERXY_mosaic_avg(i,j) = 0.0
+               ACC_PRCPXY_mosaic_avg(i,j) = 0.0
+               ACC_ECANXY_mosaic_avg(i,j) = 0.0
+
+               !! THESE are the irrigation values
+               ! irrigation intermediate variables
+               IRWATSI_mosaic_avg(i,j) = 0.0
+               IRWATMI_mosaic_avg(i,j) = 0.0
+               IRWATFI_mosaic_avg(i,j) = 0.0
+               IRELOSS_mosaic_avg(i,j) = 0.0
+               IRSIVOL_mosaic_avg(i,j) = 0.0
+               IRSIVOL_mosaic_avg(i,j) = 0.0
+               IRMIVOL_mosaic_avg(i,j) = 0.0
+               IRFIVOL_mosaic_avg(i,j) = 0.0
+               IRRSPLH_mosaic_avg(i,j) = 0.0
+
+               IRNUMSI_mosaic_avg(i,j) = 0
+               IRNUMMI_mosaic_avg(i,j) = 0
+               IRNUMFI_mosaic_avg(i,j) = 0
+
+
+               ! These are needed for the
 
                MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
 
@@ -6033,6 +6087,7 @@ type(noahmp_parameters) :: parameters
                    SH2O(I,LAYER,J) = SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
                    TSLB(I,LAYER,J) = TSLB_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
                    SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                   ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
 
                ENDDO
 
@@ -6091,6 +6146,28 @@ type(noahmp_parameters) :: parameters
                    ZSNSOXY(I,LAYER,J) = zsnsoxy_mosaic(I,7*(mosaic_i - 1)+LAYER,J)
                ENDDO
 
+               ! additional IN/OUT variables that have to be added
+               ACC_SSOILXY(I,J) = ACC_SSOILXY_mosaic(I,mosaic_i,J)
+               ACC_QINSURXY(I,J) = ACC_QINSURXY_mosaic(I,mosaic_i,J)
+               ACC_QSEVAXY(I,J) = ACC_QSEVAXY_mosaic(I,mosaic_i,J)
+               ACC_DWATERXY(I,J) = ACC_DWATERXY_mosaic(I,mosaic_i,J)
+               ACC_PRCPXY(I,J) = ACC_PRCPXY_mosaic(I,mosaic_i,J)
+               ACC_ECANXY(I,J) = ACC_ECANXY_mosaic(I,mosaic_i,J)
+               ACC_ETRANXY(I,J) = ACC_ETRANXY_mosaic(I,mosaic_i,J)
+               ACC_EDIRXY(I,J) = ACC_EDIRXY_mosaic(I,mosaic_i,J)
+
+               !2D inout irrigation variables
+               IRNUMSI(I,J) = IRNUMSI_mosaic(I,mosaic_i,J)
+               IRNUMMI(I,J) = IRNUMMI_mosaic(I,mosaic_i,J)
+               IRNUMFI(I,J) = IRNUMFI_mosaic(I,mosaic_i,J)
+               IRWATSI(I,J) = IRWATSI_mosaic(I,mosaic_i,J)
+               IRWATMI(I,J) = IRWATMI_mosaic(I,mosaic_i,J)
+               IRWATFI(I,J) = IRWATFI_mosaic(I,mosaic_i,J)
+               IRELOSS(I,J) = IRELOSS_mosaic(I,mosaic_i,J)
+               IRSIVOL(I,J) = IRSIVOL_mosaic(I,mosaic_i,J)
+               IRMIVOL(I,J) = IRMIVOL_mosaic(I,mosaic_i,J)
+               IRFIVOL(I,J) = IRFIVOL_mosaic(I,mosaic_i,J)
+               IRRSPLH(I,J) = IRRSPLH_mosaic(I,mosaic_i,J)
 
                ! do not need to add any of the OUTPUT values. These will be captured in the post processing steps!
 
@@ -7351,7 +7428,7 @@ type(noahmp_parameters) :: parameters
               CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)
               CHB2XY(I,J) = chb2xy_mosaic_avg(I,J)
 
-            ENDIF ! End of the Soil-Water_ice If else statemetn 
+            ENDIF ! End of the Soil-Water_ice If else statement
 
            ENDDO ILOOP !END of the I LOOP
            ENDDO JLOOP !END of the J LOOP
