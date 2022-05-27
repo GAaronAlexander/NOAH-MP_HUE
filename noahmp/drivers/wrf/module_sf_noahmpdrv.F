@@ -6854,7 +6854,7 @@ type(noahmp_parameters) :: parameters
               ! cut down on interations
 
               DRELR_URB2D(I,J) = DRELR_URB2D_mosaic(I,mosaic_i,J)
-              DRELB_URB2D(I,J) = DRELB_URB2D_mosaic(I,mosaic_i,J
+              DRELB_URB2D(I,J) = DRELB_URB2D_mosaic(I,mosaic_i,J)
               DRELG_URB2D(I,J) = DRELG_URB2D_mosaic(I,mosaic_i,J)
               FLXHUMR_URB2D(I,J) = FLXHUMR_URB2D_mosaic(I,mosaic_i,J)
               FLXHUMB_URB2D(I,J) = FLXHUMB_URB2D_mosaic(I,mosaic_i,J)
@@ -7093,44 +7093,45 @@ type(noahmp_parameters) :: parameters
               ENDIF
 
             ! We also need to re-new all of the mosaic variables:
-            DRELR_URB2D(I,J) = DRELR_URB2D_mosaic(I,mosaic_i,J)
-            DRELB_URB2D(I,J) = DRELB_URB2D_mosaic(I,mosaic_i,J
-            DRELG_URB2D(I,J) = DRELG_URB2D_mosaic(I,mosaic_i,J)
-            FLXHUMR_URB2D(I,J) = FLXHUMR_URB2D_mosaic(I,mosaic_i,J)
-            FLXHUMB_URB2D(I,J) = FLXHUMB_URB2D_mosaic(I,mosaic_i,J)
-            FLXHUMG_URB2D(I,J) = FLXHUMG_URB2D_mosaic(I,mosaic_i,J)
+            DRELR_URB2D_mosaic(I,mosaic_i,J) = DRELR_URB2D(I,J)
+            DRELB_URB2D_mosaic(I,mosaic_i,J) = DRELB_URB2D(I,J)
+            DRELG_URB2D_mosaic(I,mosaic_i,J) = DRELG_URB2D(I,J)
+            FLXHUMR_URB2D_mosaic(I,mosaic_i,J) = FLXHUMR_URB2D(I,J)
+            FLXHUMB_URB2D_mosaic(I,mosaic_i,J) = FLXHUMR_URB2D(I,J)
+            FLXHUMG_URB2D_mosaic(I,mosaic_i,J) = FLXHUMR_URB2D(I,J)
 
-            CMCR_URB2D(I,J) = CMCR_URB2D_mosaic(I,mosaic_i,J)
-            TGR_URB2D(I,J) = TGR_URB2D_mosaic(I,mosaic_i,J)
+            CMCR_URB2D_mosaic(I,mosaic_i,J) = CMCR_URB2D(I,J)
+            TGR_URB2D_mosaic(I,mosaic_i,J) = TGR_URB2D(I,J)
 
             DO LAYER=1,NSOIL
 
-                TGRL_URB3D(I,LAYER,J) = TGRL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
-                SMR_URB3D(I,LAYER,J) = SMR_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                TGRL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = TGRL_URB3D(I,LAYER,J)
+                SMR_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = SMR_URB3D(I,LAYER,J)
 
-                TRL_URB3D(I,LAYER,J) = TRL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
-                TBL_URB3D(I,LAYER,J) = TBL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
-                TGL_URB3D(I,LAYER,J) = TGL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
+                TRL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = TRL_URB3D(I,LAYER,J)
+                TBL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = TBL_URB3D(I,LAYER,J)
+                TGL_URB3D_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = TGL_URB3D(I,LAYER,J)
             ENDDO
 
 
        ! state variable surface_driver <--> lsm <--> urban
 
-            TR_URB2D(I,J) = TR_URB2D_mosaic(I,mosaic_i,J)
-            TB_URB2D(I,J) = TB_URB2D_mosaic(I,mosaic_i,J)
-            TG_URB2D(I,J) = TG_URB2D_mosaic(I,mosaic_i,J)
-            TC_URB2D(I,J) = TC_URB2D_mosaic(I,mosaic_i,J)
-            QC_URB2D(I,J) = QC_URB2D_mosaic(I,mosaic_i,J)
-            UC_URB2D(I,J) = UC_URB2D_mosaic(I,mosaic_i,J)
-            XXXR_URB2D(I,J) = XXXR_URB2D_mosaic(I,mosaic_i,J)
-            XXXB_URB2D(I,J) = XXXB_URB2D_mosaic(I,mosaic_i,J)
-            XXXG_URB2D(I,J) = XXXG_URB2D_mosaic(I,mosaic_i,J)
-            XXXC_URB2D(I,J) = XXXC_URB2D_mosaic(I,mosaic_i,J)
-            SH_URB2D(I,J) = SH_URB2D_mosaic(I,mosaic_i,J)
-            LH_URB2D(I,J) = LH_URB2D_mosaic(I,mosaic_i,J)
-            G_URB2D(I,J) = G_URB2D_mosaic(I,mosaic_i,J)
-            RN_URB2D(I,J) = RN_URB2D_mosaic(I,mosaic_i,J)
-            TS_URB2D(I,J) = TS_URB2D_mosaic(I,mosaic_i,J)
+            TR_URB2D_mosaic(I,mosaic_i,J) = TR_URB2D(I,J)
+            TB_URB2D_mosaic(I,mosaic_i,J) = TB_URB2D(I,J)
+            TG_URB2D_mosaic(I,mosaic_i,J) = TB_URB2D(I,J)
+            TC_URB2D_mosaic(I,mosaic_i,J) = TC_URB2D(I,J)
+            QC_URB2D_mosaic(I,mosaic_i,J) = QC_URB2D(I,J)
+            UC_URB2D_mosaic(I,mosaic_i,J) = UC_URB2D(I,J)
+            XXXR_URB2D_mosaic(I,mosaic_i,J) = XXXR_URB2D(I,J)
+            XXXB_URB2D_mosaic(I,mosaic_i,J) = XXXB_URB2D(I,J)
+            XXXG_URB2D_mosaic(I,mosaic_i,J) = XXXG_URB2D(I,J)
+            XXXC_URB2D_mosaic(I,mosaic_i,J) = XXXC_URB2D(I,J)
+
+            SH_URB2D_mosaic(I,mosaic_i,J) = SH_URB2D(I,J)
+            LH_URB2D_mosaic(I,mosaic_i,J) = LH_URB2D(I,J)
+            G_URB2D_mosaic(I,mosaic_i,J) = G_URB2D(I,J)
+            RN_URB2D_mosaic(I,mosaic_i,J) = RN_URB2D(I,J)
+            TS_URB2D_mosaic(I,mosaic_i,J) = TS_URB2D(I,J)
 
             ENDIF                                 ! urban land used type block
 
@@ -7263,7 +7264,7 @@ type(noahmp_parameters) :: parameters
               chv2xy_mosaic(I,mosaic_i,J) = CHV2XY(I,J)
               chb2xy_mosaic(I,mosaic_i,J) = CHB2XY(I,J)
 
-
+              !!! NEED TO ADD NEW VARIABLES 
               !SNOW VARIABLES
 
                   DO LAYER=-2,0
