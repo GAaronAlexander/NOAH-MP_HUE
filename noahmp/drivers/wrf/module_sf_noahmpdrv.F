@@ -5750,7 +5750,7 @@ type(noahmp_parameters) :: parameters
             QSNFROXY_mosaic_avg, QSUBCXY_mosaic_avg, QFROCXY_mosaic_avg, QEVACXY_mosaic_avg,                    &
             QDEWCXY_mosaic_avg, QFRZCXY_mosaic_avg, QMELTCXY_mosaic_avg, QSNBOTXY_mosaic_avg,                   &
             QMELTXY_mosaic_avg, PONDINGXY_mosaic_avg, PAHXY_mosaic_avg, PAHVXY_mosaic_avg,                      &
-            PAHBXY_mosaic_avg, FPICEXY_mosaic_avg
+            PAHBXY_mosaic_avg, PAHGXY_mosaic_avg, FPICEXY_mosaic_avg
 
       ! Soil and ACC
       REAL, DIMENSION( ims:ime, jms:jme) :: ACC_SSOILXY_mosaic_avg, ACC_QINSURXY_mosaic_avg, ACC_QSEVAXY_mosaic_avg,  &
@@ -7399,8 +7399,8 @@ type(noahmp_parameters) :: parameters
               stmassxy_mosaic_avg(I,J) = stmassxy_mosaic_avg(I,J) + stmassxy_mosaic(I,mosaic_i,J)*FAREA2
               woodxy_mosaic_avg(I,J) = woodxy_mosaic_avg(I,J) + woodxy_mosaic(I,mosaic_i,J)*FAREA2
               grainxy_mosaic_avg(I,J) = grainxy_mosaic_avg(I,J) + grainxy_mosaic(I,mosaic_i,J)*FAREA2
-              gddxy_mosaic_avg(I,J) = gddxy_mosaic_avg(I,J) + gddxy_mosaic(I,mosaic_i,J)*FAREA
-              pgsxy_mosaic_avg(I,J) = pgsxy_mosaic_avg(I,J) + pgsxy_mosaic(I,mosaic_i,J)*FAREA
+              gddxy_mosaic_avg(I,J) = gddxy_mosaic_avg(I,J) + gddxy_mosaic(I,mosaic_i,J)*FAREA2
+              pgsxy_mosaic_avg(I,J) = pgsxy_mosaic_avg(I,J) + pgsxy_mosaic(I,mosaic_i,J)*FAREA2
               stblcpxy_mosaic_avg(I,J) = stblcpxy_mosaic_avg(I,J) + stblcpxy_mosaic(I,mosaic_i,J)*FAREA2
               fastcpxy_mosaic_avg(I,J) = fastcpxy_mosaic_avg(I,J) + fastcpxy_mosaic(I,mosaic_i,J)*FAREA2
               xsaixy_mosaic_avg(I,J) = xsaixy_mosaic_avg(I,J) + xsaixy_mosaic(I,mosaic_i,J)*FAREA2
@@ -7473,39 +7473,40 @@ type(noahmp_parameters) :: parameters
               IRNUMFI_mosaic_avg(I,J) = IRNUMFI_mosaic_avg(I,J) + IRNUMFI_mosaic(I,mosaic_i,J)
 
               ! Extra variables averaged needed for extra outputs
-              QINTSXY_mosaic_avg(I,J) = QINTSXY_mosaic_avg(I,J) + QINTSXY_mosaic(I,mosaic_i,J)
-              QINTRXY_mosaic_avg(I,J) = QINTRXY_mosaic_avg(I,J) + QINTRXY_mosaic(I,mosaic_i,J)
-              QDRIPSXY_mosaic_avg(I,J) = QDRIPSXY_mosaic_avg(I,J) + QDRIPSXY_mosaic(I,mosaic_i,J)
-              QDRIPRXY_mosaic_avg(I,J) = QDRIPRXY_mosaic_avg(I,J) + QDRIPRXY_mosaic(I,mosaic_i,J)
-              QTHROSXY_mosaic_avg(I,J) = QTHROSXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)
-              QTHRORXY_mosaic_avg(I,J) = QTHRORXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)
-              QSNSUBXY_mosaic_avg(I,J) = QSNSUBXY_mosaic_avg(I,J) + QSNSUBXY_mosaic(I,mosaic_i,J)
-              QSNFROXY_mosaic_avg(I,J) = QSNFROXY_mosaic_avg(I,J) + QSNFROXY_mosaic(I,mosaic_i,J)
-              QSUBCXY_mosaic_avg(I,J) = QSUBCXY_mosaic_avg(I,J) + QSUBCXY_mosaic(I,mosaic_i,J)
-              QFROCXY_mosaic_avg(I,J) = QFROCXCY_mosaic_avg(I,J) + QFROCXY_mosaic(I,mosaic_i,J)
-              QEVACXY_mosaic_avg(I,J) = QEVACXY_mosaic_avg(I,J) + QEVACXY_mosaic(I,mosaic_i,J)
-              QDEWCXY_mosaic_avg(I,J) = QDEWCXY_mosaic_avg(I,J) + QDEWCXY_mosaic(I,mosaic_i,J)
-              QFRZCXY_mosaic_avg(I,J) = QFRZCXY_mosaic_avg(I,J) + QFRZCXY_mosaic(I,mosaic_i,J)
-              QMELTCXY_mosaic_avg(I,J) = QMELTCXY_mosaic_avg(I,J) + QMELTCXY_mosaic(I,mosaic_i,J)
-              QSNBOTXY_mosaic_avg(I,J) = QSNBOTXY_mosaic_avg(I,J) + QSNBOTXY_mosaic(I,mosaic_i,J)
-              QMELTXY_mosaic_avg(I,J) = QMELTXY_mosaic_avg(I,J) + QMELTXY_mosaic(I,mosaic_i,J)
-              PONDINGXY_mosaic_avg(I,J) = PONDINGXY_mosaic_avg(I,J) + PONDINGXY_mosaic(I,mosaic_i,J)
-              PAHXY_mosaic_avg(I,J) = PAHXY_mosaic_avg(I,J) + PAHXY_mosaic(I,mosaic_i,J)
-              PAHVXY_mosaic_avg(I,J) = PAHVXY_mosaic_avg(I,J) + PAHVXY_mosaic(I,mosaic_i,J)
-              PAHBXY_mosaic_avg(I,J) = PAHBXY_mosaic_avg(I,J) + PAHBXY_mosaic(I,mosaic_i,J)
-              FPICEXY_mosaic_avg(I,J) = FPICEXY_mosaic_avg(I,J) + FPICEXY_mosaic(I,mosaic_i,J)
+              QINTSXY_mosaic_avg(I,J) = QINTSXY_mosaic_avg(I,J) + QINTSXY_mosaic(I,mosaic_i,J)*FAREA
+              QINTRXY_mosaic_avg(I,J) = QINTRXY_mosaic_avg(I,J) + QINTRXY_mosaic(I,mosaic_i,J)*FAREA
+              QDRIPSXY_mosaic_avg(I,J) = QDRIPSXY_mosaic_avg(I,J) + QDRIPSXY_mosaic(I,mosaic_i,J)*FAREA
+              QDRIPRXY_mosaic_avg(I,J) = QDRIPRXY_mosaic_avg(I,J) + QDRIPRXY_mosaic(I,mosaic_i,J)*FAREA
+              QTHROSXY_mosaic_avg(I,J) = QTHROSXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)*FAREA
+              QTHRORXY_mosaic_avg(I,J) = QTHRORXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)*FAREA
+              QSNSUBXY_mosaic_avg(I,J) = QSNSUBXY_mosaic_avg(I,J) + QSNSUBXY_mosaic(I,mosaic_i,J)*FAREA
+              QSNFROXY_mosaic_avg(I,J) = QSNFROXY_mosaic_avg(I,J) + QSNFROXY_mosaic(I,mosaic_i,J)*FAREA
+              QSUBCXY_mosaic_avg(I,J) = QSUBCXY_mosaic_avg(I,J) + QSUBCXY_mosaic(I,mosaic_i,J)*FAREA
+              QFROCXY_mosaic_avg(I,J) = QFROCXCY_mosaic_avg(I,J) + QFROCXY_mosaic(I,mosaic_i,J)*FAREA
+              QEVACXY_mosaic_avg(I,J) = QEVACXY_mosaic_avg(I,J) + QEVACXY_mosaic(I,mosaic_i,J)*FAREA
+              QDEWCXY_mosaic_avg(I,J) = QDEWCXY_mosaic_avg(I,J) + QDEWCXY_mosaic(I,mosaic_i,J)*FAREA
+              QFRZCXY_mosaic_avg(I,J) = QFRZCXY_mosaic_avg(I,J) + QFRZCXY_mosaic(I,mosaic_i,J)*FAREA
+              QMELTCXY_mosaic_avg(I,J) = QMELTCXY_mosaic_avg(I,J) + QMELTCXY_mosaic(I,mosaic_i,J)*FAREA
+              QSNBOTXY_mosaic_avg(I,J) = QSNBOTXY_mosaic_avg(I,J) + QSNBOTXY_mosaic(I,mosaic_i,J)*FAREA
+              QMELTXY_mosaic_avg(I,J) = QMELTXY_mosaic_avg(I,J) + QMELTXY_mosaic(I,mosaic_i,J)*FAREA
+              PONDINGXY_mosaic_avg(I,J) = PONDINGXY_mosaic_avg(I,J) + PONDINGXY_mosaic(I,mosaic_i,J)*FAREA
+              PAHXY_mosaic_avg(I,J) = PAHXY_mosaic_avg(I,J) + PAHXY_mosaic(I,mosaic_i,J)*FAREA
+              PAHVXY_mosaic_avg(I,J) = PAHVXY_mosaic_avg(I,J) + PAHVXY_mosaic(I,mosaic_i,J)*FAREA
+              PAHBXY_mosaic_avg(I,J) = PAHBXY_mosaic_avg(I,J) + PAHBXY_mosaic(I,mosaic_i,J)*FAREA
+              PAHGXY_mosaic_avg(I,J) = PAHGXY_mosaic_avg(I,J) + PAHGXY_mosaic(I,mosaic_i,J)*FAREA
+              FPICEXY_mosaic_avg(I,J) = FPICEXY_mosaic_avg(I,J) + FPICEXY_mosaic(I,mosaic_i,J)*FAREA
 
               ! Soil and ACC
-              ACC_SSOILXY_mosaic_avg(I,J) = ACC_SSOILXY_mosaic_avg(I,J) + ACC_SSOILXY_mosaic(I,mosaic_i,J)
-              ACC_QINSURXY_mosaic_avg(I,J) = ACC_QINSURXY_mosaic_avg(I,J) + ACC_QINSURXY_mosaic(I,mosaic_i,J)
-              ACC_QSEVAXY_mosaic_avg(I,J) = ACC_QSEVAXY_mosaic_avg(I,J) + ACC_QSEVAXY_mosaic(I,mosaic_i,J)
-              EFLXBXY_mosaic_avg(I,J) = EFLXBXY_mosaic_avg(I,J) + EFLXBXY_mosaic(I,mosaic_i,J)
-              SOILENERGY_mosaic_avg(I,J) = SOILENERGY_mosaic_avg(I,J) + SOILENERGY_mosaic(I,mosaic_i,J)
-              SNOWENERGY_mosaic_avg(I,J) = SNOWENERGY_mosaic_avg(I,J) + SNOWENERGY_mosaic(I,mosaic_i,J)
-              CANHSXY_mosaic_avg(I,J) = CANHSXY_mosaic_avg(I,J) + CANHSXY_mosaic(I,mosaic_i,J)
-              ACC_DWATERXY_mosaic_avg(I,J) = ACC_DWATERXY_mosaic_avg(I,J) + ACC_DWATERXY_mosaic(I,mosaic_i,J)
-              ACC_PRCPXY_mosaic_avg(I,J) = ACC_PRCPXY_mosaic_avg(I,J) + ACC_PRCPXY_mosaic(I,mosaic_i,J)
-              ACC_ECANXY_mosaic_avg(I,J) = ACC_ECANXY_mosaic_avg(I,J) + ACC_ECANXY_mosaic(I,mosaic_i,J)
+              ACC_SSOILXY_mosaic_avg(I,J) = ACC_SSOILXY_mosaic_avg(I,J) + ACC_SSOILXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_QINSURXY_mosaic_avg(I,J) = ACC_QINSURXY_mosaic_avg(I,J) + ACC_QINSURXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_QSEVAXY_mosaic_avg(I,J) = ACC_QSEVAXY_mosaic_avg(I,J) + ACC_QSEVAXY_mosaic(I,mosaic_i,J)*FAREA
+              EFLXBXY_mosaic_avg(I,J) = EFLXBXY_mosaic_avg(I,J) + EFLXBXY_mosaic(I,mosaic_i,J)*FAREA
+              SOILENERGY_mosaic_avg(I,J) = SOILENERGY_mosaic_avg(I,J) + SOILENERGY_mosaic(I,mosaic_i,J)*FAREA
+              SNOWENERGY_mosaic_avg(I,J) = SNOWENERGY_mosaic_avg(I,J) + SNOWENERGY_mosaic(I,mosaic_i,J)*FAREA
+              CANHSXY_mosaic_avg(I,J) = CANHSXY_mosaic_avg(I,J) + CANHSXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_DWATERXY_mosaic_avg(I,J) = ACC_DWATERXY_mosaic_avg(I,J) + ACC_DWATERXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_PRCPXY_mosaic_avg(I,J) = ACC_PRCPXY_mosaic_avg(I,J) + ACC_PRCPXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_ECANXY_mosaic_avg(I,J) = ACC_ECANXY_mosaic_avg(I,J) + ACC_ECANXY_mosaic(I,mosaic_i,J)*FAREA
 
 
 
@@ -7542,7 +7543,7 @@ type(noahmp_parameters) :: parameters
                   SMOIS(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J)
                   SH2O(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J)
                   SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J)
-
+                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,mosaic_i,J)
               ENDDO
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
@@ -7624,6 +7625,58 @@ type(noahmp_parameters) :: parameters
               CHUCXY(I,J) = chucxy_mosaic_avg(I,J)
               CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)
               CHB2XY(I,J) = chb2xy_mosaic_avg(I,J)
+
+
+              ! irrigation intermediate variables
+              IRWATSI(I,J) =  IRWATSI_mosaic_avg(I,J)
+              IRWATMI(I,J) =  IRWATMI_mosaic_avg(I,J)
+              IRWATFI(I,J) =  IRWATFI_mosaic_avg(I,J)
+              IRELOSS(I,J) =  IRELOSS_mosaic_avg(I,J)
+              IRSIVOL(I,J) =  IRSIVOL_mosaic_avg(I,J)
+              IRMIVOL(I,J) =  IRMIVOL_mosaic_avg(I,J)
+              IRFIVOL(I,J) =  IRFIVOL_mosaic_avg(I,J)
+              IRRSPLH(I,J) =  IRRSPLH_mosaic_avg(I,J)
+
+              IRNUMSI(I,J) = IRNUMSI_mosaic_avg(I,J)/mosaic_cat
+              IRNUMMI(I,J) = IRNUMMI_mosaic_avg(I,J)/mosaic_cat
+              IRNUMFI(I,J) = IRNUMFI_mosaic_avg(I,J)/mosaic_cat
+
+              ! Extra variables averaged needed for extra outputs
+              QINTSXY(I,J) = QINTSXY_mosaic_avg(I,J)
+              QINTRXY(I,J) = QINTRXY_mosaic_avg(I,J)
+              QDRIPSXY(I,J) = QDRIPSXY_mosaic_avg(I,J)
+              QDRIPRXY(I,J) = QDRIPRXY_mosaic_avg(I,J)
+              QTHROSXY(I,J) = QTHROSXY_mosaic_avg(I,J)
+              QTHRORXY(I,J) = QTHRORXY_mosaic_avg(I,J)
+              QSNSUBXY(I,J) = QSNSUBXY_mosaic_avg(I,J)
+              QSNFROXY(I,J) = QSNFROXY_mosaic_avg(I,J)
+              QSUBCXY(I,J) = QSUBCXY_mosaic_avg(I,J)
+              QFROCXY(I,J) = QFROCXCY_mosaic_avg(I,J)
+              QEVACXY(I,J) = QEVACXY_mosaic_avg(I,J)
+              QDEWCXY(I,J) = QDEWCXY_mosaic_avg(I,J)
+              QFRZCXY(I,J) = QFRZCXY_mosaic_avg(I,J)
+              QMELTCXY(I,J) = QMELTCXY_mosaic_avg(I,J)
+              QSNBOTXY(I,J) = QSNBOTXY_mosaic_avg(I,J)
+              QMELTXY(I,J) = QMELTXY_mosaic_avg(I,J)
+              PONDINGXY(I,J) = PONDINGXY_mosaic_avg(I,J)
+              PAHXY(I,J) = PAHXY_mosaic_avg(I,J)
+              PAHVXY(I,J) = PAHVXY_mosaic_avg(I,J)
+              PAHBXY(I,J) = PAHBXY_mosaic_avg(I,J)
+              PAHGXY(I,J) = PAHGXY_mosaic_avg(I,J)
+              FPICEXY_mosaic_avg(I,J) = FPICEXY_mosaic_avg(I,J)
+
+              ACC_SSOILXY(I,J) = ACC_SSOILXY_mosaic_avg(I,J)
+              ACC_QINSURXY(I,J) = ACC_QINSURXY_mosaic_avg(I,J)
+              ACC_QSEVAXY(I,J) = ACC_QSEVAXY_mosaic_avg(I,J)
+              EFLXBXY(I,J) = EFLXBXY_mosaic_avg(I,J)
+              SOILENERGY(I,J) = SOILENERGY_mosaic_avg(I,J)
+              SNOWENERGY(I,J) = SNOWENERGY_mosaic_avg(I,J)
+              CANHSXY(I,J) = CANHSXY_mosaic_avg(I,J)
+              ACC_DWATERXY(I,J) = ACC_DWATERXY_mosaic_avg(I,J)
+              ACC_PRCPXY(I,J) = ACC_PRCPXY_mosaic_avg(I,J)
+              ACC_ECANXY(I,J) = ACC_ECANXY_mosaic_avg(I,J)
+
+
 
             ENDIF ! End of the Soil-Water_ice If else statement
 
