@@ -84,6 +84,8 @@ module module_NoahMP_hrldas_driver
   INTEGER                                 ::  IOPT_IRRM ! irrigation method (0->dynamic; 1-> sprinkler; 2-> micro; 3-> flood)
   INTEGER                                 ::  IOPT_INFDV!infiltration options for dynamic VIC (1->Philip; 2-> Green-Ampt;3->Smith-Parlange)
   INTEGER                                 ::  IOPT_TDRN ! drainage option (0->off; 1->simple scheme; 2->Hooghoudt's scheme)
+  INTEGER                                 ::  IOPT_MOSAIC
+  INTEGER                                 ::  IOPT_HUE
   REAL                                    ::  soiltstep ! soil time step (s) control namelist option (default=0: same as main NoahMP timstep)
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)  ::  T_PHY     ! 3D atmospheric temperature valid at mid-levels [K]
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)  ::  QV_CURR   ! 3D water vapor mixing ratio [kg/kg_dry]
@@ -1040,6 +1042,8 @@ module module_NoahMP_hrldas_driver
   IOPT_INFDV= dvic_infiltration_option
   IOPT_TDRN = tile_drainage_option
   soiltstep = soil_timestep_option
+  IOPT_MOSAIC = noahmp_mosaic_scheme
+  IOPT_HUE = noahmp_HUE_iopt
 
 !---------------------------------------------------------------------
 !  NAMELIST end
@@ -1245,7 +1249,7 @@ module module_NoahMP_hrldas_driver
      endif
   endif
 
-  if (noahmp_HUE_iopt /= 0 .and. noahmp_HUE_iopt /= 1) then
+  if (IOPT_HUE /= 0 .and. IOPT_HUE /= 1) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
         write(*, '(" ***** ")')
@@ -1254,7 +1258,7 @@ module module_NoahMP_hrldas_driver
         stop
   endif
 
-  if (noahmp_HUE_iopt.eq.1) then
+  if (IOPT_HUE.eq.1) then
     if (number_land_use_catagories.le.40 ) then
        write(*, *)
        write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1287,6 +1291,16 @@ if (noahmp_mosaic_scheme.eq.1) then
   endif
 endif
 
+if (IOPT_HUE.eq.1) then
+  if (noahmp_mosaic_scheme.eq.1) then
+     write(*, *)
+     write(*, '(" ***** Namelist error: ******************************************************")')
+     write(*, '(" ***** ")')
+     write(*, '(" *****      Mosaic NOAH-MP must be used with HUE in spatially distributed format ")')
+     write(*, *)
+     stop
+  endif
+endif
 
 !---------------------------------------------------------------------
 !  NAMELIST check end
@@ -2955,7 +2969,7 @@ ENDIF
                       smoiseq, smcwtdxy, rechxy, deeprechxy,
                       LANDUSEF, LANDUSEF2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                      noahmp_HUE_iopt,                                                      &
+                      IOPT_HUE,                                                      &
                       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
@@ -3379,7 +3393,7 @@ if (noahmp_mosaic_scheme.eq.0) then
                   smoiseq, smcwtdxy, rechxy, deeprechxy,
                   LANDUSEF, landusef2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                  noahmp_HUE_iopt,                                                      &
+                  IOPT_HUE,                                                      &
                   TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                   CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                   isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
@@ -3997,7 +4011,7 @@ IF (ITIME > 0) THEN
 ! Timing information for SFLX:
  call system_clock(count=count_before_sflx, count_rate=clock_rate)
 
- CALL noahmplsm_mosaic(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
+ CALL noahmplsm_mosaic_hue(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
                    DZ8W,       DTBL,       DZS,    NUM_SOIL_LAYERS,       DX,            & ! IN : Model configuration
  	                 IVGTYP,   ISLTYP,    VEGFRA,   GVFMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
  		               XLAND,     XICE,XICE_THRESHOLD,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
@@ -4005,7 +4019,7 @@ IF (ITIME > 0) THEN
                   IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
                IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
                IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
-               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, noahmp_HUE_iopt, soilstep,  &
+               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, IOPT_HUE, soilstep,  &
                 IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
  	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
                     T_PHY,     QV_CURR,     U_PHY,    V_PHY,   SWDOWN,      SWDDIR,  & ! IN : Forcing

@@ -4537,7 +4537,7 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
 !--------------------------------
 
 !--------------------------------
-SUBROUTINE NOAHMPLSM_MOSAIC(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
+SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
                   DZ8W,       DT,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
 	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
 		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
@@ -6184,6 +6184,8 @@ type(noahmp_parameters) :: parameters
                ! insert the NOAHMP MODEL and the URBAN models
                !-----------------------------------------------------------------------
 
+     ! add break down if this is just a mosaic scheme, or if it is a mosaic and HUE
+     ! scheme. If there is no HUE option, we continue as normally
 
      !     2D to 1D
 
@@ -6567,6 +6569,8 @@ type(noahmp_parameters) :: parameters
               RUNSB  = RUNSB * dt
          ELSE
               ICE=0                              ! Neither sea ice or land ice.
+
+
               CALL NOAHMP_SFLX (parameters, &
                  I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
                  DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
@@ -7683,7 +7687,7 @@ type(noahmp_parameters) :: parameters
            ENDDO ILOOP !END of the I LOOP
            ENDDO JLOOP !END of the J LOOP
 
-          END SUBROUTINE NOAHMPLSM_MOSAIC
+         END SUBROUTINE NOAHMPLSM_MOSAIC_HUE
 
 
 END MODULE module_sf_noahmpdrv
