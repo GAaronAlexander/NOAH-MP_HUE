@@ -1097,7 +1097,7 @@ END IF ! end the HUE change to the water balance
 #ifdef WRF_HYDRO
                         ,sfcheadrt,WATBLED,                        &
 #endif                                                                            ! optional HUE added by Aaron A.
-                GREEN_ROOF , NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! optional green roof values
+                RUNONSRF, GREEN_ROOF , NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! optional green roof values
                 COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR, FAREA,DX, VOL_FLUX_SM, VOL_FLUX_RUNON ))  !optional for HUE
 
 
@@ -1121,7 +1121,7 @@ END IF ! end the HUE change to the water balance
                  TOTLB  ,LAI    ,SAI    )                   !out
    END IF
 
-   IF (OPT_CROP == 1 .and. crop_active) THEN
+   IF (OPT_CROP == 1 .and. crop_active .and.VEGTYP.ne.46) THEN ! no crop green roofs
     CALL CARBON_CROP (parameters,NSNOW  ,NSOIL  ,VEGTYP ,DT     ,ZSOIL  ,JULIAN , & !in
                          DZSNSO ,STC    ,SMC    ,TV     ,PSN    ,FOLN   ,BTRAN  , & !in
 			 SOLDN  ,T2M    ,                                         & !in
@@ -1851,7 +1851,7 @@ local
           END_WB = END_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
        END DO
 
-     END IF 
+     END IF
 
       ! accumualted water change (only for canopy and snow during non-soil timestep)
       ACC_DWATER = ACC_DWATER + (END_WB - BEG_WB)  ! snow, canopy, and soil water change
@@ -1873,14 +1873,23 @@ local
            endif
            write(message, *) 'ERRWAT =',ERRWAT, "kg m{-2} timestep{-1}"
            call wrf_message(trim(message))
-           IF
-           WRITE(message, &
-           '("     I      J     END-BEG     PRCP     IRMIRATE     IRFIRATE      ECAN     EDIR    ETRAN   RUNSRF   RUNSUB   ZWT   QTLDRN")')
-           call wrf_message(trim(message))
-           WRITE(message,'(i6,i6,f10.3,10f10.5)')ILOC,JLOC,ACC_DWATER,ACC_PRCP,IRMIRATE*1000.0,&
-                IRFIRATE*1000.0,ACC_ECAN,ACC_EDIR,ACC_ETRAN,RUNSRF,RUNSUB,ZWT,QTLDRN
-           call wrf_message(trim(message))
-           call wrf_error_fatal("Water budget problem in NOAHMP LSM")
+           IF(OPT_HUE.eq.1) THEN
+             WRITE(message, &
+             '("     I      J     END-BEG     PRCP     IRMIRATE     IRFIRATE      ECAN     EDIR    ETRAN   RUNSRF   RUNSUB   ZWT   QTLDRN  RUNONSRF   DETENTION_STORAGE ")')
+             call wrf_message(trim(message))
+             WRITE(message,'(i6,i6,f10.3,10f10.5)')ILOC,JLOC,ACC_DWATER,ACC_PRCP,IRMIRATE*1000.0,&
+                  IRFIRATE*1000.0,ACC_ECAN,ACC_EDIR,ACC_ETRAN,RUNSRF,RUNSUB,ZWT,QTLDRN RUNONSRF*DT, DETENTION_STORAGE*1000.
+             call wrf_message(trim(message))
+             call wrf_error_fatal("Water budget problem in NOAHMP LSM")
+           ELSE
+             WRITE(message, &
+             '("     I      J     END-BEG     PRCP     IRMIRATE     IRFIRATE      ECAN     EDIR    ETRAN   RUNSRF   RUNSUB   ZWT   QTLDRN")')
+             call wrf_message(trim(message))
+             WRITE(message,'(i6,i6,f10.3,10f10.5)')ILOC,JLOC,ACC_DWATER,ACC_PRCP,IRMIRATE*1000.0,&
+                  IRFIRATE*1000.0,ACC_ECAN,ACC_EDIR,ACC_ETRAN,RUNSRF,RUNSUB,ZWT,QTLDRN
+             call wrf_message(trim(message))
+             call wrf_error_fatal("Water budget problem in NOAHMP LSM")
+           END IF
         END IF
 #endif
 
@@ -1919,7 +1928,8 @@ local
                      Q1     ,Q2V    ,Q2B    ,Q2E    ,CHV  ,CHB, EMISSI, PAH, CANHS, &
 		     SHG,SHC,SHB,EVG,EVB,GHV,GHB,IRG,IRC,IRB,TR,EVC,CHLEAF,CHUC,CHV2,CHB2, &
                      EFLXB  ,HCPCT  ,ACC_SSOIL, &
-                     JULIAN, SWDOWN, PRCP, FB, GECROS1D )
+                     JULIAN, SWDOWN, PRCP, FB, GECROS1D,              &
+                     GREEN_ROOF, NSOIL_GR, SMC_dummy, SH2O_dummy ) ! HUE Noah-MP specific variables Aaron A.
 !jref:end
 
 ! --------------------------------------------------------------------------------------------------
@@ -2181,6 +2191,12 @@ local
 
 !jref:end
 
+  ! Green Roof Variables needed for Energy Call
+  LOGICAL, INTENT(IN) :: GREEN_ROOF
+  INTEGER, INTENT(IN) :: NSOIL_GR
+  REAL   , DIMENSION(       1:NSOIL), INTENT(INOUT) :: SH2O_dummy   !liquid soil moisture [m3/m3] !SHOULD ONLY BE PASSED THE THERMPROPS
+  REAL   , DIMENSION(       1:NSOIL), INTENT(INOUT) :: SMC_dummy    !soil moisture (ice + liq.) [m3/m3] ! SHOULD ONELY BE PASSED TO THERMPROPS
+
   REAL, PARAMETER                   :: MPE    = 1.E-6
   REAL, PARAMETER                   :: PSIWLT = -150.0  !metric potential for wilting point (m)
   REAL, PARAMETER                   :: Z0     = 0.002   ! Bare-soil roughness length (m) (i.e., under the canopy)
@@ -2254,7 +2270,7 @@ local
 
 ! special case for urban
 
-     IF (parameters%urban_flag) THEN
+     IF ((parameters%urban_flag).OR.(VEGTYP.eq.42).OR.(VEGTYP.eq.44).OR.(VEGTYP.eq.45) )THEN !Added by Aaron A.) THEN
        Z0MG = parameters%Z0MVT
        ZPDG  = 0.65 * parameters%HVT
        Z0M  = Z0MG
@@ -2263,6 +2279,8 @@ local
 
      ZLVL = MAX(ZPD,parameters%HVT) + ZREF
      IF(ZPDG >= ZLVL) ZLVL = ZPDG + ZREF
+     ! Need to add a ZLVL for wind
+     UR   = UR*LOG(ZLVL/Z0M)/LOG(10./Z0M)       !input UR is at 10m
 !     UR   = UR*LOG(ZLVL/Z0M)/LOG(10./Z0M)       !input UR is at 10m
 
 ! canopy wind absorption coeffcient
@@ -2276,7 +2294,7 @@ local
                    SMC     ,SH2O    ,TG      ,STC     ,UR      , & !in
                    LAT     ,Z0M     ,ZLVL    ,VEGTYP  , & !in
                    DF      ,HCPCT   ,SNICEV  ,SNLIQV  ,EPORE   , & !out
-                   FACT    )                              !out
+                   FACT    ,GREEN_ROOF, NSOIL_GR )                              !out
 
 ! Solar radiation: absorbed & reflected by the ground and canopy
 
@@ -2300,20 +2318,22 @@ local
      END IF
 
 ! soil moisture factor controlling stomatal resistance
+! This has been modified by Aaron ALexander to use a dummy variable,
+! this as part of the HUE soil moisture sharing for urban trees!
 
      BTRAN = 0.0
 
      IF(IST ==1 ) THEN
        DO IZ = 1, parameters%NROOT
           IF(OPT_BTR == 1) then                  ! Noah
-            GX    = (SH2O(IZ)-parameters%SMCWLT(IZ)) / (parameters%SMCREF(IZ)-parameters%SMCWLT(IZ))
+            GX    = (SH2O_dummy(IZ)-parameters%SMCWLT(IZ)) / (parameters%SMCREF(IZ)-parameters%SMCWLT(IZ))
           END IF
           IF(OPT_BTR == 2) then                  ! CLM
-            PSI   = MAX(PSIWLT,-parameters%PSISAT(IZ)*(MAX(0.01,SH2O(IZ))/parameters%SMCMAX(IZ))**(-parameters%BEXP(IZ)) )
+            PSI   = MAX(PSIWLT,-parameters%PSISAT(IZ)*(MAX(0.01,SH2O_dummy(IZ))/parameters%SMCMAX(IZ))**(-parameters%BEXP(IZ)) )
             GX    = (1.0-PSI/PSIWLT)/(1.0+parameters%PSISAT(IZ)/PSIWLT)
           END IF
           IF(OPT_BTR == 3) then                  ! SSiB
-            PSI   = MAX(PSIWLT,-parameters%PSISAT(IZ)*(MAX(0.01,SH2O(IZ))/parameters%SMCMAX(IZ))**(-parameters%BEXP(IZ)) )
+            PSI   = MAX(PSIWLT,-parameters%PSISAT(IZ)*(MAX(0.01,SH2O_dummy(IZ))/parameters%SMCMAX(IZ))**(-parameters%BEXP(IZ)) )
             GX    = 1.0-EXP(-5.8*(LOG(PSIWLT/PSI)))
           END IF
 
@@ -2357,9 +2377,9 @@ local
      END IF
 
 ! urban - jref
-     IF (parameters%urban_flag .and. SNOWH == 0.0 ) THEN
-        RSURF = 1.E6
-     ENDIF
+      IF ((parameters%urban_flag .and. SNOWH == 0. ).or.(VEGTYP.eq.42 .and. SNOWH.eq.0).or.(VEGTYP.eq.44. .and. SNOWH.eq.0)) THEN !modified by Aaron Alexander
+         RSURF = 1.E6
+      ENDIF
 
 ! set psychrometric constant
 
@@ -2520,7 +2540,7 @@ local
                     TBOT      ,ZSNSO   ,SSOIL_avg ,DF      ,HCPCT   , & !in
                     SAG       ,DT_soil ,SNOWH     ,DZSNSO  , & !in
                     TG        ,ILOC    ,JLOC      ,                   & !in
-                    STC       ,EFLXB   )                             !inout
+                    STC       ,EFLXB, GREEN_ROOF, NSOIL_GR ) ! adjusted by G. Aaron Alexander                             !inout
 
       EFLXB = EFLXB * DT_soil
     end if
@@ -2546,7 +2566,7 @@ local
                    DZSNSO  ,HCPCT   ,IST     ,ILOC    ,JLOC    , & !in
                    STC     ,SNICE   ,SNLIQ   ,SNEQV   ,SNOWH   , & !inout
                    SMC     ,SH2O    ,                            & !inout
-                   QMELT   ,IMELT   ,PONDING )                     !out
+                   QMELT   ,IMELT   ,PONDING, GREEN_ROOF, NSOIL_GR  )    ! Adjusted by G. Aaron Alexander                 !out
 
 
   END SUBROUTINE ENERGY
@@ -2558,7 +2578,7 @@ local
                          SMC     ,SH2O    ,TG      ,STC     ,UR      , & !in
                          LAT     ,Z0M     ,ZLVL    ,VEGTYP  , & !in
                          DF      ,HCPCT   ,SNICEV  ,SNLIQV  ,EPORE   , & !out
-                         FACT    )                                       !out
+                         FACT,    ,GREEN_ROOF, NSOIL_GR  )                                       !out
 ! -------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 ! --------------------------------------------------------------------------------------------------
@@ -2582,6 +2602,8 @@ local
   REAL,                            INTENT(IN)  :: Z0M     !roughness length (m)
   REAL,                            INTENT(IN)  :: ZLVL    !reference height (m)
   INTEGER                        , INTENT(IN)  :: VEGTYP  !vegtyp type
+  LOGICAL                        , INTENT(IN), OPTIONAL  :: GREEN_ROOF !logical to get to green roof physics
+  INTEGER                        , INTENT(IN), OPTIONAL  :: NSOIL_GR !no. of soil layers in green roof
 
 ! outputs
   REAL, DIMENSION(-NSNOW+1:NSOIL), INTENT(OUT) :: DF      !thermal conductivity [w/m/k]
@@ -2614,14 +2636,27 @@ local
 
 ! compute soil thermal properties
 
+IF (GREEN_ROOF) THEN !add green roof (only a single layer)
+    DO  IZ = 1, NSOIL
+      IF (IZ.eq.NSOIL_GR) THEN
+       SICE(IZ)  = SMC(IZ) - SH2O(IZ)
+       HCPCT(IZ) = SH2O(IZ)*CWAT + (1.0-parameters%SMCMAX(IZ))*1.125*1000000 &
+                + (parameters%SMCMAX(IZ)-SMC(IZ))*CPAIR + SICE(IZ)*CICE
+       CALL TDFCND (parameters,IZ,DF(IZ), SMC(IZ), SH2O(IZ))
+      ELSE
+       HCPCT(IZ) = 0.0
+       DF(IZ) = 0.0
+      END IF
+    END DO
+ELSE ! Normal
     DO  IZ = 1, NSOIL
        SICE(IZ)  = SMC(IZ) - SH2O(IZ)
        HCPCT(IZ) = SH2O(IZ)*CWAT + (1.0-parameters%SMCMAX(IZ))*parameters%CSOIL &
                 + (parameters%SMCMAX(IZ)-SMC(IZ))*CPAIR + SICE(IZ)*CICE
        CALL TDFCND (parameters,IZ,DF(IZ), SMC(IZ), SH2O(IZ))
     END DO
-
-    IF ( parameters%urban_flag ) THEN
+END IF
+IF (( parameters%urban_flag ).OR.(VEGTYP.EQ.41).OR.(VEGTYP.EQ.42).OR.(VEGTYP.EQ.44).OR.(VEGTYP.EQ.45)) THEN !added by Aaron A.
        DO IZ = 1,NSOIL
          DF(IZ) = 3.24
        END DO
@@ -2649,11 +2684,15 @@ local
     END IF
 
 ! combine a temporary variable used for melting/freezing of snow and frozen soil
-
-    DO IZ = ISNOW+1,NSOIL
-     FACT(IZ) = DT/(HCPCT(IZ)*DZSNSO(IZ))
+  IF (GREEN_ROOF) THEN ! added by Aaron A. Green roof
+    DO IZ = ISNOW+1,NSOIL_GR
+    FACT(IZ) = DT/(HCPCT(IZ)*DZSNSO(IZ))
     END DO
-
+  ELSE
+      DO IZ = ISNOW+1,NSOIL
+       FACT(IZ) = DT/(HCPCT(IZ)*DZSNSO(IZ))
+      END DO
+  END IF
 ! snow/soil interface
 
     IF(ISNOW == 0) THEN
@@ -3105,7 +3144,7 @@ local
 
   CALL GROUNDALB (parameters,NSOIL   ,NBAND   ,ICE     ,IST     , & !in
                   FSNO    ,SMC     ,ALBSND  ,ALBSNI  ,COSZ    , & !in
-                  TG      ,ILOC    ,JLOC    ,                   & !in
+                  TG      ,ILOC    ,JLOC    , VEGTYP,           & !in ! added by aaron a.
                   ALBGRD  ,ALBGRI  )                              !out
 
 ! loop over NBAND wavebands to calculate surface albedos and solar
@@ -3435,7 +3474,7 @@ local
   SUBROUTINE GROUNDALB (parameters,NSOIL   ,NBAND   ,ICE     ,IST     , & !in
                         FSNO    ,SMC     ,ALBSND  ,ALBSNI  ,COSZ    , & !in
                         TG      ,ILOC    ,JLOC    ,                   & !in
-                        ALBGRD  ,ALBGRI  )                              !out
+                        ALBGRD  ,ALBGRI, VEGTYP  )                              !out
 ! --------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 ! --------------------------------------------------------------------------------------------------
@@ -3454,6 +3493,7 @@ local
   REAL, DIMENSION(1:NSOIL), INTENT(IN)  :: SMC    !volumetric soil water content (m3/m3)
   REAL, DIMENSION(1:    2), INTENT(IN)  :: ALBSND !direct beam snow albedo (vis, nir)
   REAL, DIMENSION(1:    2), INTENT(IN)  :: ALBSNI !diffuse snow albedo (vis, nir)
+  INTEGER                 , INTENT(IN)  :: VEGTYP
 
 !output
 
@@ -5414,7 +5454,7 @@ local
                       TBOT    ,ZSNSO   ,SSOIL   ,DF      ,HCPCT   , & !in
                       SAG     ,DT      ,SNOWH   ,DZSNSO  , & !in
                       TG      ,ILOC    ,JLOC    ,                   & !in
-                      STC     ,EFLXB   )                                       !inout
+                      STC     ,EFLXB, GREEN_ROOF, NSOIL_GR   )                                       !inout
 ! --------------------------------------------------------------------------------------------------
 ! Compute snow (up to 3L) and soil (4L) temperature. Note that snow temperatures
 ! during melting season may exceed melting point (TFRZ) but later in PHASECHANGE
@@ -5448,6 +5488,10 @@ local
 !input and output
     REAL, DIMENSION(-NSNOW+1:NSOIL), INTENT(INOUT) :: STC
 
+! Green Roof
+   LOGICAL, INTENT(IN), OPTIONAL :: GREEN_ROOF ! Logical for green roof
+   INTEGER, INTENT(IN), OPTIONAL :: NSOIL_GR ! no. soil layers (1)
+
 !local
     INTEGER                                      :: IZ
     REAL                                         :: ZBOTSNO   !ZBOT from snow surface
@@ -5480,11 +5524,11 @@ local
                   STC       ,TBOT      ,ZBOTSNO   ,DT        , &
                   DF        ,HCPCT     ,SSOIL     ,PHI       , &
                   AI        ,BI        ,CI        ,RHSTS     , &
-                  EFLXB     )
+                  EFLXB     ,GREEN_ROOF, NSOIL_GR     )
 
       CALL HSTEP (parameters,NSNOW     ,NSOIL     ,ISNOW     ,DT        , &
                   AI        ,BI        ,CI        ,RHSTS     , &
-                  STC       )
+                  STC       ,GREEN_ROOF, NSOIL_GR     )
 
 ! update ground heat flux just for energy check, but not for final output
 ! otherwise, it would break the surface energy balance
@@ -5531,7 +5575,7 @@ local
                   STC       ,TBOT      ,ZBOT      ,DT        , &
                   DF        ,HCPCT     ,SSOIL     ,PHI       , &
                   AI        ,BI        ,CI        ,RHSTS     , &
-                  BOTFLX    )
+                  BOTFLX    ,GREEN_ROOF, NSOIL_GR   )
 ! ----------------------------------------------------------------------
 ! ----------------------------------------------------------------------
 ! calculate the right hand side of the time tendency term of the soil
@@ -5565,6 +5609,10 @@ local
     REAL, DIMENSION(-NSNOW+1:NSOIL), INTENT(OUT) :: CI     !left-hand side coefficient
     REAL,                            INTENT(OUT) :: BOTFLX !energy influx from soil bottom (w/m2)
 
+! Optional Green Roof
+   LOGICAL, INTENT(IN), OPTIONAL :: GREEN_ROOF ! aaron A.
+   INTEGER, INTENT(IN), OPTIONAL :: NSOIL_GR ! aaron A.
+
 ! local
 
     INTEGER                                      :: K
@@ -5574,22 +5622,31 @@ local
     REAL, DIMENSION(-NSNOW+1:NSOIL)              :: DTSDZ
     REAL, DIMENSION(-NSNOW+1:NSOIL)              :: EFLUX
     REAL                                         :: TEMP1
+    INTEGER                                      :: NSOIL_ACT ! local variable for number of soil layers,
+                                                              ! allows for swapping between Green roof and non-green roof
+                                                              ! without re-writing
 ! ----------------------------------------------------------------------
-
-    DO K = ISNOW+1, NSOIL
+    ! add quick switch for Green roof without messing with variable dimesnions Aaron A.
+    IF (GREEN_ROOF) THEN
+        NSOIL_ACT = NSOIL_GR
+    ELSE
+        NSOIL_ACT = NSOIL
+    END IF
+    !normal code (NSOIL swapped with NSOIL_ACT ) Aaron A.
+    DO K = ISNOW+1, NSOIL_ACT
         IF (K == ISNOW+1) THEN
            DENOM(K)  = - ZSNSO(K) * HCPCT(K)
            TEMP1     = - ZSNSO(K+1)
            DDZ(K)    = 2.0 / TEMP1
            DTSDZ(K)  = 2.0 * (STC(K) - STC(K+1)) / TEMP1
            EFLUX(K)  = DF(K) * DTSDZ(K) - SSOIL - PHI(K)
-        ELSE IF (K < NSOIL) THEN
+        ELSE IF (K < NSOIL_ACT) THEN
            DENOM(K)  = (ZSNSO(K-1) - ZSNSO(K)) * HCPCT(K)
            TEMP1     = ZSNSO(K-1) - ZSNSO(K+1)
            DDZ(K)    = 2.0 / TEMP1
            DTSDZ(K)  = 2.0 * (STC(K) - STC(K+1)) / TEMP1
            EFLUX(K)  = (DF(K)*DTSDZ(K) - DF(K-1)*DTSDZ(K-1)) - PHI(K)
-        ELSE IF (K == NSOIL) THEN
+        ELSE IF (K == NSOIL_ACT) THEN
            DENOM(K)  = (ZSNSO(K-1) - ZSNSO(K)) * HCPCT(K)
            TEMP1     =  ZSNSO(K-1) - ZSNSO(K)
            IF(OPT_TBOT == 1) THEN
@@ -5603,7 +5660,7 @@ local
         END IF
     END DO
 
-    DO K = ISNOW+1, NSOIL
+    DO K = ISNOW+1, NSOIL_ACT
         IF (K == ISNOW+1) THEN
            AI(K)    =   0.0
            CI(K)    = - DF(K)   * DDZ(K) / DENOM(K)
@@ -5613,11 +5670,11 @@ local
            IF (OPT_STC == 2) THEN
               BI(K) = - CI(K) + DF(K)/(0.5*ZSNSO(K)*ZSNSO(K)*HCPCT(K))
            END IF
-        ELSE IF (K < NSOIL) THEN
+        ELSE IF (K < NSOIL_ACT) THEN
            AI(K)    = - DF(K-1) * DDZ(K-1) / DENOM(K)
            CI(K)    = - DF(K  ) * DDZ(K  ) / DENOM(K)
            BI(K)    = - (AI(K) + CI (K))
-        ELSE IF (K == NSOIL) THEN
+        ELSE IF (K == NSOIL_ACT) THEN
            AI(K)    = - DF(K-1) * DDZ(K-1) / DENOM(K)
            CI(K)    = 0.0
            BI(K)    = - (AI(K) + CI(K))
@@ -5631,7 +5688,7 @@ local
 
   SUBROUTINE HSTEP (parameters,NSNOW     ,NSOIL     ,ISNOW     ,DT        ,  &
                     AI        ,BI        ,CI        ,RHSTS     ,  &
-                    STC       )
+                    STC       ,GREEN_ROOF,NSOIL_GR )
 ! ----------------------------------------------------------------------
 ! CALCULATE/UPDATE THE SOIL TEMPERATURE FIELD.
 ! ----------------------------------------------------------------------
@@ -5652,13 +5709,27 @@ local
     REAL, DIMENSION(-NSNOW+1:NSOIL), INTENT(INOUT) :: CI
     REAL, DIMENSION(-NSNOW+1:NSOIL), INTENT(INOUT) :: STC
 
+! Optional Green Roof
+   LOGICAL, INTENT(IN), OPTIONAL :: GREEN_ROOF ! aaron A.
+   INTEGER, INTENT(IN), OPTIONAL :: NSOIL_GR ! aaron A.
+
 ! local
     INTEGER                                        :: K
     REAL, DIMENSION(-NSNOW+1:NSOIL)                :: RHSTSIN
     REAL, DIMENSION(-NSNOW+1:NSOIL)                :: CIIN
+    INTEGER                                        :: NSOIL_ACT
 ! ----------------------------------------------------------------------
 
-    DO K = ISNOW+1,NSOIL
+    ! add quick switch for Green roof without messing with variable dimesnions Aaron A.
+    IF (GREEN_ROOF) THEN
+        NSOIL_ACT = NSOIL_GR
+    ELSE
+        NSOIL_ACT = NSOIL
+    END IF
+
+
+
+    DO K = ISNOW+1,NSOIL_ACT
        RHSTS(K) =    RHSTS(K) * DT
        AI(K)    =       AI(K) * DT
        BI(K)    = 1.0 + BI(K) * DT
@@ -5667,18 +5738,18 @@ local
 
 ! copy values for input variables before call to rosr12
 
-    DO K = ISNOW+1,NSOIL
+    DO K = ISNOW+1,NSOIL_ACT
        RHSTSIN(K) = RHSTS(K)
        CIIN(K)    = CI(K)
     END DO
 
 ! solve the tri-diagonal matrix equation
 
-    CALL ROSR12 (CI,AI,BI,CIIN,RHSTSIN,RHSTS,ISNOW+1,NSOIL,NSNOW)
+    CALL ROSR12 (CI,AI,BI,CIIN,RHSTSIN,RHSTS,ISNOW+1,NSOIL,NSNOW,GREEN_ROOF,NSOIL_GR)
 
 ! update snow & soil temperature
 
-    DO K = ISNOW+1,NSOIL
+    DO K = ISNOW+1,NSOIL_ACT
        STC (K) = STC (K) + CI (K)
     END DO
 
@@ -5686,7 +5757,7 @@ local
 
 !== begin rosr12 ===================================================================================
 
-  SUBROUTINE ROSR12 (P,A,B,C,D,DELTA,NTOP,NSOIL,NSNOW)
+  SUBROUTINE ROSR12 (P,A,B,C,D,DELTA,NTOP,NSOIL,NSNOW,GREEN_ROOF,NSOIL_GR)
 ! ----------------------------------------------------------------------
 ! SUBROUTINE ROSR12
 ! ----------------------------------------------------------------------
@@ -5713,6 +5784,19 @@ local
 
     REAL, DIMENSION(-NSNOW+1:NSOIL),INTENT(IN):: A, B, D
     REAL, DIMENSION(-NSNOW+1:NSOIL),INTENT(INOUT):: C,P,DELTA
+
+! Optional Green Roof
+    LOGICAL, INTENT(IN), OPTIONAL :: GREEN_ROOF ! aaron A.
+    INTEGER, INTENT(IN), OPTIONAL :: NSOIL_GR ! aaron A.
+
+    INTEGER :: NSOIL_ACT
+
+  ! add quick switch for Green roof without messing with variable dimesnions Aaron A.
+    IF (PRESENT(GREEN_ROOF).AND.GREEN_ROOF) THEN
+        NSOIL_ACT = NSOIL_GR
+    ELSE
+        NSOIL_ACT = NSOIL
+    END IF
 
 ! ----------------------------------------------------------------------
 ! INITIALIZE EQN COEF C FOR THE LOWEST SOIL LAYER
@@ -5751,7 +5835,7 @@ local
                           DZSNSO  ,HCPCT   ,IST     ,ILOC    ,JLOC    , & !in
                           STC     ,SNICE   ,SNLIQ   ,SNEQV   ,SNOWH   , & !inout
                           SMC     ,SH2O    ,                            & !inout
-                          QMELT   ,IMELT   ,PONDING )                     !out
+                          QMELT   ,IMELT   ,PONDING, GREEN_ROOF, NSOIL_GR  )                     !out
 ! ----------------------------------------------------------------------
 ! melting/freezing of snow water and soil water
 ! ----------------------------------------------------------------------
@@ -5775,6 +5859,10 @@ local
   INTEGER, DIMENSION(-NSNOW+1:NSOIL), INTENT(OUT) :: IMELT  !phase change index
   REAL,                               INTENT(OUT) :: QMELT  !snowmelt rate [mm/s]
   REAL,                               INTENT(OUT) :: PONDING!snowmelt when snow has no layer [mm]
+
+  ! Optional Green Roof
+     LOGICAL, INTENT(IN), OPTIONAL :: GREEN_ROOF ! aaron A.
+     INTEGER, INTENT(IN), OPTIONAL :: NSOIL_GR ! aaron A.
 
 ! inputs and outputs
 
@@ -5803,6 +5891,15 @@ local
   REAL                            :: SMP       !frozen water potential (mm)
   REAL                            :: XMF       !total latent heat of phase change
 
+  INTEGER                         :: NSOIL_ACT
+
+  ! add quick switch for Green roof without messing with variable dimensions Aaron A.
+  IF (GREEN_ROOF) THEN
+      NSOIL_ACT = NSOIL_GR
+  ELSE
+      NSOIL_ACT = NSOIL
+  END IF
+
 ! ----------------------------------------------------------------------
 ! Initialization
 
@@ -5810,7 +5907,7 @@ local
     PONDING = 0.0
     XMF     = 0.0
 
-    DO J = -NSNOW+1, NSOIL
+    DO J = -NSNOW+1, NSOIL_ACT
          SUPERCOOL(J) = 0.0
     END DO
 
@@ -5819,12 +5916,12 @@ local
          MLIQ(J) = SNLIQ(J)
     END DO
 
-    DO J = 1, NSOIL               ! soil
+    DO J = 1, NSOIL_ACT               ! soil
          MLIQ(J) =  SH2O(J)            * DZSNSO(J) * 1000.0
          MICE(J) = (SMC(J) - SH2O(J))  * DZSNSO(J) * 1000.0
     END DO
 
-    DO J = ISNOW+1,NSOIL       ! all layers
+    DO J = ISNOW+1,NSOIL_ACT       ! all layers
          IMELT(J)    = 0
          HM(J)       = 0.0
          XM(J)       = 0.0
@@ -5834,7 +5931,7 @@ local
     ENDDO
 
     if(ist == 1) then
-      DO J = 1,NSOIL
+      DO J = 1,NSOIL_ACT
          IF (OPT_FRZ == 1) THEN
             IF(STC(J) < TFRZ) THEN
                SMP = HFUS*(TFRZ-STC(J))/(GRAV*STC(J))             !(m)
@@ -5851,7 +5948,7 @@ local
       ENDDO
     end if
 
-    DO J = ISNOW+1,NSOIL
+    DO J = ISNOW+1,NSOIL_ACT
          IF (MICE(J) > 0.0 .AND. STC(J) >= TFRZ) THEN  !melting
              IMELT(J) = 1
          ENDIF
@@ -5869,7 +5966,7 @@ local
 
 ! Calculate the energy surplus and loss for melting and freezing
 
-    DO J = ISNOW+1,NSOIL
+    DO J = ISNOW+1,NSOIL_ACT
          IF (IMELT(J) > 0) THEN
              HM(J) = (STC(J)-TFRZ)/FACT(J)
              STC(J) = TFRZ
@@ -5909,7 +6006,7 @@ local
 
 ! The rate of melting and freezing for snow and soil
 
-    DO J = ISNOW+1,NSOIL
+    DO J = ISNOW+1,NSOIL_ACT
       IF (IMELT(J) > 0 .AND. ABS(HM(J)) > 0.0) THEN
 
          HEATR = 0.0
@@ -5957,7 +6054,7 @@ local
        SNICE(J) = MICE(J)
     END DO
 
-    DO J = 1, NSOIL              ! soil
+    DO J = 1, NSOIL_ACT              ! soil
        SH2O(J) =  MLIQ(J)            / (1000.0 * DZSNSO(J))
        SMC(J)  = (MLIQ(J) + MICE(J)) / (1000.0 * DZSNSO(J))
     END DO
@@ -6125,9 +6222,10 @@ local
                     QSNSUB ,QSNFRO ,QSUBC  ,QFROC  ,QFRZC  ,QMELTC , &
                     QEVAC  ,QDEWC  ,ACC_QINSUR,ACC_QSEVA ,ACC_ETRANI &
 #ifdef WRF_HYDRO
-                        ,sfcheadrt ,WATBLED                          &
+                        ,sfcheadrt ,WATBLED,                          &
 #endif
-                    )  !out
+                    RUNONSRF, GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof
+                    COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR, FAREA,DX, VOL_FLUX_SM, VOL_FLUX_RUNON )  !out)  !out
 ! ----------------------------------------------------------------------
 ! Code history:
 ! Initial code: Guo-Yue Niu, Oct. 2007
@@ -6256,8 +6354,32 @@ local
   REAL                           , INTENT(INOUT)    :: sfcheadrt, WATBLED
 #endif
 
+! HUE NOAH MP ISSUES
+INT :: NSOIL_ACT
+REAL, INTENT(IN), OPTIONAL          :: PRECIPRATIO_GR
+REAL, INTENT(IN), OPTIONAL          :: EXPRUN_GR
+REAL, INTENT(IN), OPTIONAL          :: COEF_GR
+REAL, INTENT(IN), OPTIONAL          :: STORAGEMAX_GR ! storage maximum in green roof [m]
+REAL, INTENT(IN), OPTIONAL          :: DETENTIONSTORAGEMAX_GR ! detention storage in green roof [m]
+REAL, INTENT(INOUT), OPTIONAL       :: DETENTION_STORAGE
+LOGICAL, INTENT(IN), OPTIONAL       :: GREEN_ROOF
+INTEGER, INTENT(IN), OPTIONAL       :: NSOIL_GR
+
+ REAL,                            INTENT(IN), OPTIONAL :: FAREA !fractional area of the paired land types for lateral transfers
+ REAL, DIMENSION(1:NSOIL),        INTENT(INOUT), OPTIONAL :: VOL_FLUX_SM !volume flux of soil (per layer) pulled from tree sharing soil moisture in Urban Environment Aaron A.
+ REAL,                            INTENT(INOUT), OPTIONAL :: VOL_FLUX_RUNON !volumen flux of run-on from one grid to the another grid (for paired land types) Aaron A.
+ REAL,                            INTENT(IN), OPTIONAL :: DX !spacing of the model grid (needed for volumes)
+ REAL,                            INTENT(INOUT) :: RUNONSRF !runon in mm/s Added by Aaron A.
+
 ! ----------------------------------------------------------------------
 ! initialize
+
+! add quick switch for Green roof without messing with variable dimesnions Aaron A.
+IF (GREEN_ROOF) THEN
+    NSOIL_ACT = NSOIL_GR
+ELSE
+    NSOIL_ACT = NSOIL
+END IF
 
    ETRANI(1:NSOIL) = 0.0
    SNOFLOW         = 0.0
@@ -6265,6 +6387,17 @@ local
    RUNSRF          = 0.0
    QINSUR          = 0.0
    QTLDRN          = 0.0
+
+! Soil moisture sharing (INITILIZE the water pulled out of the Tree canopy
+! that is located over the pavement)
+IF (OPT_HUE.eq.1) THEN
+  IF (VEGTYP.EQ.47) THEN
+     DO IZ = 1, parameters%NROOT !Aaron A.
+      ETRANI(IZ) = ETRANI(IZ) + VOL_FLUX_SM(IZ)/(FAREA*DX*DX*DT)
+     ENDDO
+  END IF
+  VOL_FLUX_SM(1:NSOIL) = 0.
+END IF
 
 ! canopy-intercepted snowfall/rainfall, drips, and throughfall
 
@@ -6310,23 +6443,61 @@ local
 
 ! convert units (mm/s -> m/s)
 
-    !PONDING: melting water from snow when there is no layer
-    QINSUR = (PONDING+PONDING1+PONDING2)/DT * 0.001
+IF (OPT_HUE.eq.1) THEN
 
-    IF(ISNOW == 0) THEN
-       QINSUR = QINSUR+(QSNBOT + QSDEW + QRAIN) * 0.001
-    ELSE
-       QINSUR = QINSUR+(QSNBOT + QSDEW) * 0.001
-    ENDIF
+  IF( (VEGTYP.EQ.43).OR.(VEGTYP.EQ.44)) THEN
+    RUNONSRF = (VOL_FLUX_RUNON/(FAREA*DX*DX*DT)) * 1000 !runon is now a rate of mm/s
+    !RUNONSRF = RUNONSRF * FAREA
+  ELSE
+    RUNONSRF = 0.
+  END IF
 
-    QSEVA  = QSEVA * 0.001
+  !PONDING: melting water from snow when there is no layer
+  QINSUR = (PONDING+PONDING1+PONDING2)/DT * 0.001
 
-    DO IZ = 1, parameters%NROOT
-       ETRANI(IZ) = ETRAN * BTRANI(IZ) * 0.001
-    ENDDO
+  IF(ISNOW == 0) THEN
+     QINSUR = QINSUR+(QSNBOT + QSDEW + QRAIN) * 0.001 +( RUNONSRF * 0.001) !Aaron A.
+  ELSE
+     QINSUR = QINSUR+(QSNBOT + QSDEW) * 0.001
+  ENDIF
 
+
+ELSE
+  !PONDING: melting water from snow when there is no layer
+  QINSUR = (PONDING+PONDING1+PONDING2)/DT * 0.001
+
+  IF(ISNOW == 0) THEN
+     QINSUR = QINSUR+(QSNBOT + QSDEW + QRAIN) * 0.001
+  ELSE
+     QINSUR = QINSUR+(QSNBOT + QSDEW) * 0.001
+  ENDIF
+
+END IF
+
+QSEVA  = QSEVA * 0.001
+
+! add more HUE changes. IF there is a HUE call, we add
+! the ETRANI that has already been adjusted by the
+! flux volume of interest
+IF (OPT_HUE.eq.1) THEN
+  DO IZ = 1, parameters%NROOT !Aaron A.
+     ETRANI(IZ) = ETRAN * BTRANI(IZ) * 0.001 + ETRANI(IZ)
+     ! store this every time
+     VOL_FLUX_SM(IZ) = ETRANI(IZ)*FAREA*DX*DX*DT
+     ! is this tree over pavement? Then we don't extract water
+     IF(VEGTYP.EQ.41) THEN
+       ETRANI(IZ) = 0.
+     ENDIF
+  ENDDO
+ELSE
+! Normal
+  DO IZ = 1, parameters%NROOT
+     ETRANI(IZ) = ETRAN * BTRANI(IZ) * 0.001
+  ENDDO
+
+END DO
 #ifdef WRF_HYDRO
-       QINSUR = QINSUR+sfcheadrt/DT*0.001  !sfcheadrt units (m)
+   QINSUR = QINSUR+sfcheadrt/DT*0.001  !sfcheadrt units (m)
 #endif
 
 ! added soil timestep capability
@@ -6373,11 +6544,13 @@ local
                             SMCWTD, DEEPRECH,                                   & !inout
                             RUNSRF ,QDRAIN ,RUNSUB ,WCND   ,FCRMAX, QTLDRN      & !out
 #ifdef WRF_HYDRO
-                            ,WATBLED                                            & !in for tile drainage
+                            ,WATBLED,                                            & !in for tile drainage
 #endif
-                            )
+                            RUNONSRF, &
+                            GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof
+                            COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR)   !out)
 
-          IF(OPT_RUN == 1) THEN
+          IF((OPT_RUN == 1).and.(GREEN_ROOF == .false.)) THEN ! Aaron A.) THEN
              CALL GROUNDWATER (parameters,NSNOW  ,NSOIL  ,DT_soil  ,SICE   ,ZSOIL  , & !in
                                STC    ,WCND   ,FCRMAX ,ILOC   ,JLOC   , & !in
                                SH2O   ,ZWT    ,WA     ,WT     ,         & !inout
@@ -6390,7 +6563,7 @@ local
              RUNSUB       = RUNSUB + QDRAIN        !mm/s
           END IF
 
-          DO IZ = 1,NSOIL
+          DO IZ = 1,NSOIL_ACT
               SMC(IZ) = SH2O(IZ) + SICE(IZ)
           ENDDO
 
@@ -6412,6 +6585,11 @@ local
     endif ! soil calculation timestep
 
     RUNSUB       = RUNSUB + SNOFLOW*DT         !mm/s
+
+    IF (OPT_HUE.eq.1) THEN
+      !very last step: convert the runon to be a volume for later use:
+      VOL_FLUX_RUNON = RUNONSRF * 0.001 *FAREA* DX*DX*DT !now is cubic meters
+    END IF
 
   END SUBROUTINE WATER
 
@@ -7393,9 +7571,11 @@ local
                         SMCWTD, DEEPRECH,                              & !inout
                         RUNSRF ,QDRAIN ,RUNSUB ,WCND   ,FCRMAX, QTLDRN & !out
 #ifdef WRF_HYDRO
-                        ,WATBLED                                       & !in for tile drainage
+                        ,WATBLED,                                       & !in for tile drainage
 #endif
-                        )
+                        RUNONSRF, &
+                        GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof Aaron A.
+                        COEF_GR,STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR)   !out)
 
 ! ----------------------------------------------------------------------
 ! calculate surface runoff and soil moisture.
@@ -7470,14 +7650,37 @@ local
   REAL                                    :: DZTOT  !2-m soil depth (m)
   REAL                                    :: FACC   !accumulated infiltration rate (m/s)
   REAL, PARAMETER :: A = 4.0
+
+  REAL,                     INTENT(INOUT) :: RUNONSRF !added by Aaron A.
+  REAL, INTENT(IN), OPTIONAL          :: PRECIPRATIO_GR
+  REAL, INTENT(IN), OPTIONAL          :: EXPRUN_GR
+  REAL, INTENT(IN), OPTIONAL          :: COEF_GR
+  REAL, INTENT(IN), OPTIONAL          :: STORAGEMAX_GR ! storage maximum in green roof [m]
+  REAL, INTENT(IN), OPTIONAL          :: DETENTIONSTORAGEMAX_GR ! detention storage in green roof [m]
+  REAL, INTENT(INOUT), OPTIONAL       :: DETENTION_STORAGE ! depth of water stored in the denetenion pond of green roof [m]
+  LOGICAL, INTENT(IN), OPTIONAL       :: GREEN_ROOF
+  INTEGER, INTENT(IN), OPTIONAL       :: NSOIL_GR
+
+  INTEGER :: NSOIL_ACT
+ !----------
+ ! add quick switch for Green roof without messing with variable dimesnions Aaron A.
+ IF (GREEN_ROOF) THEN
+     NSOIL_ACT = NSOIL_GR
+ ELSE
+     NSOIL_ACT = NSOIL
+ END IF
 ! ----------------------------------------------------------------------
     RUNSRF = 0.0
     PDDUM  = 0.0
     RSAT   = 0.0
 
+    IF ((VEGTYP.EQ.41).OR.(VEGTYP.EQ.42).OR.(VEGTYP.EQ.45)) THEN
+      RUNONSRF = 0.0 !added by Aaron A.
+    ENDIF
+
 ! for the case when snowmelt water is too large
 
-    DO K = 1,NSOIL
+    DO K = 1,NSOIL_ACT
        EPORE   = MAX ( 1.0E-4 , ( parameters%SMCMAX(K) - SICE(K) ) )
        RSAT    = RSAT + MAX(0.0,SH2O(K)-EPORE)*DZSNSO(K)
        SH2O(K) = MIN(EPORE,SH2O(K))
@@ -7485,7 +7688,7 @@ local
 
 !impermeable fraction due to frozen soil
 
-    DO K = 1,NSOIL
+    DO K = 1,NSOIL_ACT
        FICE    = MIN(1.0,SICE(K)/parameters%SMCMAX(K))
        FCR(K)  = MAX(0.0,EXP(-A*(1.-FICE))- EXP(-A)) /  &
                         (1.0              - EXP(-A))
@@ -7496,13 +7699,25 @@ local
     SICEMAX = 0.0
     FCRMAX  = 0.0
     SH2OMIN = parameters%SMCMAX(1)
-    DO K = 1,NSOIL
+    DO K = 1,NSOIL_ACT
        IF (SICE(K) > SICEMAX) SICEMAX = SICE(K)
        IF (FCR(K)  > FCRMAX)  FCRMAX  = FCR(K)
        IF (SH2O(K) < SH2OMIN) SH2OMIN = SH2O(K)
     END DO
 
 !subsurface runoff for runoff scheme option 2
+
+! Green Roof Branching If Else statement. If green roof do simple calculations,
+! if not, do the typical calculations
+
+IF (GREEN_ROOF) THEN
+      CALL SOILWATER_greenroof(parameters,NSNOW,NSOIL, QINSUR, QSEVA, ETRANI, DT, STORAGEMAX_GR, FCR,&
+                                    PRECIPRATIO_GR, COEF_GR, EXPRUN_GR, DETENTIONSTORAGEMAX_GR, &
+                                    SH2O,SICE, ZSOIL, DETENTION_STORAGE, RUNSRF)
+
+      QDRAIN = 0.
+      RUNSUB = 0.
+ELSE
 
     IF(OPT_RUN == 2) THEN
         FFF   = 2.0
@@ -7514,7 +7729,13 @@ local
 !surface runoff and infiltration rate using different schemes
 
 !jref impermable surface at urban
-    IF ( parameters%urban_flag ) FCR(1)= 0.95
+    IF ( parameters%urban_flag ) FCR(1)= 0.99
+
+    IF (OPT_HUE.eq.1) THEN
+      IF ((VEGTYP.eq.41).OR.(VEGTYP.eq.42).or.(VEGTYP.eq.45)) THEN
+        FCR(1) = 0.99
+      END IF
+    END IF
 
     IF(OPT_RUN == 1) THEN
 !       FFF = 6.0
@@ -7707,6 +7928,24 @@ local
         SH2O(IZ)     = MLIQ(IZ) / (DZSNSO(IZ)*1000.0)
       END DO
    END IF
+END IF ! Green BRANCH AARON A.
+
+  IF (OPT_HUE.EQ.1) THEN
+    IF (VEGTYP.EQ.41) THEN !the runon partitioning between run on and run off. Currently set up to be only runoff
+     RUNONSRF = 0.
+     RUNSRF = RUNSRF
+    END IF
+
+    IF (VEGTYP.EQ.42) THEN !this controls the partitioning between runon and runoff for urban dis-connected
+     RUNONSRF = RUNSRF
+     RUNSRF = 0.
+    END IF
+
+    IF (VEGTYP.EQ.45) THEN !this controls the partitioning between runon and runoff for permeable pavements
+     RUNONSRF = RUNSRF
+     RUNSRF = 0.
+    END IF
+  END IF
 
   END SUBROUTINE SOILWATER
 
@@ -9732,6 +9971,157 @@ END SUBROUTINE RR2
 
 !=========end irrigation subroutines================================================================
 
+!== begin SOILWATER_greenroof ==============================================================================
+
+!  subroutine SOILWATER_greenroof
+!  ! BASED ON LOCATELLI ET AL 2014. INSTEAD OF USING ITERATIONS ON THE
+!  ! RICHARDS EQUATION, WHICH IS NOT NECESSARY FOR GREEN ROOFS DUE TO THEIR
+!  ! SOIL PROPERTIES, WE HAVE IMPLEMENTED A SIMPLER THREE BUCKET MODEL. ONE
+!  ! FOR VEGETATION, ONE FOR SOIL WATER HOLDING, AND ONE FOR OUTFLOW.
+!===============================================================================
+
+      SUBROUTINE SOILWATER_greenroof(parameters,NSOIL, NSNOW, QINSUR, QSEVA, ETRANI, DT, STORAGEMAX, FCR, &
+                                    PRECIPRATIO_GR, COEF_GR, EXPRUN_GR, DETENTION_STORAGE_MAX, &
+                                    SH2O,SICE, ZSOIL,DETENTION_STORAGE, RUNOFF)
+
+      IMPLICIT NONE
+
+!-------------------------------------------------------------------------------
+! I: input variables from from main driver
+!-------------------------------------------------------------------------------
+      type (noahmp_parameters), INTENT(IN)   :: parameters
+
+      INTEGER,                   INTENT(IN)      :: NSOIL        ! no. of soil layers (4)
+      INTEGER,                         INTENT(IN) :: NSNOW  !maximum no. of snow layers
+      REAL,                      INTENT(IN)      :: QINSUR       ! INPUT PRECIPITATION [M/S]
+      REAL,                      INTENT(IN)      :: QSEVA        ! evap from soil surface [m/s]
+      REAL, DIMENSION(1:NSOIL), INTENT(IN)       :: ETRANI       ! evapotranspriation from soil layers [mm/s]
+      REAL,                      INTENT(IN)      :: DT           ! TIMESTEP [S]
+      REAL,                      INTENT(IN)      :: STORAGEMAX   ! MAXIMUM DEPTH ALLOWED IN THE SOIL MEDIUM [M]
+      REAL, DIMENSION(1:NSOIL),  INTENT(IN)      :: FCR
+      REAL,                      INTENT(IN)      :: PRECIPRATIO_GR            ! FRACTIONAL THRESHOLD AT WHICH WATER DRAINS
+                                                         ! FROM SOIL MEDIUM TO RENTION POND WHILE RAINING [-]
+      REAL,                      INTENT(IN)      :: COEF_GR                   ! NONLINEAR OUTFLOW COEFFICIENT [M^(1-N) S^-1]
+      REAL,                      INTENT(IN)      :: EXPRUN_GR                 ! NONLINEAR OUTFLOW EXPONENT [-]
+      REAL,                      INTENT(IN)      :: DETENTION_STORAGE_MAX     ! MAXIMUM AMOUNT OF WATER HELD IN
+                                                         ! DETENTION STORAGE BEFORE GREEN ROOF IS OVERWHELMED
+      REAL, DIMENSION(1:NSOIL),    INTENT(IN) :: ZSOIL  !depth of soil layer-bottom [m]
+
+      REAL, DIMENSION(1:NSOIL), INTENT(INOUT)   :: SH2O                       ! VOLUMETRIC SOIL MOISTURE [M^3 M^-3]
+      REAL, DIMENSION(1:NSOIL), INTENT(IN)   :: SICE                       ! ICE SOIL CONTENT
+      REAL,                     INTENT(INOUT)   :: DETENTION_STORAGE         ! AMOUNT OF WATER STORED GREENROOF STORAGE POND [M]
+      REAL,                     INTENT(INOUT)   :: RUNOFF       ! AMOUNT OF WATER OUT OF THE DETENTION POND [M/S]
+
+!-------------------------------------------------------------------------------
+! L: local variables
+!-------------------------------------------------------------------------------
+
+
+      REAL                 :: STORAGE ! DEPTH OF THE SOIL WATER [M]
+      REAL                 :: OUTFLOW_ONE ! RATE OF OUTFLOW FROM SOIL MEDIUM TO DETENTION POND ! [M/S]
+      REAL                 :: STORAGE_NEW ! NEW DEPTH OF SOIL WATER [M]
+      REAL                 :: DETENTION_STORAGE_NEW
+      REAL                 :: QINSUR_MOD
+      REAL                 :: RUNOFF_FRZ
+      REAL                 :: RUNOFF_ADDITION
+      REAL                 :: STORAGE_ICE
+!-------------------------------------------------------------------------------
+! LINEARLY MAP FROM SOIL MOISTURE TO STORAGE BASED ON SOIL PROPERTIES
+!-------------------------------------------------------------------------------
+      !STORAGE = ((STORAGEMAX)/(parameters%SMCMAX(1) - parameters%SMCDRY(1))) * (SH2O(1) - parameters%SMCDRY(1))
+       STORAGE = SH2O(1) * ZSOIL(1)*-1
+       STORAGE_ICE = SICE(1) * ZSOIL(1)*-1
+!-------------------------------------------------------------------------------
+! CALCULATE THE INFILTRATION. BASED ON LOCATELLI ET AL 2014
+! https://doi.org/10.1016/j.jhydrol.2014.10.030
+!-------------------------------------------------------------------------------
+! adjust the incoming water based on the frozen state of the water.
+    IF (FCR(1).gt.0.0) THEN
+        RUNOFF_FRZ = QINSUR*FCR(1)
+        QINSUR_MOD = QINSUR*(1-FCR(1))
+    ELSE
+        QINSUR_MOD = QINSUR
+        RUNOFF_FRZ = 0.
+   END IF
+!-------------------------------------------------------------------------------
+! BOX ONE: SOIL MOISTURE STORAGE AREA
+!-------------------------------------------------------------------------------
+        IF ( ((STORAGE+STORAGE_ICE)/STORAGEMAX).GT.PRECIPRATIO_GR) THEN
+          IF (QINSUR_MOD.GT.0) THEN
+
+            OUTFLOW_ONE = QINSUR_MOD * (((STORAGE+STORAGE_ICE)/STORAGEMAX) - PRECIPRATIO_GR)/(1-PRECIPRATIO_GR)
+
+          ELSE
+            OUTFLOW_ONE = 0.0
+          ENDIF
+
+        ELSE
+          OUTFLOW_ONE = 0.0
+        ENDIF
+
+        STORAGE_NEW = MAX(0.0, STORAGE + QINSUR_MOD*DT - OUTFLOW_ONE*DT -ETRANI(1)*DT - QSEVA*DT)
+        WRITE(*,*) 'STORAGEMAX:', STORAGEMAX, 'STORAGE NEW', STORAGE_NEW
+!-------------------------------------------------------------------------------
+! If there is too much moisture, in the green roof, create the an overland flow
+! flow addition
+!-------------------------------------------------------------------------------
+       IF (STORAGE_NEW >= STORAGEMAX) THEN
+          WRITE(*,*) 'ENGAGE OVERLAND FLOW AT SOIL SURFACE'
+          RUNOFF_ADDITION = STORAGE_NEW - STORAGEMAX
+          STORAGE_NEW = STORAGEMAX
+       ELSE
+          RUNOFF_ADDITION = 0.
+       ENDIF
+!-------------------------------------------------------------------------------
+! BOX TWO: RETENTION POND. IF WATER HAS ENTERED INTO THE RETENTION POND, IT WILL
+! BE RUNOFF, BUT USING A NON-LINEAR MODEL
+!-------------------------------------------------------------------------------
+        RUNOFF = COEF_GR*(DETENTION_STORAGE**EXPRUN_GR)
+
+!-------------------------------------------------------------------------------
+! CORRECT IF WE ARE REMOVING MORE WATER THAN IS IN DETENTION STORAGE
+!-------------------------------------------------------------------------------
+
+        IF ((RUNOFF*DT).GT.DETENTION_STORAGE) THEN
+          RUNOFF = DETENTION_STORAGE/DT
+          WRITE(*,*) 'ENGAGED OVERFLOW DETENTION'
+ENDIF
+!-------------------------------------------------------------------------------
+! CREATE NEW DETENTION STORAGE (INPUTS + CURRENT - OUTFLOW)
+!-------------------------------------------------------------------------------
+        DETENTION_STORAGE_NEW = OUTFLOW_ONE*DT + DETENTION_STORAGE - RUNOFF*DT
+
+!-------------------------------------------------------------------------------
+! MODIFY THE RUNOFF AND STORAGE DEPENDING ON LIMITS OF THE STORAGE POND
+!-------------------------------------------------------------------------------
+        IF (DETENTION_STORAGE_NEW.GT.DETENTION_STORAGE_MAX) THEN
+          RUNOFF = RUNOFF + (DETENTION_STORAGE_NEW - DETENTION_STORAGE_MAX)/DT
+          DETENTION_STORAGE_NEW = DETENTION_STORAGE_MAX
+          WRITE(*,*) 'ENGAGED OVERLAND FLOW CORRECTION'
+        ENDIF
+!-------------------------------------------------------------------------------
+! FINALLY CHECK IF THE NEW STORAGE IS EQUAL LESS THAN ZERO AND ADJUST
+!-------------------------------------------------------------------------------
+
+        IF (DETENTION_STORAGE_NEW.LT.0) THEN
+          DETENTION_STORAGE_NEW = 0.
+        ENDIF
+
+!-------------------------------------------------------------------------------
+! FINALY RE-MAP FROM STORAGE TO SOIL MOISTURE:
+!-------------------------------------------------------------------------------
+         SH2O(1) = STORAGE_NEW/(-1*ZSOIL(1))
+        !SH2O(1) = ((parameters%SMCMAX(1) - parameters%SMCDRY(1))/(STORAGEMAX))*STORAGE_NEW + parameters%SMCDRY(1)
+       WRITE(*,*) 'SH2O',SH2O(1), 'ZSOIL',ZSOIL
+       DETENTION_STORAGE = DETENTION_STORAGE_NEW
+        RUNOFF = (RUNOFF_FRZ + RUNOFF + RUNOFF_ADDITION/DT )*1000 ! now in mm/s
+!---------------------------------------------------
+        END SUBROUTINE SOILWATER_greenroof
+!---------------------------------------------------
+
+
+
+
 !== begin groundwater ==============================================================================
 
   SUBROUTINE GROUNDWATER(parameters,NSNOW  ,NSOIL  ,DT     ,SICE   ,ZSOIL  , & !in
@@ -10134,8 +10524,8 @@ END  SUBROUTINE SHALLOWWATERTABLE
   REAL    :: LAPM      !leaf area per unit mass [m2/g]
 ! ------------------------------------------------------------------------------------------
 
-   IF ( ( VEGTYP == parameters%iswater ) .OR. ( VEGTYP == parameters%ISBARREN ) .OR. &
-        ( VEGTYP == parameters%ISICE ) .or. (parameters%urban_flag) ) THEN
+IF ( ( VEGTYP == parameters%iswater ) .OR. ( VEGTYP == parameters%ISBARREN ) .OR. &
+     ( VEGTYP == parameters%ISICE ) .or. (parameters%urban_flag) .or.(VEGTYP.eq.42) .or. (VEGTYP.eq.44) ) THEN ! adjusted by Aaron A.
       XLAI   = 0.0
       XSAI   = 0.0
       GPP    = 0.0
@@ -10520,8 +10910,8 @@ END  SUBROUTINE SHALLOWWATERTABLE
   REAL    :: PSNCROP
 
 ! ------------------------------------------------------------------------------------------
-   IF ( ( VEGTYP == parameters%iswater ) .OR. ( VEGTYP == parameters%ISBARREN ) .OR. &
-        ( VEGTYP == parameters%ISICE ) .or. (parameters%urban_flag) ) THEN
+IF ( ( VEGTYP == parameters%iswater ) .OR. ( VEGTYP == parameters%ISBARREN ) .OR. &
+     ( VEGTYP == parameters%ISICE ) .or. (parameters%urban_flag) .or.(VEGTYP.eq.42) .or. (VEGTYP.eq.44) ) THEN ! adjusted by Aaron A.
       XLAI   = 0.0
       XSAI   = 0.0
       GPP    = 0.0
