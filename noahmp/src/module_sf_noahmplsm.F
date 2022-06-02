@@ -1667,7 +1667,7 @@ ENDIF   ! CROPTYPE == 0
                     SAV    ,SAG    ,FSRV   ,FSRG   ,ZWT    ,PAH    , &
                     PAHV   ,PAHG   ,PAHB   ,FIRR   ,CANHS  ,         &
                     IRMIRATE, IRFIRATE, ACC_DWATER, ACC_PRCP, ACC_ECAN, &
-                    ACC_ETRAN, ACC_EDIR )
+                    ACC_ETRAN, ACC_EDIR, SMC2, RUNONSRF, VEGTYP, GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, FAREA )
 ! --------------------------------------------------------------------------------------------------
 ! check surface energy balance and water balance
 ! --------------------------------------------------------------------------------------------------
@@ -1726,7 +1726,19 @@ ENDIF   ! CROPTYPE == 0
   REAL                           , INTENT(INOUT) :: ACC_ETRAN  ! accumulated transpiration mm/timestep(soil)
   REAL                           , INTENT(INOUT) :: ACC_EDIR   ! accumulated net soil/snow evapo mm/timestep(soil)
 
-!local
+
+  ! Added optional for HUE noah-mp
+
+  REAL                           , INTENT(IN), OPTIONAL :: RUNONSRF
+  INTEGER                        , INTENT(IN), OPTIONAL :: VEGTYP ! added by Aaron A.
+
+  LOGICAL                        , INTENT(IN), OPTIONAL :: GREEN_ROOF ! no. of soil layers in green roof  added by Aaron A.
+  REAL                           , INTENT(IN), OPTIONAL :: DETENTION_STORAGE ! amount in the dentenion pond of green roof [m] added by Aaron A.
+  INTEGER                        , INTENT(IN), OPTIONAL :: NSOIL_GR
+  REAL                           , INTENT(IN), OPTIONAL :: FAREA
+  REAL, DIMENSION(       1:NSOIL), INTENT(IN), OPTIONAL :: SMC2    !soil moisture (ice + liq.) [m3/m3]
+!
+local
   INTEGER                                     :: IZ     !do-loop index
   REAL                                        :: END_WB !water storage at end of a timestep [mm]
   !KWM REAL                                        :: ERRWAT !error in water balance [mm/timestep]
@@ -1795,10 +1807,52 @@ ENDIF   ! CROPTYPE == 0
 
 ! only water balance check for soil timestep
    IF (IST == 1) THEN       !soil
-      END_WB = CANLIQ + CANICE + SNEQV + WA
-      DO IZ = 1,NSOIL
-         END_WB = END_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
-      END DO
+     ! add HUE NOAH-MP changes if needed
+     IF (OPT_HUE.eq.1) THEN
+       !This is the coupled tree/impermeable pavements
+       IF (VEGTYP.eq.41) THEN
+         END_WB = CANLIQ + CANICE + SNEQV + WA
+         DO IZ = 1,NSOIL
+           END_WB = END_WB + (SMC(IZ)+SMC2(IZ)) * DZSNSO(IZ) * 1000.
+         END DO
+         !This is an identical land-use type to an urban location, but
+         !has been completely disconnected (meaning all water will be
+         ! input to an adjacent turf grass or vegitatation type (43))
+       ELSE IF( (VEGTYP.eq.42).or.(VEGTYP.eq.45) ) THEN
+         END_WB = CANLIQ + CANICE + SNEQV + WA
+         DO IZ = 1,NSOIL
+           END_WB = END_WB + (SMC(IZ)+SMC2(IZ)) * DZSNSO(IZ) * 1000.
+         END DO
+         !this is the recipee for eveything else!
+       ELSE IF (GREEN_ROOF) THEN
+         END_WB = CANLIQ + CANICE + SNEQV + WA + DETENTION_STORAGE * 1000.
+         DO IZ = 1,NSOIL_GR
+           END_WB = END_WB + (SMC(IZ)+SMC2(IZ)) * DZSNSO(IZ) * 1000.
+         END DO
+       ELSE IF ((VEGTYP.EQ.44).OR.(VEGTYP.EQ.43) )THEN
+         END_WB = CANLIQ + CANICE + SNEQV + WA
+         DO IZ = 1,NSOIL
+           END_WB = END_WB + (SMC(IZ)+SMC2(IZ)) * DZSNSO(IZ) * 1000.
+         END DO
+       ELSE
+        END_WB = CANLIQ + CANICE + SNEQV + WA
+
+         DO IZ = 1,NSOIL
+           END_WB = END_WB + (SMC(IZ)+SMC2(IZ)) * DZSNSO(IZ) * 1000.
+         END DO
+
+       ENDIF
+
+
+     ELSE
+
+       END_WB = CANLIQ + CANICE + SNEQV + WA
+       DO IZ = 1,NSOIL
+          END_WB = END_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
+       END DO
+
+     END IF 
+
       ! accumualted water change (only for canopy and snow during non-soil timestep)
       ACC_DWATER = ACC_DWATER + (END_WB - BEG_WB)  ! snow, canopy, and soil water change
       ACC_PRCP   = ACC_PRCP   + PRCP * DT        ! accumulated precip
@@ -1819,6 +1873,7 @@ ENDIF   ! CROPTYPE == 0
            endif
            write(message, *) 'ERRWAT =',ERRWAT, "kg m{-2} timestep{-1}"
            call wrf_message(trim(message))
+           IF
            WRITE(message, &
            '("     I      J     END-BEG     PRCP     IRMIRATE     IRFIRATE      ECAN     EDIR    ETRAN   RUNSRF   RUNSUB   ZWT   QTLDRN")')
            call wrf_message(trim(message))
