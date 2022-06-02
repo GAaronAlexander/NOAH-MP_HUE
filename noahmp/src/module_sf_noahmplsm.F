@@ -196,7 +196,15 @@ MODULE MODULE_SF_NOAHMPLSM
                       ! **0 -> No tile drainage
                       !   1 -> on (simple scheme)
                       !   2 -> on (Hooghoudt's scheme)
-
+  INTEGER :: OPT_MOSAIC ! Mosaic Averaging Option. Currently does not change ANYTHING in this code, but is a
+                        ! wrapper for the other codes
+                        ! 0 - > off (no mosaic)
+                        ! 1 -> on (mosaic averaging happens)
+  INTEGER :: OPT_HUE ! Heterogenious Urban Environments lateral transfers turned on. Integrates a number of
+                     ! new land-types. Must be used with Mosaic at the moment
+                     ! 0 -> off (no lateral transfers )
+                     ! 1-> on (lateral transfers)
+                     
 !------------------------------------------------------------------------------------------!
 ! Physical Constants:                                                                      !
 !------------------------------------------------------------------------------------------!
