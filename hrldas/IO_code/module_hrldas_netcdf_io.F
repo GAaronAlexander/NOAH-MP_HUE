@@ -3156,7 +3156,7 @@ contains
     character(len=256) :: output_flnm
     integer :: ierr
     integer :: varid
-    integer :: dimid_times, dimid_datelen, dimid_ix, dimid_jx, dimid_dum, dimid_layers, dimid_snow_layers, dimid_sosn_layers, dimid_urban,
+    integer :: dimid_times, dimid_datelen, dimid_ix, dimid_jx, dimid_dum, dimid_layers, dimid_snow_layers, dimid_sosn_layers, dimid_urban
     integer :: dimid_mosaic_layers1, dimid_mosaic_layers2, dimid_mosaic_layers3, dimid_mosaic_layers4 ! added by Aaron A. 23 May 2022
 
     character(len=19) :: date19

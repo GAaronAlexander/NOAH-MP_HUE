@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 !  Program Name:
 !  Author(s)/Contact(s):
 !  Abstract:
@@ -499,9 +512,6 @@ contains
                    ACC_DWATER, ACC_PRCP, ACC_ECAN, ACC_ETRAN, ACC_EDIR,         & ! INOUT
                    SMC_dummy, SH2O_dummy, BTRANI_dummy, RUNONSRF, NSOIL_GR,                  & ! addtiional variables for HUE added by Aaron A.
                    DETENTION_STORAGE,FAREA,VOL_FLUX_SM,VOL_FLUX_RUNON &
-#ifdef WRF_HYDRO
-                   ,SFCHEADRT, WATBLED                                         & ! IN/OUT :
-#endif
 ) ! modified by Aaron A.
 
 ! --------------------------------------------------------------------------------------------------
@@ -556,9 +566,6 @@ contains
   REAL                           , INTENT(IN)    :: SHDMAX  !yearly max vegetation fraction
 !jref:end
 
-#ifdef WRF_HYDRO
-  REAL                           , INTENT(INOUT) :: sfcheadrt, WATBLED
-#endif
 
 ! input/output : need arbitary intial values
   REAL                           , INTENT(INOUT) :: QSNOW  !snowfall [mm/s]
@@ -1097,9 +1104,6 @@ END IF ! end the HUE change to the water balance
                  QEVAC  ,QDEWC  ,ACC_QINSUR ,ACC_QSEVA,ACC_ETRANI, &
                 RUNONSRF, GREEN_ROOF , NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! optional green roof values
                 COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR, FAREA, VOL_FLUX_SM, VOL_FLUX_RUNON &
-#ifdef WRF_HYDRO
-                        ,sfcheadrt,WATBLED                        &
-#endif            
 )  !optional for HUE
 
 
@@ -1869,7 +1873,6 @@ ENDIF   ! CROPTYPE == 0
          ERRWAT = ACC_DWATER - (ACC_PRCP + IRFIRATE*1000.0 + IRMIRATE*1000.0 - ACC_ECAN - &
                                 ACC_ETRAN - ACC_EDIR - RUNSRF - RUNSUB - QTLDRN)
 
-#ifndef WRF_HYDRO
         IF(ABS(ERRWAT) > 0.1) THEN
            if (ERRWAT > 0) then
               call wrf_message ('The model is gaining water (ERRWAT is positive)')
@@ -1896,7 +1899,6 @@ ENDIF   ! CROPTYPE == 0
              call wrf_error_fatal("Water budget problem in NOAHMP LSM")
            END IF
         END IF
-#endif
 
       endif ! calculate_soil
 
@@ -6228,9 +6230,6 @@ IF (( parameters%urban_flag ).OR.(VEGTYP.EQ.41).OR.(VEGTYP.EQ.42).OR.(VEGTYP.EQ.
                     QEVAC  ,QDEWC  ,ACC_QINSUR,ACC_QSEVA ,ACC_ETRANI, &
                     RUNONSRF, GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof
                     COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR, FAREA, VOL_FLUX_SM, VOL_FLUX_RUNON &
-#ifdef WRF_HYDRO
-                        ,sfcheadrt ,WATBLED                          &
-#endif
 
  )  !out)  !out
 ! ----------------------------------------------------------------------
@@ -6357,9 +6356,6 @@ IF (( parameters%urban_flag ).OR.(VEGTYP.EQ.41).OR.(VEGTYP.EQ.42).OR.(VEGTYP.EQ.
 
   REAL, PARAMETER ::  WSLMAX = 5000.0      !maximum lake water storage (mm)
 
-#ifdef WRF_HYDRO
-  REAL                           , INTENT(INOUT)    :: sfcheadrt, WATBLED
-#endif
 
 ! HUE NOAH MP ISSUES
 INTEGER :: NSOIL_ACT
@@ -6502,9 +6498,6 @@ ELSE
   ENDDO
 
 END IF
-#ifdef WRF_HYDRO
-   QINSUR = QINSUR+sfcheadrt/DT*0.001  !sfcheadrt units (m)
-#endif
 
 ! added soil timestep capability
     ACC_QINSUR = ACC_QINSUR + QINSUR
@@ -6549,9 +6542,6 @@ END IF
                             SH2O   ,SMC    ,ZWT    ,VEGTYP ,                    & !inout
                             SMCWTD, DEEPRECH,                                   & !inout
                             RUNSRF ,QDRAIN ,RUNSUB ,WCND   ,FCRMAX, QTLDRN,      & !out
-#ifdef WRF_HYDRO
-                            ,WATBLED,                                            & !in for tile drainage
-#endif
                             RUNONSRF, &
                             GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof
                             COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR)   !out)
@@ -7576,9 +7566,6 @@ END IF
                         SH2O   ,SMC    ,ZWT    ,VEGTYP ,               & !inout
                         SMCWTD, DEEPRECH,                              & !inout
                         RUNSRF ,QDRAIN ,RUNSUB ,WCND   ,FCRMAX, QTLDRN, & !out
-#ifdef WRF_HYDRO
-                        ,WATBLED,                                       & !in for tile drainage
-#endif
                         RUNONSRF, &
                         GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof Aaron A.
                         COEF_GR,STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR)   !out)
@@ -7613,9 +7600,6 @@ END IF
   REAL,                     INTENT(INOUT) :: SMCWTD !soil moisture between bottom of the soil and the water table [m3/m3]
   REAL                    , INTENT(INOUT) :: DEEPRECH
   REAL                    , INTENT(INOUT) :: QTLDRN ! tile drainage (mm) per soil timestep
-#ifdef WRF_HYDRO
-  REAL                    , INTENT(INOUT) :: WATBLED!in for tile drainage
-#endif
 
 ! output
   REAL, INTENT(OUT)                       :: QDRAIN !soil-bottom free drainage [mm/s]
@@ -7878,9 +7862,6 @@ ELSE
         print*, "Hooghoudt tile drain scheme is on"
         CALL TILE_HOOGHOUDT (parameters,WCND,NSOIL,NSNOW,SH2O,SMC,SICE,&
                              ZSOIL,DZSNSO,DT,DX,QTLDRN,ZWT             &
-#ifdef WRF_HYDRO
-                             ,WATBLED                                  &
-#endif
                             )
     END IF
 
@@ -9268,9 +9249,6 @@ END SUBROUTINE RR2
 
  SUBROUTINE TILE_HOOGHOUDT (parameters,WCND,NSOIL,NSNOW,SH2O,SMC,SICE, &
                             ZSOIL,DZSNSO,DT,DX,QTLDRN,ZWT              &
-#ifdef WRF_HYDRO
-                            ,WATBLED                                  &
-#endif
                             )
 
 !------------------------------------------------------------------------------------------
@@ -9334,9 +9312,6 @@ END SUBROUTINE RR2
     REAL                                        :: QTLDRN1
     REAL                                        :: TD_DD
     REAL                                        :: OVRFCS
-#ifdef WRF_HYDRO
-    REAL                                        :: WATBLED ! water table depth estimated in WRF-Hydro fine grids
-#endif
 !----------------------------------------------------------------------------
 
     TD_SATZ = 0.0
@@ -9354,15 +9329,10 @@ END SUBROUTINE RR2
       END IF
     END DO
 
-#ifdef WRF_HYDRO
-! Depth to water table, m
-    YY = WATBLED
-#else
     CALL TD_FINDZWAT(parameters,NSOIL,SMC,SH2O,SICE,ZSOIL,ZLAYER,ZWT)
     !CALL ZWTEQ (parameters,NSOIL, NSNOW, ZSOIL, DZSNSO, SH2O, ZWT)
 ! Depth to water table, m
     YY = ZWT
-#endif
     IF (YY .GT. parameters%TD_ADEPTH) YY = parameters%TD_ADEPTH
 
 ! Depth of saturated zone

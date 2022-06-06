@@ -583,7 +583,8 @@ module module_NoahMP_hrldas_driver
   INTEGER, ALLOCATABLE, DIMENSION(:,:,:)    :: IRNUMSI_mosaic    ! irrigation event number, Sprinkler
   INTEGER, ALLOCATABLE, DIMENSION(:,:,:)    :: IRNUMMI_mosaic    ! irrigation event number, Micro
   INTEGER, ALLOCATABLE, DIMENSION(:,:,:)    :: IRNUMFI_mosaic    ! irrigation event number, Flood
-  REAL,    ALLOCATABLE, DIMENSION(:,:,:)    :: IRWATSI_mosaic    ! irrigation water amount [m] to be applied, Sprinkler
+ 
+ REAL,    ALLOCATABLE, DIMENSION(:,:,:)    :: IRWATSI_mosaic    ! irrigation water amount [m] to be applied, Sprinkler
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    :: IRWATMI_mosaic    ! irrigation water amount [m] to be applied, Micro
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    :: IRWATFI_mosaic    ! irrigation water amount [m] to be applied, Flood
   REAL,    ALLOCATABLE, DIMENSION(:,:,:)    :: IRELOSS_mosaic    ! loss of irrigation water to evaporation,sprinkler [m/timestep]
@@ -2996,7 +2997,7 @@ END IF
                       ids,ide+1, jds,jde+1, kds,kde,                &  ! domain
                       ims,ime, jms,jme, kms,kme,                &  ! memory
                       its,ite, jts,jte, kts,kte,                 &  ! tile
-                      smoiseq, smcwtdxy, rechxy, deeprechxy,
+                      smoiseq, smcwtdxy, rechxy, deeprechxy,     &
                       LANDUSEF, LANDUSEF2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       IOPT_HUE,                                                      &
@@ -3030,7 +3031,7 @@ END IF
                       CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
                       TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
                       DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
-                      FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
+                      FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic      &
                         )                                                            ! Added by Aaron A.
 
        ENDIF !end mosaic if else statement
@@ -3236,7 +3237,7 @@ if (IOPT_MOSAIC.eq.0) then
      SNOW      =  undefined_real
      SNOWH     =  undefined_real
 
-  #ifdef WRF_HYDRO
+#ifdef WRF_HYDRO
   if((forc_typ .gt. 2) .and. (forc_typ .ne. 6) ) HRLDAS_ini_typ = 0
 
   if(HRLDAS_ini_typ .eq. 1) then
@@ -3251,12 +3252,12 @@ if (IOPT_MOSAIC.eq.0) then
           ".LDASIN_DOMAIN"//hgrid
      endif
 
-  #else
+#else
 
      inflnm = trim(indir)//"/"//&
           startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
           ".LDASIN_DOMAIN"//hgrid
-  #endif
+#endif
 
      CALL READINIT_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           NSOIL, DZS, OLDDATE, LDASIN_VERSION, SMOIS,       &
@@ -3270,27 +3271,27 @@ if (IOPT_MOSAIC.eq.0) then
      CALL READVEG_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           OLDDATE, IVGTYP, VEGFRA, LAI, GVFMIN, GVFMAX)
 
-  #ifdef WRF_HYDRO
+#ifdef WRF_HYDRO
   else   !  HRLDAS_ini_typ
 
-  #ifdef MPP_LAND
+#ifdef MPP_LAND
     call HYDRO_HRLDAS_ini_mpp   &
-  #else
+#else
     call HYDRO_HRLDAS_ini   &
-  #endif
+#endif
        (trim(hrldas_setup_file), xend-xstart+1,yend-ystart+1, &
        nsoil,SMOIS(:,1:NSOIL,:),TSLB(:,1:NSOIL,:),SH2O(:,1:NSOIL,:), CANWAT, TSK,SNOW,SNOWH,lai,VEGFRA,IVGTYP,FNDSNOWH)
 
        greenfrac = 0.0
-  #ifdef MPP_LAND
+#ifdef MPP_LAND
        call get_greenfrac_mpp &
-  #else
+#else
        call get_greenfrac &
-  #endif
+#endif
         (trim(GEO_STATIC_FLNM),greenfrac, ix, jx, olddate, SHDMAX)
        !yw GVFMAX = maxval(greenfrac)
   endif
-  #endif
+#endif
 
   !     SNOW = SNOW * 1000.    ! Convert snow water equivalent to mm. MB: remove v3.7
 
@@ -3420,7 +3421,7 @@ if (IOPT_MOSAIC.eq.0) then
                   ids,ide+1, jds,jde+1, kds,kde,                &  ! domain
                   ims,ime, jms,jme, kms,kme,                &  ! memory
                   its,ite, jts,jte, kts,kte,                 &  ! tile
-                  smoiseq, smcwtdxy, rechxy, deeprechxy,
+                  smoiseq, smcwtdxy, rechxy, deeprechxy,                               &
                   LANDUSEF, landusef2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   IOPT_HUE,                                                      &
@@ -3454,7 +3455,7 @@ if (IOPT_MOSAIC.eq.0) then
                   TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
                   DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
                   FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,     &
-                  DETENTION_STORAGEXY_mosaic
+                  DETENTION_STORAGEXY_mosaic                                            &
                     )                                                            ! Added by Aaron A.
 
    endif !end mosaic if else statement
@@ -4088,9 +4089,9 @@ IF (ITIME > 0) THEN
                ACC_SSOILXY, ACC_QINSURXY, ACC_QSEVAXY, ACC_ETRANIXY, EFLXBXY, &
                SOILENERGY, SNOWENERGY, CANHSXY, &
                ACC_DWATERXY, ACC_PRCPXY, ACC_ECANXY, ACC_ETRANXY, ACC_EDIRXY, &
- #ifdef WRF_HYDRO
+#ifdef WRF_HYDRO
                 sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &    !O
- #endif
+#endif
                 ids,ide,  jds,jde,  kds,kde,                    &
                 ims,ime,  jms,jme,  kms,kme,                    &
                 its,ite,  jts,jte,  kts,kte,                    &
@@ -4126,7 +4127,7 @@ IF (ITIME > 0) THEN
                    evbxy_mosaic, ghvxy_mosaic, ghbxy_mosaic, irgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
                    ircxy_mosaic, irbxy_mosaic, trxy_mosaic, evcxy_mosaic,                &      ! Added by Aaron A. OUT NOAH MP ONLY
                    chleafxy_mosaic, chucxy_mosaic, chv2xy_mosaic, chb2xy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
-                   rs_mosaic, QINTSXY_mosaic, QINTRXY_mosaic, QDRIPSXY_mosaic,           &                                               &      ! Added by Aaron A. OUT NOAH MP ONLY
+                   rs_mosaic, QINTSXY_mosaic, QINTRXY_mosaic, QDRIPSXY_mosaic,           &                                                   ! Added by Aaron A. OUT NOAH MP ONLY
                    QDRIPRXY_mosaic, QTHROSXY_mosaic, QTHRORXY_mosaic, QSNSUBXY_mosaic,   &
                    QSNFROXY_mosaic, QSUBCXY_mosaic, QFROCXY_mosaic, QEVACXY_mosaic,      &
                    QDEWCXY_mosaic, QFRZCXY_mosaic, QMELTCXY_mosaic, QSNBOTXY_mosaic,     &
@@ -4149,7 +4150,7 @@ IF (ITIME > 0) THEN
                    XXXG_URB2D_mosaic, CMCR_URB2D_mosaic, TGR_URB2D_mosaic,               &
                    TGRL_URB3D_mosaic, SMR_URB3D_mosaic, DRELR_URB2D_mosaic,              &
                    DRELB_URB2D_mosaic, DRELG_URB2D_mosaic, FLXHUMR_URB2D_mosaic,         &
-                   FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,
+                   FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,                           &
 
                    cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
                    chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
@@ -4331,7 +4332,7 @@ ENDIF ! End mosaic if else swap
               call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "MOS1"             )
               call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "MOS1"           )
               call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weights, add up to 1", "[-]", "MOS1")
-              call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS". "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
+              call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS", "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
         END IF ! end if mosaic
         IF (IOPT_HUE.eq.1) THEN
               call add_to_output(RUNONSFXY  , "SFCRNON", "Accumulatetd surface runon grid averaged"          , "mm"                    )
