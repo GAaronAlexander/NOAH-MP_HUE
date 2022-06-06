@@ -11,3 +11,5 @@ Groundalbedo has an option to change the surface parameters of albedo, but has n
 ## Things that still need to be addressed: 
 
 FAREA in the model still needs to be changed around (just divide the two adjacent values by one another!)
+
+Need to aggregate the vegetation variables as discussed with Dan, Steve, Carolyn

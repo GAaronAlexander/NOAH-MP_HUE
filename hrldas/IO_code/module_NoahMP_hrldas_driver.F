@@ -724,6 +724,13 @@ module module_NoahMP_hrldas_driver
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: FLXHUMB_URB2D_mosaic
   REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: FLXHUMG_URB2D_mosaic
 
+  ! HUE Variables
+  REAL,   ALLOCATABLE, DIMENSION(:,:)  :: RUNONSFXY
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: RUNONSFXY_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:)  :: DETENTION_STORAGEXY
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: DETENTION_STORAGEXY_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: VOL_FLUX_RUNONXY_mosaic
+  REAL,   ALLOCATABLE, DIMENSION(:,:,:)  :: VOL_FLUX_SMXY_mosaic
 
 
   !urban 3d model
@@ -1196,7 +1203,7 @@ module module_NoahMP_hrldas_driver
   endif
 
   ! Checks for NOAH-MP HUE. By Aaron Alexander 19 May 2022
-  if (noahmp_mosaic_scheme /= 0 .and. noahmp_mosaic_scheme /= 1) then
+  if (IOPT_MOSAIC /= 0 .and. IOPT_MOSAIC /= 1) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
         write(*, '(" ***** ")')
@@ -1205,7 +1212,7 @@ module module_NoahMP_hrldas_driver
         stop
   endif
 
-  if (noahmp_mosaic_scheme == 1 ) then
+  if (IOPT_MOSAIC == 1 ) then
      if (number_mosaic_catagories <2 .or. number_mosaic_catagories >8) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1216,7 +1223,7 @@ module module_NoahMP_hrldas_driver
      endif
   endif
 
-  if (noahmp_mosaic_scheme == 1 ) then
+  if (IOPT_MOSAIC == 1 ) then
      if (number_land_use_catagories == -999) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1227,7 +1234,7 @@ module module_NoahMP_hrldas_driver
      endif
   endif
 
-  if (noahmp_mosaic_scheme == 1 ) then
+  if (IOPT_MOSAIC == 1 ) then
      if (sf_urban_physics >=2 ) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1238,7 +1245,7 @@ module module_NoahMP_hrldas_driver
      endif
   endif
 
-  if (noahmp_mosaic_scheme == 1 ) then
+  if (IOPT_MOSAIC == 1 ) then
      if (tile_drainage_option > 0 ) then
         write(*, *)
         write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1269,7 +1276,7 @@ module module_NoahMP_hrldas_driver
     endif
  endif
 
- if (noahmp_mosaic_scheme.eq.1) then
+ if (IOPT_MOSAIC.eq.1) then
    if (iopt_crop.gt.0 ) then
       write(*, *)
       write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1280,7 +1287,7 @@ module module_NoahMP_hrldas_driver
    endif
 endif
 
-if (noahmp_mosaic_scheme.eq.1) then
+if (IOPT_MOSAIC.eq.1) then
   if (iopt_run.eq.5 ) then
      write(*, *)
      write(*, '(" ***** Namelist error: ******************************************************")')
@@ -1292,7 +1299,7 @@ if (noahmp_mosaic_scheme.eq.1) then
 endif
 
 if (IOPT_HUE.eq.1) then
-  if (noahmp_mosaic_scheme.eq.1) then
+  if (IOPT_MOSAIC.eq.1) then
      write(*, *)
      write(*, '(" ***** Namelist error: ******************************************************")')
      write(*, '(" ***** ")')
@@ -1852,7 +1859,7 @@ ENDIF
 !Added by Aaron Alexander for noahmp mosaic scheme
 !------------------------------------------------------------------------
 
-IF(noahmp_mosaic_scheme == 1) THEN
+IF(IOPT_MOSAIC == 1) THEN
   ALLOCATE ( LANDUSEF         (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) ! Fractioanl land-use data allocated. Written by Aaron A.
   ALLOCATE ( LANDUSEF2        (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) !This is the landuse fraction that is normalized after the initlization (and will be used to average)
   ALLOCATE ( mosaic_cat_index (XSTART:XEND,1:NUMBER_LAND_USE_CATAGORIES,YSTART:YEND) ) !This is the actual catagory (for NLCD: 1 - 40). Used to call correct land use parameters
@@ -2068,6 +2075,17 @@ IF(noahmp_mosaic_scheme == 1) THEN
   ALLOCATE ( FLXHUMG_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
 
 ENDIF
+
+IF (IOPT_HUE.eq.1) THEN
+
+  ALLOCATE ( RUNONSFXY (XSTART:XEND,  YSTART:YEND) )
+  ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
+  ALLOCATE ( DETENTION_STORAGEXY (XSTART:XEND,  YSTART:YEND) )
+  ALLOCATE ( DETENTION_STORAGEXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
+  ALLOCATE ( VOL_FLUX_RUNONXY (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( VOL_FLUX_SMXY (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
+
+end if
 !------------------------------------------------------------------------
 !Added by Aaron Alexander for noahmp mosaic scheme
 !------------------------------------------------------------------------
@@ -2435,6 +2453,10 @@ IF(SF_URBAN_PHYSICS > 0 )  THEN  ! any urban model
 
 ENDIF
 
+IF (IOPT_HUE.eq.1) THEN
+  RUNONSFXY = undefined_real
+END IF
+
   XLAND          = 1.0   ! water = 2.0, land = 1.0
   XICE           = 0.0   ! fraction of grid that is seaice
   XICE_THRESHOLD = 0.5   ! fraction of grid determining seaice (from WRF)
@@ -2445,7 +2467,7 @@ ENDIF
   ! Modified to add the NOAH-MP HUE
   CALL READLAND_HRLDAS(HRLDAS_SETUP_FILE, XSTART, XEND, YSTART, YEND,&
      ISWATER, ISLAKE, IVGTYP, ISLTYP, TERRAIN, TMN, XLAT, XLONG, XLAND, SEAICE,MSFTX,MSFTY, &
-     noahmp_mosaic_scheme, geogrid_file_name_for_mosaic,number_land_use_catagories,LANDUSEF) !Added by Aaron A.
+     IOPT_MOSAIC, geogrid_file_name_for_mosaic,number_land_use_catagories,LANDUSEF) !Added by Aaron A.
 
 
   WHERE(SEAICE > 0.0) XICE = 1.0
@@ -2723,7 +2745,7 @@ ENDIF
 
      ENDIF
 
-     IF (noahmp_mosaic_scheme.eq.1) THEN
+     IF (IOPT_MOSAIC.eq.1) THEN
        call get_from_restart(xstart, xend, xstart, ixfull, jxfull,      "TSK_mosaic"  ,      TSK_mosaic  )
        call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "TSLB_mosaic"  ,     TSLB_mosaic  )
        call get_from_restart(xstart, xend, xstart, ixfull, jxfull,    "SMOIS_mosaic"  ,    SMOIS_mosaic  )
@@ -2856,8 +2878,16 @@ ENDIF
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMR_URB2D_mosaic"  ,    FLXHUMR_URB2D_mosaic  )
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMB_URB2D_mosaic"  ,    FLXHUMB_URB2D_mosaic  )
          call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "FLXHUMG_URB2D_mosaic"  ,    FLXHUMG_URB2D_mosaic  )
+
        ENDIF
 
+       !Hue variablesß
+       IF(IOPT_HUE.eq.1) THEN
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "DETENTION_STORAGEXY_mosaic"  ,    DETENTION_STORAGEXY_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "RUNONSFXY_mosaic"  ,    RUNONSFXY_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "VOL_FLUX_SMXY_mosaic"  ,    VOL_FLUX_SMXY_mosaic  )
+         call get_from_restart(xstart, xend, xstart, ixfull, jxfull,     "VOL_FLUX_RUNONXY_mosaic"  ,    VOL_FLUX_RUNONXY_mosaic  )
+       ENDIF
 
      ENDIF
      STEPWTD = nint(WTDDT*60./DTBL)
@@ -2946,7 +2976,7 @@ ENDIF
 
           ENDIF
 
-          IF (noahmp_mosaic_scheme.eq.1) then
+          IF (IOPT_MOSAIC.eq.1) then
           CALL NOAHMP_MOSAIC_INIT(XLAND, SNOW,    SNOWH,   CANWAT,   ISLTYP,   IVGTYP, XLAT, ISWATER, ISICE,&   ! call from WRF phys_init
                         TSLB,    SMOIS,     SH2O,      DZS, FNDSOILW, FNDSNOWH,  &
                          TSK,  ISNOWXY,     TVXY,     TGXY, CANICEXY,      TMN,     XICE, &
@@ -2967,7 +2997,7 @@ ENDIF
                       ims,ime, jms,jme, kms,kme,                &  ! memory
                       its,ite, jts,jte, kts,kte,                 &  ! tile
                       smoiseq, smcwtdxy, rechxy, deeprechxy,
-                      LANDUSEF, LANDUSEF2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                      LANDUSEF, LANDUSEF2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       IOPT_HUE,                                                      &
                       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
@@ -3011,7 +3041,7 @@ ENDIF
 ! If there is no mosaic option happening, we just continue as normal
 ! Added by Aaron A. 19 May 2022
 !-----------------------------------------------------------------------
-if (noahmp_mosaic_scheme.eq.0) then
+if (IOPT_MOSAIC.eq.0) then
 
      restart_flag = .FALSE.
 
@@ -3193,7 +3223,7 @@ if (noahmp_mosaic_scheme.eq.0) then
   ! that integrates multiple land-types.
   ! Added by Aaron A. 19 May 2022
   !----------------------------------------------------------------------------
-  else if(noahmp_mosaic_scheme.eq.1) then
+  else if(IOPT_MOSAIC.eq.1) then
 
     restart_flag = .FALSE.
 
@@ -3391,7 +3421,7 @@ if (noahmp_mosaic_scheme.eq.0) then
                   ims,ime, jms,jme, kms,kme,                &  ! memory
                   its,ite, jts,jte, kts,kte,                 &  ! tile
                   smoiseq, smcwtdxy, rechxy, deeprechxy,
-                  LANDUSEF, landusef2, number_land_use_catagories, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                  LANDUSEF, landusef2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                   IOPT_HUE,                                                      &
                   TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
@@ -3423,7 +3453,8 @@ if (noahmp_mosaic_scheme.eq.0) then
                   CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
                   TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
                   DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
-                  FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
+                  FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,     &
+                  DETENTION_STORAGEXY_mosaic
                     )                                                            ! Added by Aaron A.
 
    endif !end mosaic if else statement
@@ -3489,7 +3520,7 @@ end subroutine land_driver_ini
      implicit  none
      integer :: itime          ! timestep loop
 
-if(noahmp_mosaic_scheme.eq.0) then !this check looks and sees if we are going to be doing
+if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
   ! a mosaic tiling scheme call.
 !---------------------------------------------------------------------------------
 ! Read the forcing data.
@@ -3851,7 +3882,7 @@ if(noahmp_mosaic_scheme.eq.0) then !this check looks and sees if we are going to
 
  ENDIF   ! SKIP FIRST TIMESTEP
 
-  ELSEIF(noahmp_mosaic_scheme.eq.1) then !below this is the noah-mp mosiac scheme call Aaron A.
+  ELSEIF(IOPT_MOSAIC.eq.1) then !below this is the noah-mp mosiac scheme call Aaron A.
 
   inflnm = trim(indir)//"/"//&
        olddate(1:4)//olddate(6:7)//olddate(9:10)//olddate(12:13)//&
@@ -4019,7 +4050,7 @@ IF (ITIME > 0) THEN
                   IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
                IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
                IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
-               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, IOPT_HUE, soilstep,  &
+               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, noahmp_HUE_iopt, soilstep,  &
                 IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
  	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
                     T_PHY,     QV_CURR,     U_PHY,    V_PHY,   SWDOWN,      SWDDIR,  & ! IN : Forcing
@@ -4063,7 +4094,7 @@ IF (ITIME > 0) THEN
                 ids,ide,  jds,jde,  kds,kde,                    &
                 ims,ime,  jms,jme,  kms,kme,                    &
                 its,ite,  jts,jte,  kts,kte,                    &
-                   LANDUSEF, landusef2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                   LANDUSEF, landusef2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                    mosaic_cat_index, mosaic_cat,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                    TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic, TMN_mosaic,             &      ! Added by Aaron A. IN/OUT LSM
                    GRDFLX_mosaic, SFCRUNOFF_mosaic, UDRUNOFF_mosaic,                     &      ! Added by Aaorn A. IN/OUT LSM
@@ -4159,7 +4190,8 @@ IF (ITIME > 0) THEN
                    a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
                    b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
                    dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
-                   MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL )
+                   MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL, &
+                   RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic)
 
 
 
@@ -4293,14 +4325,17 @@ ENDIF ! End mosaic if else swap
               call add_to_output(NPPXY      , "NPP"     , "Net primary productivity"               , "g m{-2} s{-1} C"     )
               call add_to_output(PSNXY      , "PSN"     , "Total photosynthesis"                   , "umol CO@ m{-2} s{-1}")
               call add_to_output(APARXY     , "APAR"    , "Photosynthesis active energy by canopy" , "W m{-2}"             )
-        IF (noahmp_mosaic_scheme.eq.1) then
+        IF (IOPT_MOSAIC.eq.1) then
 
               call add_to_output(t2mvxy_mosaic , "T2MV_MOS", "Mosaic 2m Air Temp vegetated",       "K", "MOS1"             )
               call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "MOS1"             )
               call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "MOS1"           )
               call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weights, add up to 1", "[-]", "MOS1")
               call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS". "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
-          !MOSAIC
+        END IF ! end if mosaic
+        IF (IOPT_HUE.eq.1) THEN
+              call add_to_output(RUNONSFXY  , "SFCRNON", "Accumulatetd surface runon grid averaged"          , "mm"                    )
+              call add_to_output(DETENTION_STORAGEXY  , "DETENTION_STORAGE", "Depth of water stored in Green Roof"          , "mm"                    )
         ENDIF
         ! additional NoahMP output
           if (noahmp_output > 0) then
@@ -4633,7 +4668,7 @@ subroutine lsm_restart()
   ! MOS2 = 4 soil catagoris for each mosiac
   ! MOS3 = number of soil layers times mosiac
   ! MOS4 = 7 possible layers (snow and soil) for each mosaic
-  IF(noahmp_mosaic_scheme.eq.1) THEN
+  IF(IOPT_MOSAIC.eq.1) THEN
     call add_to_restart(          TSK_mosaic ,       "TSK_mosaic", layers="MOS1"  )
     call add_to_restart(        TSLB_mosaic,        "TSLB_mosaic" , layers="MOS2" )
     call add_to_restart(      SMOIS_mosaic ,       "SMOIS_mosaic", layers="MOS2" )
@@ -4738,29 +4773,36 @@ subroutine lsm_restart()
       call add_to_restart(         TBL_URB3D_mosaic,  "TBL_URB3D_mosaic"  , layers="MOS2"  )
       call add_to_restart(         TGL_URB3D_mosaic, "TGL_URB3D_mosaic" , layers="MOS2"  )
 
-      call add_to_restart(    CMR_SFCDIF_mosaic ,     "CMR_SFCDIF_mosaic" )
-      call add_to_restart(    CHR_SFCDIF_mosaic ,     "CHR_SFCDIF_mosaic" )
-      call add_to_restart(    CMC_SFCDIF_mosaic ,     "CMC_SFCDIF_mosaic" )
-      call add_to_restart(    CHC_SFCDIF_mosaic ,     "CHC_SFCDIF_mosaic" )
-      call add_to_restart(   CMGR_SFCDIF_mosaic ,    "CMGR_SFCDIF_mosaic" )
-      call add_to_restart(   CHGR_SFCDIF_mosaic ,    "CHGR_SFCDIF_mosaic" )
-      call add_to_restart(   XXXR_URB2D_mosaic  ,    "XXXR_URB2D_mosaic" )
-      call add_to_restart(   XXXB_URB2D_mosaic  ,    "XXXB_URB2D_mosaic" )
-      call add_to_restart(   XXXG_URB2D_mosaic  ,    "XXXG_URB2D_mosaic" )
-      call add_to_restart(   XXXC_URB2D_mosaic  ,    "XXXC_URB2D_mosaic" )
-      call add_to_restart(   CMCR_URB2D_mosaic  ,    "CMCR_URB2D_mosaic" )
-      call add_to_restart(    TGR_URB2D_mosaic  ,     "TGR_URB2D_mosaic" )
+      call add_to_restart(    CMR_SFCDIF_mosaic ,     "CMR_SFCDIF_mosaic" ,layers="MOS1" )
+      call add_to_restart(    CHR_SFCDIF_mosaic ,     "CHR_SFCDIF_mosaic" ,layers="MOS1" )
+      call add_to_restart(    CMC_SFCDIF_mosaic ,     "CMC_SFCDIF_mosaic" ,layers="MOS1" )
+      call add_to_restart(    CHC_SFCDIF_mosaic ,     "CHC_SFCDIF_mosaic",layers="MOS1"  )
+      call add_to_restart(   CMGR_SFCDIF_mosaic ,    "CMGR_SFCDIF_mosaic",layers="MOS1"  )
+      call add_to_restart(   CHGR_SFCDIF_mosaic ,    "CHGR_SFCDIF_mosaic" ,layers="MOS1" )
+      call add_to_restart(   XXXR_URB2D_mosaic  ,    "XXXR_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(   XXXB_URB2D_mosaic  ,    "XXXB_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(   XXXG_URB2D_mosaic  ,    "XXXG_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(   XXXC_URB2D_mosaic  ,    "XXXC_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(   CMCR_URB2D_mosaic  ,    "CMCR_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(    TGR_URB2D_mosaic  ,     "TGR_URB2D_mosaic" ,layers="MOS1" )
       call add_to_restart(   TGRL_URB3D_mosaic  ,    "TGRL_URB3D_mosaic", layers="MOS2" )
       call add_to_restart(    SMR_URB3D_mosaic  ,     "SMR_URB3D_mosaic", layers="MOS2" )
-      call add_to_restart(  DRELR_URB2D_mosaic  ,   "DRELR_URB2D_mosaic" )
-      call add_to_restart(  DRELB_URB2D_mosaic  ,   "DRELB_URB2D_mosaic" )
-      call add_to_restart(  DRELG_URB2D_mosaic  ,   "DRELG_URB2D_mosaic" )
-      call add_to_restart(FLXHUMR_URB2D_mosaic  , "FLXHUMR_URB2D_mosaic" )
-      call add_to_restart(FLXHUMB_URB2D_mosaic  , "FLXHUMB_URB2D_mosaic" )
-      call add_to_restart(FLXHUMG_URB2D_mosaic  , "FLXHUMG_URB2D_mosaic" )
+      call add_to_restart(  DRELR_URB2D_mosaic  ,   "DRELR_URB2D_mosaic",layers="MOS1"  )
+      call add_to_restart(  DRELB_URB2D_mosaic  ,   "DRELB_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(  DRELG_URB2D_mosaic  ,   "DRELG_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(FLXHUMR_URB2D_mosaic  , "FLXHUMR_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(FLXHUMB_URB2D_mosaic  , "FLXHUMB_URB2D_mosaic" ,layers="MOS1" )
+      call add_to_restart(FLXHUMG_URB2D_mosaic  , "FLXHUMG_URB2D_mosaic" ,layers="MOS1" )
 
 
     ENDIF
+
+    IF (IOPT_HUE.eq.1) THEN
+      call add_to_restart(   RUNONSFXY_mosaic, "RUNONSFXY_mosaic" , layers="MOS1")
+      call add_to_restart(   DETENTION_STORAGEXY_mosaic, "DETENTION_STORAGEXY_mosaic" , layers="MOS1")
+      call add_to_restart( VOL_FLUX_RUNONXY_mosaic,  "VOL_FLUX_RUNONXY_mosaic", layers="MOS1")
+      call add_to_restart(   VOL_FLUX_SMXY_mosaic, "VOL_FLUX_SMXY_mosaic" , layers="MOS2")
+    END IF
 
 
   ENDIF

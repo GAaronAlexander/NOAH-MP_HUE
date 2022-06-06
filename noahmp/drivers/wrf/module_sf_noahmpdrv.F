@@ -3344,8 +3344,8 @@ JLOOP : DO J = jts, jte
 ILOOP : DO I = its, ite
 
 
-  IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == 31 .or. &
-      IVGTYP(I,J) == 32 .or. IVGTYP(I,J) == 33 ) THEN
+  IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. &
+      IVGTYP(I,J) == LCZ_2_TABLE .or. IVGTYP(I,J) == LCZ_3_TABLE ) THEN
 
     UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
 
@@ -3770,7 +3770,7 @@ END SUBROUTINE noahmp_urban
        ims,ime, jms,jme, kms,kme,                &
        its,ite, jts,jte, kts,kte,                &
        smoiseq, smcwtdxy, rechxy, deeprechxy,    &
-       LANDUSEF, LANDUSEF2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+       LANDUSEF, LANDUSEF2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
        mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
        noahmp_HUE_iopt,                                                      &
        TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
@@ -3803,7 +3803,8 @@ END SUBROUTINE noahmp_urban
        CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
        TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
        DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
-       FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic
+       FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,     &
+       DETENTION_STORAGEXY_mosaic
          )                                                            ! Added by Aaron A.             ! Added by Aaron A.
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3924,7 +3925,7 @@ END SUBROUTINE noahmp_urban
 ! From here on, we define the important variables that are needed to re-catagorize the landuse data sets
 
   INTEGER, INTENT(IN) :: NLCAT
-  INTEGER, INTENT(IN) :: noahmp_mosaic_scheme                                       !This tells us that the mosaic scheme is active
+  INTEGER, INTENT(IN) :: IOPT_MOSAIC                                       !This tells us that the mosaic scheme is active
   INTEGER, INTENT(IN) :: mosaic_cat                                               !This tells how many mosaic catagories that are of interet,
   REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
   REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
@@ -4040,7 +4041,8 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMR_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMB_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMG_URB2D_mosaic
-
+  ! HUE Variables
+  REAL, DIMESNION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT) :: DETENTION_STORAGEXY
 
 
 
@@ -4406,6 +4408,7 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
               SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
               SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
 
+              DETENTION_STORAGEXY_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,J) = 0.
               ENDDO
 
            !!snow things
@@ -4589,7 +4592,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                ids,ide,  jds,jde,  kds,kde,                    &
                ims,ime,  jms,jme,  kms,kme,                    &
                its,ite,  jts,jte,  kts,kte,                    &
-                          LANDUSEF, landusef2, NLCAT, noahmp_mosaic_scheme,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                          LANDUSEF, landusef2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                           mosaic_cat_index, mosaic_cat,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                           TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic, TMN_mosaic,             &      ! Added by Aaron A. IN/OUT LSM
                           GRDFLX_mosaic, SFCRUNOFF_mosaic, UDRUNOFF_mosaic,                     &      ! Added by Aaorn A. IN/OUT LSM
@@ -4685,7 +4688,8 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
                           b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
                           dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
-                  MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL )
+                  MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL,                     &
+                   RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic)! HUE SPECIFIC VARIABLES
 
 
 !-----------------------------------------------------------------------
@@ -5498,15 +5502,18 @@ type(noahmp_parameters) :: parameters
 !-----------------------------------------------------------------------
 !NOAH-MP MOSAIC Related Variables added to decliration (Aaron A. based on Dan Li)
 !-----------------------------------------------------------------------
-     INTEGER, INTENT(IN) :: NLCAT
-     INTEGER, INTENT(IN) :: noahmp_mosaic_scheme                                       !This tells us that the mosaic scheme is active
-     INTEGER, INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
-     INTEGER, INTENT(IN) :: noahmp_HUE_iopt                                            !This passed to help to see if we need to use the new physics
-     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
-     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
+     INTEGER, OPTIONAL, INTENT(IN) :: NLCAT
+     INTEGER, OPTIONAL, INTENT(IN) :: IOPT_MOSAIC                                       !This tells us that the mosaic scheme is active
+     INTEGER, OPTIONAL, INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
+     INTEGER, OPTIONAL, INTENT(IN) :: noahmp_HUE_iopt                                            !This passed to help to see if we need to use the new physics
+     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , OPTIONAL, INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
+     REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , OPTIONAL, INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
 
-     INTEGER, DIMENSION( ims:ime, NLCAT, jms:jme ), INTENT(INOUT) :: mosaic_cat_index !This is the re-ordered mosaic catagory data
-
+     INTEGER, DIMENSION( ims:ime, NLCAT, jms:jme ), OPTIONAL, INTENT(INOUT) :: mosaic_cat_index !This is the re-ordered mosaic catagory data
+     REAL,    DIMENSION( ims:ime,             jms:jme ), OPTIONAL, INTENT(OUT  ) ::  RUNONSFXY ! Accumulated Surface runon [mm] Added by Aaron A. [
+     REAL,    DIMENSION( ims:ime,1:mosaic_cat,jms:jme ), OPTIONAL, INTENT(OUT  ) ::  RUNONSFXY_mosaic ! Accumulated Surface runon [mm] Added by Aaron A.
+     REAL, OPTIONAL, INTENT(OUT) :: RUNONSRF
+     REAL,
      !variables with dimensions 1:mosaic_cat
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TSK_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: HFX_mosaic
@@ -5711,6 +5718,12 @@ type(noahmp_parameters) :: parameters
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMB_URB2D_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMG_URB2D_mosaic
 
+      ! HUE noahmp values
+      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT), OPTIONAL :: DETENTION_STORAGEXY_mosaic  ! detention storage for green roof
+      REAL,    DIMESNION(ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT), OPTIONAL :: DETENTION_STORAGEXY
+
+      REAL,   DIMENSION( ims:ime, 1:NSOIL*mosaic_cat, jms:jme),  INTENT(INOUT), OPTIONAL :: VOL_FLUX_SMXY_mosaic !fractional soil moisture volume pulled from sharing
+      REAL,   DIMENSION( ims:ime, 1:mosaic_cat       ,jms:jme),  INTENT(INOUT), OPTIONAL :: VOL_FLUX_RUNONXY_mosaic
 
       ! THESE ARE INTERMEDIATES, THEY WILL BE USED TO KEEP TRACK OF ALL MOSAIC VALUES
       REAL, DIMENSION( ims:ime, jms:jme ) :: TSK_mosaic_avg, HFX_mosaic_avg, QFX_mosaic_avg, LH_mosaic_avg,  & ! These are in and out LSM options
@@ -5757,6 +5770,8 @@ type(noahmp_parameters) :: parameters
             EFLXBXY_mosaic_avg, SOILENERGY_mosaic_avg, SNOWENERGY_mosaic_avg, CANHSXY_mosaic_avg,                     &
             ACC_DWATERXY_mosaic_avg, ACC_PRCPXY_mosaic_avg, ACC_ECANXY_mosaic_avg
 
+      REAL, DIMENSION (ims:ime, jms:jme) :: RUNONSFXY_mosaic_avg
+
 
 
       INTEGER, DIMENSION( ims:ime, jms:jme ) :: isnowxy_mosaic_avg
@@ -5767,12 +5782,21 @@ type(noahmp_parameters) :: parameters
 
       REAL, DIMENSION( ims:ime, -2:NSOIL, jms:jme) :: zsnsoxy_mosaic_avg
 
-      ! DO THESE NEED TO BE ADDED?????
+     !HUE noah-mp variables
      INTEGER, DIMENSION( ims:ime, jms:jme ) ::    IVGTYP_dominant
      INTEGER ::  mosaic_i, URBAN_METHOD, zo_avg_option,LAYER
-     REAL :: FAREA,FAREA2, URBAN_correction_no_vegetation
+     REAL :: FAREA,FAREA2
      LOGICAL :: IPRINT_mosaic !may not be needed Aaron A.
+     INTEGER, PARAMETER                   :: NSOIL_GR = 1
 
+     REAL,    DIMENSION( 1:nsoil)  ::  SMC_intermediate     ! volumetric soil moisture [m3/m3]
+     REAL,    DIMENSION( 1:nsoil)  ::  SH2O_intermediate      ! volumetric liquid soil moisture [m3/m3]
+     REAL,    DIMENSION( 1:nsoil)  ::  BTRANI_dummy ! BTRANI_output
+     REAL                          ::  DETENTION_STORAGE
+     ! create intermediates for lateral transfers
+     REAL                          :: FAREA
+     REAL,   DIMENSION( 1:nsoil)   :: VOL_FLUX_SM
+     REAL                          :: VOL_FLUX_RUNON
      !------------------------------------------------------------------
      !Begin code calls
      !------------------------------------------------------------------
@@ -6058,6 +6082,7 @@ type(noahmp_parameters) :: parameters
                IRNUMFI_mosaic_avg(i,j) = 0
 
 
+
                ! These are needed for the
 
                MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
@@ -6087,6 +6112,7 @@ type(noahmp_parameters) :: parameters
                    ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)
 
                ENDDO
+
 
                SNOW(I,J) = SNOW_mosaic(I,mosaic_i,J)
                SNOWH(I,J) = SNOWH_mosaic(I,mosaic_i,J)
@@ -6252,10 +6278,67 @@ type(noahmp_parameters) :: parameters
             ENDIF
 
      ! IN/OUT fields
+            ! all HUE options that re needed
+             IF (IOPT_HUE.eq.1) THEN
+
+               IF (VEGTYP.EQ.41) THEN !Added by Aaron Alexander
+                 ! This branch swaps the soil moisture for the canpoy of impermeable pavement
+                 ! This assumes that the ordering is source (i.e. fully vegetated) is second. So its _pavement_ | _fully Vegetated_
+
+                 SMC  (       1:NSOIL) = SMOIS(I, 1:NSOIL, J ) !  These are the soil moisture values of the pavement
+                 SMH2O(       1:NSOIL) = SH2O( I, 1:NSOIL, J ) !  Soil water content that is under the pavement
+
+                 DO LAYER=1,NSOIL
+                   SMC_intermediate (LAYER) = SMOIS(I+1,NSOIL*(mosaic_i)+LAYER,J)  !  This is the soil moisture of the fully vegetated square
+                   SH2O_intermediate(LAYER) = SH2O(I+1,NSOIL*(mosaic_i)+LAYER,J)   !  This is the soil moisture of the fully vegetated square
+
+                 END DO
+
+               ELSE ! All other land types that do not require the sharing of information across simulated soil areas
+                 SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
+                 SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
+
+                 SMC_intermediate (1:NSOIL) = SMOIS(I,1:NSOIL,J)
+                 SH2O_intermediate(1:NSOIL) = SH2O(I,1:NSOIL,J)
+
+               ENDIF
+               IF (VEGTYP.EQ.46) THEN
+                 ! GREEN ROOF
+                 DETENTION_STORAGE = DETENTION_STORAGEXY_mosaic(I,mosaic_i,J)
+               ELSE
+                 DETENTION_STORAGE = 0.
+
+               ! Turf grass flux runon
+               IF( (VEGTYP.EQ.43).OR.(VEGTYP.EQ.44)) THEN
+                 VOL_FLUX_RUNON = VOL_FLUX_RUNONXY_mosaic(I,mosaic_i-1,J) ! you want the previous one
+               ELSE
+                 VOL_FLUX_RUNON = 0.
+               END IF
+
+               ! soil moisture pulling flux from the previous call
+               IF (VEGTYP.EQ.47) THEN
+                 DO LAYER = 1,NSOIL
+                    VOL_FLUX_SM(LAYER) = VOL_FLUX_SMXY_mosaic(I,NSOIL*(mosaic_i-2)+LAYER,J)
+                 END DO
+               ELSE
+                 VOL_FLUX_SM(1:NSOIL) = 0.
+               END IF
+
+               !Scaling volume (FAREA of current )
+
+               FAREA = LANDUSEF2(I,mosaic_i,J)
+
+               !runonsf (TO KEEP TRACK OF EVERYTHING that is lateral transfer)
+               RUNONSRF = RUNONSFXY_mosaic(I,mosaic_i,J)
+
+             ELSE
+               SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
+               SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
+
+             END IF
+
 
             ISNOW                 = ISNOWXY (I,J)                ! snow layers []
-            SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
-            SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
             STC  (-NSNOW+1:    0) = TSNOXY  (I,-NSNOW+1:    0,J) ! snow temperatures [K]
             STC  (      1:NSOIL)  = TSLB    (I,      1:NSOIL,J)  ! soil temperatures [K]
             SWE                   = SNOW    (I,J)                ! snow water equivalent [mm]
@@ -6617,7 +6700,8 @@ type(noahmp_parameters) :: parameters
      #ifdef WRF_HYDRO
                  , sfcheadrt(i,j), WATBLED                                   &
      #endif
-                 )            ! OUT :
+                SMC_INTERMEDIATE, SH2O_INTERMEDIATE, BTRANI_dummy, RUNONSRF, NSOIL_GR,                  & ! addtiional variables for HUE added by Aaron A.
+                DETENTION_STORAGE,FAREA,VOL_FLUX_SM,VOL_FLUX_RUNON )            ! OUT :
 
                  QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
                  LH(I,J)  = FCEV + FGEV  + FCTR  + FIRR
@@ -6635,6 +6719,41 @@ type(noahmp_parameters) :: parameters
 
 
      ! INPUT/OUTPUT
+            IF (IOPT_HUE.eq.1) THEN
+
+              ! Changes in the soil moisture with replacement
+              IF (VEGTYP.EQ.41) THEN
+
+                SMOIS(I, 1:NSOIL, J ) = SMC  (       1:NSOIL) = !  These are the soil moisture values of the pavement
+                SH2O( I, 1:NSOIL, J ) = SMH2O(       1:NSOIL) !  Soil water content that is under the pavement
+
+                DO LAYER=1,NSOIL
+                  SMOIS(I+1,NSOIL*(mosaic_i)+LAYER,J) = SMC_intermediate (LAYER)   !  This is the soil moisture of the fully vegetated square
+                  SH2O(I+1,NSOIL*(mosaic_i)+LAYER,J)= SH2O_intermediate(LAYER)    !  This is the soil moisture of the fully vegetated square
+
+                END DO
+              ELSE
+                SMOIS(I, 1:NSOIL, J ) = SMC(1:NSOIL)
+                SH2O( I, 1:NSOIL, J ) = SMH2O(1:NSOIL)
+              END IF
+
+              ! the green roof detention storage
+              DETENTION_STORAGEXY_mosaic(I,mosaic_i,J) = DETENTION_STORAGE
+              ! runon flux
+              VOL_FLUX_RUNONXY_mosaic(I,mosaic_i,J) = VOL_FLUX_RUNON
+              ! soil moisutre flux
+              DO LAYER=1,NSOIL
+                VOL_FLUX_SMXY_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = VOL_FLUX_SM
+              END DO
+
+            ELSE
+              SMOIS(I, 1:NSOIL, J ) = SMC(1:NSOIL)
+              SH2O( I, 1:NSOIL, J ) = SMH2O(1:NSOIL)
+            END IF
+
+
+
+
 
                   TSK      (I,J)                = TRAD
                   HFX      (I,J)                = FSH
@@ -6648,6 +6767,7 @@ type(noahmp_parameters) :: parameters
                      ALBEDO(I,J)                = SALB
                   ENDIF
                   SNOWC    (I,J)                = FSNO
+
                   SMOIS    (I,      1:NSOIL,J)  = SMC   (      1:NSOIL)
                   SH2O     (I,      1:NSOIL,J)  = SMH2O (      1:NSOIL)
                   TSLB     (I,      1:NSOIL,J)  = STC   (      1:NSOIL)
@@ -6850,8 +6970,8 @@ type(noahmp_parameters) :: parameters
           !--------------------------------------
 
 
-            IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == 31 .or. &
-                IVGTYP(I,J) == 32 .or. IVGTYP(I,J) == 33 ) THEN
+            IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. &
+                IVGTYP(I,J) == LCZ_2_TABLE .or. IVGTYP(I,J) == LCZ_3_TABLE ) THEN
 
               ! Begin addition by Aaron A. on 27 May 2022.
               ! This reads in the mosaic values to hopefully
@@ -7334,7 +7454,12 @@ type(noahmp_parameters) :: parameters
                       zsnsoxy_mosaic(I,7*(mosaic_i - 1) + LAYER, J) = ZSNSOXY(I,LAYER,J)
                   ENDDO
 
+              !HUE THINGS
 
+              RUNONSFXY_mosaic(I,mosaic_i,J) =  RUNONSFXY_mosaic(I,mosaic_i,J) + RUNONSRF * DT
+              IF (VEGTYP.eq.46) THEN
+                DETENTION_STORAGEXY(I,J) = DETENTION_STORAGE
+              END IF
               !-------------------------------------------------------------------
               !We now do Grid Averaging!!!!
               !-------------------------------------------------------------------
@@ -7342,10 +7467,12 @@ type(noahmp_parameters) :: parameters
               FAREA = landusef2(I,mosaic_i,J) !This logical option is going to be used multiply
               FAREA2 = landusef2(I,mosaic_i,J)
 
-              IF( IVGTYP(I,J) == ISURBAN_TABLE    .or. IVGTYP(I,J) == 42 .or. IVGTYP(I,J) == 44 .or. &
-                IVGTYP(I,J) == 45 ) THEN
+              IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
+                IVGTYP(I,J) == LCZ_3_TABLE .or. IVGTYP(I,J) == 42 .or. IVGTYP(I,J) == 44 .or. &
+                IVGTYP(I,J) == 45.or. IVGTYP(I,J) == ISBARREN ) THEN
 
-                FAREA2 = 0.0
+                FAREA2 = 0.0 !This is a fix to change how the urban areas/barren areas
+                ! We are only going to be outputting the average of the vegetated area.
               ENDIF
 
 
@@ -7512,13 +7639,35 @@ type(noahmp_parameters) :: parameters
               ACC_PRCPXY_mosaic_avg(I,J) = ACC_PRCPXY_mosaic_avg(I,J) + ACC_PRCPXY_mosaic(I,mosaic_i,J)*FAREA
               ACC_ECANXY_mosaic_avg(I,J) = ACC_ECANXY_mosaic_avg(I,J) + ACC_ECANXY_mosaic(I,mosaic_i,J)*FAREA
 
-
+              !HUE THINGS
+              RUNONSFXY_mosaic_avg(I,J) = RUNONSFXY_mosaic_avg(I,J) + RUNONSFXY_mosaic(I,mosaic_i,J)*FAREA
 
              END DO MOSAIC_LOOP  !Loop over each of the mosaic variables
 
               !-------------------------------------------------------------------
               !WE now send the Mosaic Values to 2D variables so they can be called in other routines
               !-------------------------------------------------------------------
+
+              !Final Step, we adjust outputs that have only outputs
+              !for vegetation. We do this because some variables are not
+              !defined in other areas, and
+
+              FAREA2 = 0.
+
+              DO LAYER= 1,mosaic_cat
+                IF( IVGTYP(I,J) /= ISURBAN_TABLE .or. IVGTYP(I,J) /= LCZ_1_TABLE .or. IVGTYP(I,J) /= LCZ_2_TABLE .or. &
+                  IVGTYP(I,J) /= LCZ_3_TABLE .or. IVGTYP(I,J) /= 42 .or. IVGTYP(I,J) /= 44 .or. &
+                  IVGTYP(I,J) /= 45.or. IVGTYP(I,J) /= ISBARREN ) THEN
+
+                  FAREA2 = FAREA2 + landusef2(I,mosaic_i,J)
+                ENDIF
+              END DO
+              ! FAREA is now the total area that was used
+              ! to average our vegetation canopy. We divide the
+              ! variables that we just added by this to scale to be correct
+              ! if FAREA2 was multiplied by in the previous lines.
+              ! if not, we just pass the average value (which is correct)
+              ! into its final place to be written out
 
               IVGTYP(I,J) = IVGTYP_dominant(I,J) !dominant vegetation catagory
               TSK(I,J) = TSK_mosaic_avg(I,J)
@@ -7547,16 +7696,16 @@ type(noahmp_parameters) :: parameters
                   SMOIS(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J)
                   SH2O(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J)
                   SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J)
-                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,mosaic_i,J)
+                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,mosaic_i,J)/FAREA2
               ENDDO
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
-              TVXY(I,J) = tvxy_mosaic_avg(I,J)
+              TVXY(I,J) = tvxy_mosaic_avg(I,J)/FAREA2
               TGXY(I,J) = tgxy_mosaic_avg(I,J)
               CANICEXY(I,J) = canicexy_mosaic_avg(I,J)
               CANLIQXY(I,J) = canliqxy_mosaic_avg(I,J)
-              EAHXY(I,J) = eahxy_mosaic_avg(I,J)
-              TAHXY(I,J) = tahxy_mosaic_avg(I,J)
+              EAHXY(I,J) = eahxy_mosaic_avg(I,J)/FAREA2
+              TAHXY(I,J) = tahxy_mosaic_avg(I,J)/FAREA2
               CMXY(I,J) = cmxy_mosaic_avg(I,J)
               CHXY(I,J) = chxy_mosaic_avg(I,J)
               FWETXY(I,J) = fwetxy_mosaic_avg(I,J)
@@ -7567,17 +7716,17 @@ type(noahmp_parameters) :: parameters
               ZWTXY(I,J) = zwtxy_mosaic_avg(I,J)
               WAXY(I,J) = waxy_mosaic_avg(I,J)
               WTXY(I,J) = wtxy_mosaic_avg(I,J)
-              LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)
-              RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)
-              STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)
-              WOODXY(I,J) = woodxy_mosaic_avg(I,J)
-              GRAINXY(I,J) = grainxy_mosaic_avg(I,J)
-              GDDXY(I,J) = gddxy_mosaic_avg(I,J)
-              PGSXY(I,J) = pgsxy_mosaic_avg(I,J)
-              STBLCPXY(I,J) = stblcpxy_mosaic_avg(I,J)
-              FASTCPXY(I,J) = fastcpxy_mosaic_avg(I,J)
-              XLAIXY(I,J) = xlai_mosaic_avg(I,J)
-              XSAIXY(I,J) = xsaixy_mosaic_avg(I,J)
+              LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)/FAREA2
+              RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)/FAREA2
+              STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)/FAREA2
+              WOODXY(I,J) = woodxy_mosaic_avg(I,J)/FAREA2
+              GRAINXY(I,J) = grainxy_mosaic_avg(I,J)/FAREA2
+              GDDXY(I,J) = gddxy_mosaic_avg(I,J)/FAREA2
+              PGSXY(I,J) = pgsxy_mosaic_avg(I,J)/FAREA2
+              STBLCPXY(I,J) = stblcpxy_mosaic_avg(I,J)/FAREA2
+              FASTCPXY(I,J) = fastcpxy_mosaic_avg(I,J)/FAREA2
+              XLAIXY(I,J) = xlai_mosaic_avg(I,J)/FAREA2
+              XSAIXY(I,J) = xsaixy_mosaic_avg(I,J)/FAREA2
               TAUSSXY(I,J) = taussxy_mosaic_avg(I,J)
               SMCWTDXY(I,J) = smcwtdxy_mosaic_avg(I,J)
               DEEPRECHXY(I,J) = deeprechxy_mosaic_avg(I,J)
@@ -7585,49 +7734,49 @@ type(noahmp_parameters) :: parameters
 
               !out variables only
 
-              T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)
+              T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)/FAREA2
               T2MBXY(I,J) = t2mbxy_mosaic_avg(I,J)
-              Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)
+              Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)/FAREA2
               Q2MBXY(I,J) = q2mbxy_mosaic_avg(I,J)
               TRADXY(I,J) = tradxy_mosaic_avg(I,J)
-              NEEXY(I,J) = neexy_mosaic_avg(I,J)
-              GPPXY(I,J) = gppxy_mosaic_avg(I,J)
-              NPPXY(I,J) = nppxy_mosaic_avg(I,J)
-              FVEGXY(I,J) = fvegxy_mosaic_avg(I,J)
+              NEEXY(I,J) = neexy_mosaic_avg(I,J)/FAREA2
+              GPPXY(I,J) = gppxy_mosaic_avg(I,J)/FAREA2
+              NPPXY(I,J) = nppxy_mosaic_avg(I,J)/FAREA2
+              FVEGXY(I,J) = fvegxy_mosaic_avg(I,J)/FAREA2
               RUNSFXY(I,J) = runsfxy_mosaic_avg(I,J)
               RUNSBXY(I,J) = runsbxy_mosaic_avg(I,J)
-              ECANXY(I,J) = ecanxy_mosaic_avg(I,J)
-              EDIRXY(I,J) = edirxy_mosaic_avg(I,J)
-              ETRANXY(I,J) = etranxy_mosaic_avg(I,J)
+              ECANXY(I,J) = ecanxy_mosaic_avg(I,J)/FAREA2
+              EDIRXY(I,J) = edirxy_mosaic_avg(I,J)/FAREA2
+              ETRANXY(I,J) = etranxy_mosaic_avg(I,J)/FAREA2
               FSAXY(I,J) = fsaxy_mosaic_avg(I,J)
               FIRAXY(I,J) = firaxy_mosaic_avg(I,J)
-              APARXY(I,J) = aparxy_mosaic_avg(I,J)
-              PSNXY(I,J) = psnxy_mosaic_avg(I,J)
-              SAVXY(I,J) = savxy_mosaic_avg(I,J)
+              APARXY(I,J) = aparxy_mosaic_avg(I,J)/FAREA2
+              PSNXY(I,J) = psnxy_mosaic_avg(I,J)/FAREA2
+              SAVXY(I,J) = savxy_mosaic_avg(I,J)/FAREA2
               SAGXY(I,J) = sagxy_mosaic_avg(I,J)
-              RSSUNXY(I,J) = rssunxy_mosaic_avg(I,J)
-              RSSHAXY(I,J) = rsshaxy_mosaic_avg(I,J)
-              BGAPXY(I,J) = bgapxy_mosaic_avg(I,J)
-              WGAPXY(I,J) = wgapxy_mosaic_avg(I,J)
-              TGVXY(I,J) = tgvxy_mosaic_avg(I,J)
+              RSSUNXY(I,J) = rssunxy_mosaic_avg(I,J)/FAREA2
+              RSSHAXY(I,J) = rsshaxy_mosaic_avg(I,J)/FAREA2
+              BGAPXY(I,J) = bgapxy_mosaic_avg(I,J)/FAREA2
+              WGAPXY(I,J) = wgapxy_mosaic_avg(I,J)/FAREA2
+              TGVXY(I,J) = tgvxy_mosaic_avg(I,J)/FAREA2
               TGBXY(I,J) = tgbxy_mosaic_avg(I,J)
-              CHVXY(I,J) = chvxy_mosaic_avg(I,J)
+              CHVXY(I,J) = chvxy_mosaic_avg(I,J)/FAREA2
               CHBXY(I,J) = chbxy_mosaic_avg(I,J)
-              SHBXY(I,J) = shbxy_mosaic_avg(I,J)
-              SHCXY(I,J) = shcxy_mosaic_avg(I,J)
+              SHBXY(I,J) = shbxy_mosaic_avg(I,J)/FAREA2
+              SHCXY(I,J) = shcxy_mosaic_avg(I,J)/FAREA2
               SHGXY(I,J) = shbxy_mosaic_avg(I,J)
-              EVGXY(I,J) = evgxy_mosaic_avg(I,J)
-              EVBXY(I,J) = evbxy_mosaic_avg(I,J)
+              EVGXY(I,J) = evgxy_mosaic_avg(I,J)/FAREA2
+              EVBXY(I,J) = evbxy_mosaic_avg(I,J)/FAREA2
               GHVXY(I,J) = ghvxy_mosaic_avg(I,J)
               GHBXY(I,J) = ghbxy_mosaic_avg(I,J)
-              IRGXY(I,J) = irgxy_mosaic_avg(I,J)
-              IRCXY(I,J) = ircxy_mosaic_avg(I,J)
+              IRGXY(I,J) = irgxy_mosaic_avg(I,J)/FAREA2
+              IRCXY(I,J) = ircxy_mosaic_avg(I,J)/FAREA2
               IRBXY(I,J) = irbxy_mosaic_avg(I,J)
-              TRXY(I,J) = trxy_mosaic_avg(I,J)
-              EVCXY(I,J) = evcxy_mosaic_avg(I,J)
-              CHLEAFXY(I,J) = chleafxy_mosaic_avg(I,J)
-              CHUCXY(I,J) = chucxy_mosaic_avg(I,J)
-              CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)
+              TRXY(I,J) = trxy_mosaic_avg(I,J)/FAREA2
+              EVCXY(I,J) = evcxy_mosaic_avg(I,J)/FAREA2
+              CHLEAFXY(I,J) = chleafxy_mosaic_avg(I,J)/FAREA2
+              CHUCXY(I,J) = chucxy_mosaic_avg(I,J)/FAREA2
+              CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)/FAREA2
               CHB2XY(I,J) = chb2xy_mosaic_avg(I,J)
 
 
@@ -7679,6 +7828,11 @@ type(noahmp_parameters) :: parameters
               ACC_DWATERXY(I,J) = ACC_DWATERXY_mosaic_avg(I,J)
               ACC_PRCPXY(I,J) = ACC_PRCPXY_mosaic_avg(I,J)
               ACC_ECANXY(I,J) = ACC_ECANXY_mosaic_avg(I,J)
+
+
+              !HUE THINGS
+              RUNONSFXY(I,J) = RUNONSFXY_mosaic_avg(I,J)
+
 
 
 
