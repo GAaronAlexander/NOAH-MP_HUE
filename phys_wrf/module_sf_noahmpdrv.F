@@ -4626,8 +4626,8 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           QDRIPRXY_mosaic, QTHROSXY_mosaic, QTHRORXY_mosaic, QSNSUBXY_mosaic,   &
                           QSNFROXY_mosaic, QSUBCXY_mosaic, QFROCXY_mosaic, QEVACXY_mosaic,      &
                           QDEWCXY_mosaic, QFRZCXY_mosaic, QMELTCXY_mosaic, QSNBOTXY_mosaic,     &
-                          QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHVXY_mosaic,        &
-                          PAHBXY_mosaic, FPICEXY_mosaic,                                        &
+                          QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHGXY_mosaic,        &
+                          PAHVXY_mosaic, PAHBXY_mosaic, FPICEXY_mosaic,                         &
                           ACC_SSOILXY_mosaic, ACC_QINSURXY_mosaic, ACC_QSEVAXY_mosaic,          &
                           ACC_ETRANIXY_mosaic, EFLXBXY_mosaic, SOILENERGY_mosaic, SNOWENERGY_mosaic, &
                           CANHSXY_mosaic, ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic, ACC_ECANXY_mosaic, ACC_EDIRXY_mosaic, &
@@ -4666,26 +4666,9 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           julday,             julyr,                                            &
                           frc_urb2d,    utype_urb2d,                                            & !I urban
                           chs,           chs2,           cqs2,                                  & !H
-                          num_urban_ndm,  urban_map_zrd,  urban_map_zwd, urban_map_gd,          & !I multi-layer urban
-                          urban_map_zd,  urban_map_zdf,   urban_map_bd, urban_map_wd,           & !I multi-layer urban
-                          urban_map_gbd,  urban_map_fbd,                                        & !I multi-layer urban
-                          num_urban_hi,                                                         & !I multi-layer urban
-                          trb_urb4d,      tw1_urb4d,      tw2_urb4d,  tgb_urb4d,                & !H multi-layer urban
-                          tlev_urb3d,     qlev_urb3d,                                           & !H multi-layer urban
-                          tw1lev_urb3d,   tw2lev_urb3d,                                         & !H multi-layer urban
-                          tglev_urb3d,    tflev_urb3d,                                          & !H multi-layer urban
-                          sf_ac_urb3d,    lf_ac_urb3d,    cm_ac_urb3d,                          & !H multi-layer urban
-                          sfvent_urb3d,   lfvent_urb3d,                                         & !H multi-layer urban
-                          sfwin1_urb3d,   sfwin2_urb3d,                                         & !H multi-layer urban
-                          sfw1_urb3d,     sfw2_urb3d,      sfr_urb3d,  sfg_urb3d,               & !H multi-layer urban
-                          lp_urb2d,       hi_urb2d,       lb_urb2d,  hgt_urb2d,                 & !H multi-layer urban
                           mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
                           th_phy,            rho,          p_phy,        ust,                   & !I multi-layer urban
                           gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
-                          a_u_bep,        a_v_bep,        a_t_bep,    a_q_bep,                  & !O multi-layer urban
-                          a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
-                          b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
-                          dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
                   MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL,                     &
                    RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic )! HUE SPECIFIC VARIABLES
 
@@ -5406,76 +5389,6 @@ type(noahmp_parameters) :: parameters
 
      REAL, OPTIONAL,                                                    INTENT(IN   ) :: GMT
      INTEGER, OPTIONAL,                                                 INTENT(IN   ) :: JULDAY
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: XLAT, XLONG
-     INTEGER,                                                           INTENT(IN   ) :: num_urban_ndm
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_zrd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_zwd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_gd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_zd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_zdf
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_bd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_wd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_gbd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_fbd
-     INTEGER,                                                           INTENT(IN   ) :: urban_map_zgrd
-     INTEGER,                                                           INTENT(IN   ) :: NUM_URBAN_HI
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_hi, jms:jme ),     INTENT(IN   ) :: hi_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: lp_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: lb_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: hgt_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: mh_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(IN   ) :: stdh_urb2d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 4, jms:jme ),                  INTENT(IN   ) :: lf_urb2d
-
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zrd, jms:jme ),    INTENT(INOUT) :: trb_urb4d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zwd, jms:jme ),    INTENT(INOUT) :: tw1_urb4d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zwd, jms:jme ),    INTENT(INOUT) :: tw2_urb4d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_gd , jms:jme ),    INTENT(INOUT) :: tgb_urb4d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_bd , jms:jme ),    INTENT(INOUT) :: tlev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_bd , jms:jme ),    INTENT(INOUT) :: qlev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: tw1lev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: tw2lev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_gbd, jms:jme ),    INTENT(INOUT) :: tglev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_fbd, jms:jme ),    INTENT(INOUT) :: tflev_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: lf_ac_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: sf_ac_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: cm_ac_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: sfvent_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ),                     INTENT(INOUT) :: lfvent_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: sfwin1_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_wd , jms:jme ),    INTENT(INOUT) :: sfwin2_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zd , jms:jme ),    INTENT(INOUT) :: sfw1_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zd , jms:jme ),    INTENT(INOUT) :: sfw2_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),    INTENT(INOUT) :: sfr_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_ndm, jms:jme ),    INTENT(INOUT) :: sfg_urb3d
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: ep_pv_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ), INTENT(INOUT) :: t_pv_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zgrd, jms:jme ),INTENT(INOUT) :: trv_urb4d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zgrd, jms:jme ),INTENT(INOUT) :: qr_urb4d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime,jms:jme ), INTENT(INOUT) :: qgr_urb3d  !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime,jms:jme ), INTENT(INOUT) :: tgr_urb3d  !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),INTENT(INOUT) :: drain_urb4d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) :: draingr_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),INTENT(INOUT) :: sfrv_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),INTENT(INOUT) :: lfrv_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),INTENT(INOUT) :: dgr_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_ndm, jms:jme ),INTENT(INOUT) :: dg_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:urban_map_zdf, jms:jme ),INTENT(INOUT) :: lfr_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_urban_ndm, jms:jme ),INTENT(INOUT) :: lfg_urb3d !GRZ
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_u_bep   !Implicit momemtum component X-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_v_bep   !Implicit momemtum component Y-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_t_bep   !Implicit component pot. temperature
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_q_bep   !Implicit momemtum component X-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: a_e_bep   !Implicit component TKE
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_u_bep   !Explicit momentum component X-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_v_bep   !Explicit momentum component Y-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_t_bep   !Explicit component pot. temperature
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_q_bep   !Implicit momemtum component Y-direction
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: b_e_bep   !Explicit component TKE
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: vl_bep    !Fraction air volume in grid cell
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: dlg_bep   !Height above ground
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: sf_bep    !Fraction air at the face of grid cell
-     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),            INTENT(INOUT) :: dl_u_bep  !Length scale
 
 ! Local variables for multi-layer UCM
 
@@ -5498,9 +5411,9 @@ type(noahmp_parameters) :: parameters
 !-----------------------------------------------------------------------
 !NOAH-MP MOSAIC Related Variables added to decliration (Aaron A. based on Dan Li)
 !-----------------------------------------------------------------------
-     INTEGER, OPTIONAL, INTENT(IN) :: NLCAT
-     INTEGER,            INTENT(IN) :: IOPT_MOSAIC                                       !This tells us that the mosaic scheme is active
-     INTEGER, OPTIONAL, INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
+     INTEGER,           INTENT(IN) :: NLCAT
+     INTEGER,           INTENT(IN) :: IOPT_MOSAIC                                       !This tells us that the mosaic scheme is active
+     INTEGER,            INTENT(IN) :: mosaic_cat                                                 !This tells how many mosaic catagories that are of interet,
      INTEGER,           INTENT(IN) :: noahmp_HUE_iopt                                            !This passed to help to see if we need to use the new physics
      REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , OPTIONAL, INTENT(IN)::   LANDUSEF            !This is the original land-use fraction that was read in
      REAL, DIMENSION( ims:ime, 1:NLCAT, jms:jme ) , OPTIONAL, INTENT(INOUT)::   LANDUSEF2        !This is the land-use fraction that has been re-ordered
@@ -5508,7 +5421,7 @@ type(noahmp_parameters) :: parameters
      INTEGER, DIMENSION( ims:ime, NLCAT, jms:jme ), OPTIONAL, INTENT(INOUT) :: mosaic_cat_index !This is the re-ordered mosaic catagory data
      REAL,    DIMENSION( ims:ime,             jms:jme ), OPTIONAL, INTENT(OUT  ) ::  RUNONSFXY ! Accumulated Surface runon [mm] Added by Aaron A. [
      REAL,    DIMENSION( ims:ime,1:mosaic_cat,jms:jme ), OPTIONAL, INTENT(OUT  ) ::  RUNONSFXY_mosaic ! Accumulated Surface runon [mm] Added by Aaron A.
-     REAL, OPTIONAL, INTENT(OUT) :: RUNONSRF
+     REAL :: RUNONSRF
      !variables with dimensions 1:mosaic_cat
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TSK_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: HFX_mosaic
