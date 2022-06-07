@@ -5,7 +5,7 @@ module module_hrldas_netcdf_io
 #ifdef MPP_LAND
   use module_mpp_land, only:mpp_land_bcast_int1, decompose_data_real, mpp_land_bcast_real1, decompose_data_int, &
                   io_id, global_nx, global_ny, my_id, write_io_real, write_io_int, write_io_real3d,decompose_data_real3d, &
-                   mpp_land_sync,mpp_land_bcast_char,mpp_land_bcast
+                   mpp_land_sync,mpp_land_bcast_char,mpp_land_bcast,write_io_int3d
 #endif
 
 #ifdef _PARALLEL_
@@ -65,26 +65,26 @@ module module_hrldas_netcdf_io
 
   interface add_to_restart
 #ifdef MPP_LAND
-     module procedure add_to_restart_2d_float_mpp, add_to_restart_2d_integer_mpp, add_to_restart_3d_mpp
+     module procedure add_to_restart_2d_float_mpp, add_to_restart_2d_integer_mpp, add_to_restart_3d_mpp, add_to_restart_3d_integer_mpp
 #else
-     module procedure add_to_restart_2d_float, add_to_restart_2d_integer, add_to_restart_3d
+     module procedure add_to_restart_2d_float, add_to_restart_2d_integer, add_to_restart_3d, add_to_restart_3d_integer
 #endif
   end interface
 
   interface get_from_restart
 #ifdef MPP_LAND
      module procedure get_from_restart_2d_float_mpp, get_from_restart_2d_integer_mpp, get_from_restart_3d_mpp, &
-              get_from_restart_att
+              get_from_restart_att, get_from_restart_3d_integer_mpp
 #else
-     module procedure get_from_restart_2d_float, get_from_restart_2d_integer, get_from_restart_3d, get_from_restart_att
+     module procedure get_from_restart_2d_float, get_from_restart_2d_integer, get_from_restart_3d, get_from_restart_att, get_from_restart_3d_integer
 #endif
   end interface
 
   interface add_to_output
 #ifdef MPP_LAND
-     module procedure add_to_output_2d_float_mpp, add_to_output_2d_integer_mpp, add_to_output_3d_mpp
+     module procedure add_to_output_2d_float_mpp, add_to_output_2d_integer_mpp, add_to_output_3d_mpp, add_to_output_3d_integer_mpp
 #else
-     module procedure add_to_output_2d_float, add_to_output_2d_integer, add_to_output_3d
+     module procedure add_to_output_2d_float, add_to_output_2d_integer, add_to_output_3d, add_to_output_3d_integer
 #endif
   end interface
 
@@ -2801,6 +2801,26 @@ contains
     deallocate(garray)
 
   end subroutine add_to_output_3d_mpp
+
+  subroutine add_to_output_3d_integer_mpp ( array, name, description, units, snow_or_soil )
+    implicit none
+    integer, dimension(:,:,:), intent(in) :: array
+    character(len=*), intent(in) :: name, description, units
+    character(len=4), intent(in) :: snow_or_soil
+    integer :: k, klevel
+
+    integer, allocatable, dimension(:,:,:) :: garray
+    klevel = size(array,2)
+
+    allocate(garray(global_nx,klevel,global_ny))
+
+    call write_io_int3d(array,garray,klevel)
+    if(my_id .eq. io_id) then
+       call add_to_output_3d_integer( garray, name, description, units, snow_or_soil )
+    endif
+    deallocate(garray)
+
+  end subroutine add_to_output_3d_integer_mpp
 #endif
 
   subroutine add_to_output_2d_float ( array, name, description, units )
@@ -2878,6 +2898,43 @@ contains
             ixpar , jxpar , xstartpar_remember , kxpar, trim(name) , array )
     endif
   end subroutine add_to_output_3d
+
+
+  subroutine add_to_output_3d_integer ( array, name, description, units, snow_or_soil )
+    implicit none
+    integer, dimension(:,:,:), intent(in) :: array
+    character(len=*), intent(in) :: name, description, units
+    character(len=4), intent(in) :: snow_or_soil
+    integer :: ixpar, jxpar, kxpar
+    integer :: zdimid
+
+    if (define_mode_remember) then
+       if (snow_or_soil == "SOIL") then
+          zdimid = dimid_layers_remember
+       elseif (snow_or_soil == "SNOW") then
+          zdimid = dimid_snow_layers_remember
+       elseif (snow_or_soil == "MOS1") then
+          zdimid = dimid_mosaic_layers_stan_remember
+       elseif (snow_or_soil == "MOS2") then
+          zdimid = dimid_mosaic_layers_soil_remember
+       elseif (snow_or_soil == "MOS3") then
+          zdimid = dimid_mosaic_layers_snow_remember
+       else
+          write(*,'("SNOW_OR_SOIL unrecognized: ", A)') adjustl(trim(snow_or_soil))
+          stop "SNOW_OR_SOIL"
+       endif
+       call make_var_att_3d ( ncid_remember , dimid_ix_remember , dimid_jx_remember , dimid_times_remember , &
+            NF90_FLOAT , zdimid, trim(name) , trim(description) , trim(units) )
+    else
+
+       ixpar = size(array,1)
+       kxpar = size(array,2)
+       jxpar = size(array,3)
+
+       call put_var_3d (ncid_remember , output_count_remember+1 , vegtyp_remember , iswater_remember , &
+            ixpar , jxpar , xstartpar_remember , kxpar, trim(name) , array )
+    endif
+  end subroutine add_to_output_3d_integer
 
 !---------------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------------
@@ -3055,6 +3112,42 @@ contains
     call error_handler(iret, "Subroutine PUT_VAR_3D:  Problem putting variable "//trim(varname)//" to NetCDF file.")
 
   end subroutine put_var_3d
+
+  subroutine put_var_3d_int(ncid, output_count, vegtyp, iswater, ix, jx, xstart, nsoil, varname, vardata)
+    implicit none
+    integer,                                                    intent(in) :: ncid
+    integer,                                                    intent(in) :: output_count
+    character(len=*),                                           intent(in) :: varname
+    integer,                                                    intent(in) :: ix
+    integer,                                                    intent(in) :: jx
+    integer,                                                    intent(in) :: xstart
+    integer,                                                    intent(in) :: nsoil
+    integer,                                                    intent(in) :: iswater
+    integer, dimension(ix, jx),                                 intent(in) :: vegtyp
+    integer,    dimension(ix, nsoil, jx),                          intent(in) :: vardata
+    integer,    dimension(ix, nsoil, jx)                                      :: xdum
+    integer                                                                :: iret
+    integer                                                                :: varid
+    integer                                                                :: n
+    integer, dimension(4)                                                  :: nstart
+    integer, dimension(4)                                                  :: ncount
+
+    nstart = (/ xstart ,  1 ,     1 , output_count /)
+    ncount = (/     ix , nsoil , jx ,            1 /)
+
+    xdum = vardata
+    do n = 1, nsoil
+       where (vegtyp(:,:) == ISWATER) xdum(:,n,:) = -1.E33
+    enddo
+
+    iret = nf90_inq_varid(ncid,  varname, varid)
+    call error_handler(iret, "Subroutine PUT_VAR_3D:  Problem finding variable id for "//trim(varname)//".")
+
+    iret = nf90_put_var(ncid, varid, xdum, start=nstart, count=ncount)
+    call error_handler(iret, "Subroutine PUT_VAR_3D:  Problem putting variable "//trim(varname)//" to NetCDF file.")
+
+  end subroutine put_var_3d_int
+
 
 !---------------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------------
@@ -3313,6 +3406,29 @@ contains
 
     call mpp_land_sync()
   end subroutine add_to_restart_3d_mpp
+
+  subroutine add_to_restart_3d_integer_mpp(array, name, units, description, layers)
+    implicit none
+    integer,            dimension(:,:,:),                            intent(in) :: array
+    character(len=*),                                             intent(in) :: name
+    character(len=*), optional,                                   intent(in) :: units
+    character(len=*), optional,                                   intent(in) :: description
+    character(len=4), optional,                                   intent(in) :: layers
+    integer  :: k, klevel
+
+    integer, allocatable, dimension(:,:,:) :: garray
+    klevel = size(array,2)
+    allocate(garray(global_nx,klevel,global_ny))
+
+       call write_io_int3d(array,garray,klevel)
+
+    if(my_id .eq. IO_id) then
+         call add_to_restart_3d_integer(garray, name, units, description, layers)
+    endif
+    deallocate(garray)
+
+    call mpp_land_sync()
+  end subroutine add_to_restart_3d_integer_mpp
 
 
 #endif
@@ -3576,6 +3692,125 @@ contains
 
   end subroutine add_to_restart_3d
 
+
+
+
+
+  !-----------------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------------------
+
+    subroutine add_to_restart_3d_integer(array, name, units, description, layers)
+      implicit none
+      integer,            dimension(:,:,:),                            intent(in) :: array
+      character(len=*),                                             intent(in) :: name
+      character(len=*), optional,                                   intent(in) :: units
+      character(len=*), optional,                                   intent(in) :: description
+      character(len=4), optional,                                   intent(in) :: layers
+
+      character(len=256) :: output_flnm
+      integer :: ncid
+      integer :: ierr
+      integer :: dimid_ix
+      integer :: dimid_jx
+      integer :: dimid_kx
+      integer :: dimid_times
+      integer :: ixout
+      integer :: xstartout
+      integer :: iswater
+      character(len=256) :: local_units
+      character(len=256) :: local_description
+
+      integer :: ixpar
+      integer :: jxpar
+      integer :: kxpar
+      character(len=4) :: output_layers
+
+      output_flnm = restart_filename_remember
+      iswater     = iswater_remember
+
+      if (present(layers)) then
+         output_layers = layers
+      else
+         output_layers = "SOIL"
+      endif
+
+      ixpar = size(array,1)
+      kxpar = size(array,2)
+      jxpar = size(array,3)
+
+      if (present(units)) then
+         local_units = units
+      else
+         local_units = "-"
+      endif
+
+      if (present(description)) then
+         local_description = description
+      else
+         local_description = "-"
+      endif
+
+  #ifdef _PARALLEL_
+      ierr = nf90_open_par(trim(output_flnm), NF90_WRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+  #else
+      ierr = nf90_open(trim(output_flnm), NF90_WRITE, ncid)
+  #endif
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_open")
+
+      ierr = nf90_inq_dimid(ncid, "west_east", dimid_ix)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'west_east'")
+
+      ierr = nf90_inq_dimid(ncid, "south_north", dimid_jx)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'south_north'")
+
+      if (output_layers == "SOIL") then
+         ierr = nf90_inq_dimid(ncid, "soil_layers_stag", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'soil_layers_stag'")
+      else if (output_layers == "SNOW") then
+         ierr = nf90_inq_dimid(ncid, "snow_layers", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'snow_layers'")
+      else if (output_layers == "SOSN") then
+         ierr = nf90_inq_dimid(ncid, "sosn_layers", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'sosn_layers'")
+      else if (output_layers == "URBN") then
+         ierr = nf90_inq_dimid(ncid, "urban_layers", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'urban_layers'")
+
+      else if (output_layers == "MOS1") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+         ierr = nf90_inq_dimid(ncid, "mosaic_layers_stan", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_stan'")
+      else if (output_layers == "MOS2") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+         ierr = nf90_inq_dimid(ncid, "mosaic_layers_soil", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_soil'")
+      else if (output_layers == "MOS3") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+         ierr = nf90_inq_dimid(ncid, "mosaic_layers_snow", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_snow'")
+      else if (output_layers == "MOS4") then ! added by Aaron ALexander. 23 May 2022. I think that this works?
+         ierr = nf90_inq_dimid(ncid, "mosaic_layers_snos", dimid_kx)
+         call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'mosaic_layers_snos'")
+      else
+         stop "PANIC!"
+      endif
+
+      ierr = nf90_inq_dimid(ncid, "Time", dimid_times)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_inq_dimid for 'Time'")
+
+      ierr = nf90_redef(ncid)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_redef")
+
+      call make_var_att_3d(ncid, dimid_ix, dimid_jx, dimid_times, NF90_FLOAT, dimid_kx, name, trim(local_description), trim(local_units))
+
+      ierr = nf90_enddef(ncid)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_enddef")
+
+      call put_var_3d(ncid, 1, vegtyp_remember, iswater, ixpar, jxpar, xstartpar_remember, kxpar, name, array)
+
+      ierr = nf90_close(ncid)
+      call error_handler(ierr, "ADD_TO_RESTART:  nf90_close")
+
+    end subroutine add_to_restart_3d_integer
+
+
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 
@@ -3740,6 +3975,33 @@ contains
       deallocate(garray)
 
   end subroutine get_from_restart_3d_mpp
+
+  subroutine get_from_restart_3d_integer_mpp(parallel_xstart, parallel_xend, subwindow_xstart, ixfull, jxfull, name, array, return_error)
+    implicit none
+    integer,                            intent(in) :: parallel_xstart
+    integer,                            intent(in) :: parallel_xend
+    integer,                            intent(in) :: subwindow_xstart
+    integer,                            intent(in) :: ixfull
+    integer,                            intent(in) :: jxfull
+    character(len=*),                   intent(in)  :: name
+    integer,             dimension(:,:,:), intent(out) :: array
+    integer,          optional,         intent(out) :: return_error
+    integer :: klevel,k
+    integer, allocatable, dimension(:,:,:) :: garray
+
+    klevel = size(array,2)
+    allocate(garray(global_nx,klevel,global_ny))
+
+
+      if(my_id .eq. IO_id) then
+          call get_from_restart_3d_integer(1, global_nx, 1, global_nx, global_ny, name, garray, return_error)
+      endif
+      do k = 1, klevel
+         call decompose_data_int(garray(:,k,:),array(:,k,:))
+      end do
+      deallocate(garray)
+
+  end subroutine get_from_restart_3d_integer_mpp
 #endif
 
   subroutine get_from_restart_att(itime)
@@ -3928,6 +4190,58 @@ contains
     call error_handler(ierr, "Problem closing restart file")
 
   end subroutine get_from_restart_3d
+
+  subroutine get_from_restart_3d_integer(parallel_xstart, parallel_xend, subwindow_xstart, ixfull, jxfull, name, array, return_error)
+    implicit none
+    integer,                            intent(in) :: parallel_xstart
+    integer,                            intent(in) :: parallel_xend
+    integer,                            intent(in) :: subwindow_xstart
+    integer,                            intent(in) :: ixfull
+    integer,                            intent(in) :: jxfull
+    character(len=*),                   intent(in)  :: name
+    integer,             dimension(:,:,:), intent(out) :: array
+    integer,          optional,         intent(out) :: return_error
+
+    integer :: ierr
+    integer :: ncid
+    integer :: varid
+    integer, dimension(4) :: nstart
+    integer, dimension(4) :: ncount
+
+#ifdef _PARALLEL_
+    ierr = nf90_open_par(trim(restart_filename_remember), NF90_NOWRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+#else
+    ierr = nf90_open(trim(restart_filename_remember), NF90_NOWRITE, ncid)
+#endif
+    call error_handler(ierr, "GET_FROM_RESTART: Problem opening restart file '"//trim(restart_filename_remember)//"'")
+
+    nstart = (/parallel_xstart-subwindow_xstart+1,1, 1, 1/)
+    ncount = (/parallel_xend-parallel_xstart+1, size(array,2), size(array,3), 1/)
+
+    if (present(return_error)) then
+       ierr = nf90_inq_varid(ncid, name, varid)
+       if (ierr == NF90_NOERR) then
+          return_error = 0
+          call error_handler(ierr, "Problem finding variable in restart file '"//trim(name)//"'")
+
+          ierr = nf90_get_var(ncid, varid, array, start=nstart(1:4))
+          call error_handler(ierr, "Problem finding variable in restart file: '"//trim(name)//"'")
+       else
+          return_error = 1
+          write(*,'("Did not find optional variable ''",A,"'' in restart file ''", A, "''")') trim(name), trim(restart_filename_remember)
+       endif
+    else
+       ierr = nf90_inq_varid(ncid, name, varid)
+       call error_handler(ierr, "Problem finding required variable in restart file: '"//trim(name)//"'")
+
+       ierr = nf90_get_var(ncid, varid, array, start=nstart(1:4))
+       call error_handler(ierr, "Problem finding variable in restart file: '"//trim(name)//"'")
+    endif
+
+    ierr = nf90_close(ncid)
+    call error_handler(ierr, "Problem closing restart file")
+
+  end subroutine get_from_restart_3d_integer
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
