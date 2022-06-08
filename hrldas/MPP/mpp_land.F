@@ -31,6 +31,7 @@ MODULE MODULE_MPP_LAND
   end interface
   interface write_io_land
      module procedure write_io_real3d
+     module procedure write_io_int3d
   end interface
   interface mpp_land_bcast
      module procedure mpp_land_bcast_real2

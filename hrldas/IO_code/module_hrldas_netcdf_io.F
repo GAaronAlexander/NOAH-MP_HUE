@@ -407,7 +407,8 @@ contains
   subroutine readland_hrldas(wrfinput_flnm,                            &
        xstart, xend,                                                   &
        ystart, yend,                                                   &
-       iswater, islake, vegtyp, soltyp, terrain, tbot_2d, latitude, longitude,xland,seaice,msftx,msfty)
+       iswater, islake, vegtyp, soltyp, terrain, tbot_2d, latitude, longitude,xland,seaice,msftx,msfty,&
+       noahmp_mosaic_scheme,geogrid_input_name,ncat,LANDUSEF)! Added by Aaron A. 
     implicit none
     character(len=*),          intent(in)  :: wrfinput_flnm
     integer,                   intent(in)  :: xstart, xend, ystart, yend
@@ -422,6 +423,10 @@ contains
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: seaice
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: msftx
     real,    dimension(xstart:xend,ystart:yend), intent(out) :: msfty
+    integer, intent(in)                                      :: noahmp_mosaic_scheme
+    character(len=*), OPTIONAL,          intent(in) :: geogrid_input_name !added by Aaron A. 
+    integer,          OPTIONAL,          intent(in) :: ncat !added by Aaron A. 
+    real, allocatable,    dimension(:,:,:), OPTIONAL, intent(out) :: LANDUSEF
 
     character(len=256) :: units
     integer :: ierr
@@ -497,7 +502,34 @@ contains
     soltyp = nint(xdum)
     ! print*, 'soltyp(xstart,ystart) = ', soltyp(xstart,ystart)
 
-    ! Close the NetCDF file
+      IF (noahmp_mosaic_scheme.eq.1) THEN
+    ! Open the NetCDF file. (intent to open the geogrid file for catagories etc etc)
+    if (rank == 0) write(*,'("geogrid_input_name: ''", A, "''")') trim(geogrid_input_name)
+#ifdef _PARALLEL_
+    ierr = nf90_open_par(geogrid_input_name, NF90_NOWRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+#else
+    ierr = nf90_open(geogrid_input_name, NF90_NOWRITE, ncid)
+#endif
+    if (ierr /= 0) then
+       write(*,'("READLAND_HRLDAS:  Problem opening geogrid_input_name ''", A, "''")') trim(geogrid_input_name)
+#ifdef _PARALLEL_
+       call mpi_finalize(ierr)
+       if (ierr /= 0) write(*, '("Problem with MPI_finalize.")')
+#endif
+       stop
+    endif
+
+    call get_landuse_netcdf_fraction(ncid, LANDUSEF, units, xstart, xend, ystart, yend, ncat)
+    
+    END IF
+    ! Make sure vegtyp and soltyp are consistent when it comes to water points,
+    ! by setting soil category to water when vegetation category is water, and
+    ! vice-versa.
+    !where (vegtyp == ISWATER .or. vegtyp == islake) soltyp = 14
+    !where (soltyp == 14) vegtyp = ISWATER
+
+
+    !I Close the NetCDF file
     ierr = nf90_close(ncid)
     if (ierr /= 0) stop "MODULE_NOAHLSM_HRLDAS_INPUT:  READLAND_HRLDAS:  NF90_CLOSE"
 
@@ -1444,7 +1476,37 @@ contains
     endif
 
   end subroutine get_landuse_netcdf
+  
+  !!Subroutine added by G. Aaron Alexander on 7 June 2022. Read in fractional land-use
+  subroutine get_landuse_netcdf_fraction(ncid, array, units, xstart, xend, ystart, yend, NCAT) !Added by Aaron Alexander
+    implicit none
+    integer, intent(in) :: ncid
+    integer, intent(in) :: xstart, xend, ystart, yend, NCAT
+    real, dimension(xstart:xend,NCAT,ystart:yend), intent(out) :: array
+    character(len=256), intent(out) :: units
+    integer :: iret, varid
+    character(len=24), parameter :: name = "LANDUSEF"
+    integer                            :: numDims, numAtts, length,i
+    character(len = nf90_max_name) :: testname
+    real:: inlu(xstart:xend,ystart:yend,NCAT)
 
+    units = " "
+
+    iret = nf90_inq_varid(ncid,  trim(name),  varid)
+    if (iret /= 0) then
+       print*, 'name = "', trim(name)//'"'
+       stop "MODULE_NOAHLSM_HRLDAS_INPUT:  get_landuse_netcdf:  nf90_inq_varid"
+    endif
+
+    iret = nf90_get_var(ncid, varid, values=inlu, start=(/xstart, ystart,1,1/), count=(/xend-xstart+1, yend-ystart+1, NCAT,1/))
+    if (iret /= 0) then
+       print*, 'name = "', trim(name)//'"'
+       stop "MODULE_NOAHLSM_HRLDAS_INPUT:  get_landuse_netcdf:  nf90_get_var"
+    endif
+    do i=1,NCAT
+    array(:,i,:)=inlu(:,:,i)
+    enddo
+  end subroutine get_landuse_netcdf_fraction
 !---------------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------------
 
@@ -2931,7 +2993,7 @@ contains
        kxpar = size(array,2)
        jxpar = size(array,3)
 
-       call put_var_3d (ncid_remember , output_count_remember+1 , vegtyp_remember , iswater_remember , &
+       call put_var_3d_int (ncid_remember , output_count_remember+1 , vegtyp_remember , iswater_remember , &
             ixpar , jxpar , xstartpar_remember , kxpar, trim(name) , array )
     endif
   end subroutine add_to_output_3d_integer
@@ -3137,7 +3199,7 @@ contains
 
     xdum = vardata
     do n = 1, nsoil
-       where (vegtyp(:,:) == ISWATER) xdum(:,n,:) = -1.E33
+       where (vegtyp(:,:) == ISWATER) xdum(:,n,:) = -999
     enddo
 
     iret = nf90_inq_varid(ncid,  varname, varid)
@@ -3750,11 +3812,11 @@ contains
          local_description = "-"
       endif
 
-  #ifdef _PARALLEL_
+#ifdef _PARALLEL_
       ierr = nf90_open_par(trim(output_flnm), NF90_WRITE, MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
-  #else
+#else
       ierr = nf90_open(trim(output_flnm), NF90_WRITE, ncid)
-  #endif
+#endif
       call error_handler(ierr, "ADD_TO_RESTART:  nf90_open")
 
       ierr = nf90_inq_dimid(ncid, "west_east", dimid_ix)
@@ -3803,7 +3865,7 @@ contains
       ierr = nf90_enddef(ncid)
       call error_handler(ierr, "ADD_TO_RESTART:  nf90_enddef")
 
-      call put_var_3d(ncid, 1, vegtyp_remember, iswater, ixpar, jxpar, xstartpar_remember, kxpar, name, array)
+      call put_var_3d_int(ncid, 1, vegtyp_remember, iswater, ixpar, jxpar, xstartpar_remember, kxpar, name, array)
 
       ierr = nf90_close(ncid)
       call error_handler(ierr, "ADD_TO_RESTART:  nf90_close")

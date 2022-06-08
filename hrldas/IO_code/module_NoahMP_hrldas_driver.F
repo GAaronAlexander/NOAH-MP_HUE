@@ -2,7 +2,7 @@ module module_NoahMP_hrldas_driver
 
   USE module_hrldas_netcdf_io
   USE module_sf_noahmp_groundwater
-  USE module_sf_noahmpdrv, only: noahmp_init, noahmplsm, noahmp_urban, groundwater_init
+  USE module_sf_noahmpdrv, only: noahmp_init, noahmplsm, noahmp_urban, groundwater_init, noahmplsm_mosaic_hue, noahmp_mosaic_init
   USE module_sf_urban, only: urban_param_init, urban_var_init
   USE module_date_utilities
   USE noahmp_tables, ONLY:  LCZ_1_TABLE,LCZ_2_TABLE,LCZ_3_TABLE,LCZ_4_TABLE,LCZ_5_TABLE, &
@@ -2048,7 +2048,6 @@ IF(IOPT_MOSAIC == 1) THEN
   ALLOCATE ( G_URB2D_mosaic   (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( RN_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( TS_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( TS_RUL2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
 
   ALLOCATE ( TRL_URB3D_mosaic  (XSTART:XEND,1:NSOIL*number_mosaic_catagories, YSTART:YEND) )
   ALLOCATE ( TBL_URB3D_mosaic  (XSTART:XEND,1:NSOIL*number_mosaic_catagories, YSTART:YEND) )
@@ -2083,8 +2082,8 @@ IF (IOPT_HUE.eq.1) THEN
   ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
   ALLOCATE ( DETENTION_STORAGEXY (XSTART:XEND,  YSTART:YEND) )
   ALLOCATE ( DETENTION_STORAGEXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
-  ALLOCATE ( VOL_FLUX_RUNONXY (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
-  ALLOCATE ( VOL_FLUX_SMXY (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( VOL_FLUX_RUNONXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
+  ALLOCATE ( VOL_FLUX_SMXY_mosaic (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
 
 end if
 !------------------------------------------------------------------------
@@ -2978,7 +2977,7 @@ END IF
           ENDIF
 
           IF (IOPT_MOSAIC.eq.1) then
-          CALL NOAHMP_MOSAIC_INIT(XLAND, SNOW,    SNOWH,   CANWAT,   ISLTYP,   IVGTYP, XLAT, ISWATER, ISICE,&   ! call from WRF phys_init
+          CALL NOAHMP_MOSAIC_INIT(XLAND, SNOW,    SNOWH,   CANWAT,   ISLTYP,   IVGTYP, XLAT,&   ! call from WRF phys_init
                         TSLB,    SMOIS,     SH2O,      DZS, FNDSOILW, FNDSNOWH,  &
                          TSK,  ISNOWXY,     TVXY,     TGXY, CANICEXY,      TMN,     XICE, &
                     CANLIQXY,    EAHXY,    TAHXY,     CMXY,     CHXY,                     &
@@ -2993,20 +2992,20 @@ END IF
                       T2MVXY,   T2MBXY, CHSTARXY,                                         &
                        NSOIL,  .true.,                                                   &
                       .true.,runoff_option, crop_option, irrigation_option, irrigation_method,  &
-                      sf_urban_physics,                         &  ! urban scheme
+                      sf_urban_physics, ISWATER, ISICE,                        &  ! urban scheme
                       ids,ide+1, jds,jde+1, kds,kde,                &  ! domain
                       ims,ime, jms,jme, kms,kme,                &  ! memory
                       its,ite, jts,jte, kts,kte,                 &  ! tile
                       smoiseq, smcwtdxy, rechxy, deeprechxy,     &
-                      LANDUSEF, LANDUSEF2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                      mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                      LANDUSEF, LANDUSEF2, number_land_use_catagories, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL 
+                      mosaic_cat_index, number_mosaic_catagories,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
                       IOPT_HUE,                                                      &
                       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
                       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
                       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
                       TMN_mosaic, canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,              &      ! Added by Aaron A.
                       cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A.
-                      alboldxy_mosaic, qsnowxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
+                      alboldxy_mosaic, qsnowxy_mosaic, qrainxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
                       waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
                       snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
                       stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
@@ -3031,8 +3030,8 @@ END IF
                       CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
                       TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
                       DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
-                      FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic      &
-                        )                                                            ! Added by Aaron A.
+                      FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,      &
+                      DETENTION_STORAGEXY_mosaic  )                                                            ! Added by Aaron A.
 
        ENDIF !end mosaic if else statement
 
@@ -3402,7 +3401,7 @@ if (IOPT_MOSAIC.eq.0) then
     print*, dz_urban(1,:,1)
   ENDIF
 
-      CALL NOAHMP_MOSAIC_INIT(XLAND, SNOW,    SNOWH,   CANWAT,   ISLTYP,   IVGTYP, XLAT, ISWATER, ISICE,&   ! call from WRF phys_init
+      CALL NOAHMP_MOSAIC_INIT(XLAND, SNOW,    SNOWH,   CANWAT,   ISLTYP,   IVGTYP, XLAT, &   ! call from WRF phys_init
                     TSLB,    SMOIS,     SH2O,      DZS, FNDSOILW, FNDSNOWH,  &
                      TSK,  ISNOWXY,     TVXY,     TGXY, CANICEXY,      TMN,     XICE, &
                 CANLIQXY,    EAHXY,    TAHXY,     CMXY,     CHXY,                     &
@@ -3417,7 +3416,7 @@ if (IOPT_MOSAIC.eq.0) then
                   T2MVXY,   T2MBXY, CHSTARXY,                                         &
                    NSOIL,  .false.,                                                   &
                   .true.,runoff_option, crop_option, irrigation_option, irrigation_method,  &
-                  sf_urban_physics,                         &  ! urban scheme
+                  sf_urban_physics,ISWATER, ISICE,                         &  ! urban scheme
                   ids,ide+1, jds,jde+1, kds,kde,                &  ! domain
                   ims,ime, jms,jme, kms,kme,                &  ! memory
                   its,ite, jts,jte, kts,kte,                 &  ! tile
@@ -3430,7 +3429,7 @@ if (IOPT_MOSAIC.eq.0) then
                   isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
                   TMN_mosaic, canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,              &      ! Added by Aaron A.
                   cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A.
-                  alboldxy_mosaic, qsnowxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
+                  alboldxy_mosaic, qsnowxy_mosaic, qrainxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
                   waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
                   snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
                   stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
@@ -3696,7 +3695,7 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
                   IDVEG, IOPT_CRS, IOPT_BTR, IOPT_RUN,  IOPT_SFC,   IOPT_FRZ, &
 	       IOPT_INF, IOPT_RAD, IOPT_ALB, IOPT_SNF, IOPT_TBOT,   IOPT_STC, &
 	       IOPT_GLA, IOPT_RSF,IOPT_SOIL,IOPT_PEDO,IOPT_CROP,    IOPT_IRR, &
-               IOPT_IRRM,IOPT_INFDV,IOPT_TDRN,soiltstep,IZ0TLND, sf_urban_physics,      &
+               IOPT_IRRM,IOPT_INFDV,IOPT_TDRN,soiltstep,IOPT_MOSAIC, IOPT_HUE, IZ0TLND, sf_urban_physics,      &
 	       SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,             &
 		  T_PHY,  QV_CURR,    U_PHY,    V_PHY,    SWDOWN,     SWDDIR, &
                  SWDDIF,      GLW,                                            &
@@ -3901,7 +3900,7 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
 #ifdef MPP_LAND
   call mpp_land_bcast_char(19,forcDate(1:19))
 #endif
-  if(finemesh .ne. 0) goto 991
+  if(finemesh .ne. 0) goto 9955
 
   if(forc_typ .eq. 0) then
      CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
@@ -3937,7 +3936,7 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
 
 #endif
 
-991  continue
+9955  continue
 
   where(XLAND > 1.5)   T_PHY(:,1,:) = 0.0  ! Prevent some overflow problems with ifort compiler [MB:20150812]
   where(XLAND > 1.5)   U_PHY(:,1,:) = 0.0
@@ -4043,7 +4042,7 @@ IF (ITIME > 0) THEN
 ! Timing information for SFLX:
  call system_clock(count=count_before_sflx, count_rate=clock_rate)
 
- CALL noahmplsm_mosaic_hue(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
+ CALL noahmplsm_mosaic_hue(ITIMESTEP,        YR,   JULIAN,   COSZEN,XLAT,XLONG, & ! IN : Time/Space-related
                    DZ8W,       DTBL,       DZS,    NUM_SOIL_LAYERS,       DX,            & ! IN : Model configuration
  	                 IVGTYP,   ISLTYP,    VEGFRA,   GVFMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
  		               XLAND,     XICE,XICE_THRESHOLD,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
@@ -4051,11 +4050,12 @@ IF (ITIME > 0) THEN
                   IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
                IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
                IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
-               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, noahmp_HUE_iopt, soilstep,  &
+               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, IOPT_MOSAIC, noahmp_HUE_iopt, soiltstep,  &
                 IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
  	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
                     T_PHY,     QV_CURR,     U_PHY,    V_PHY,   SWDOWN,      SWDDIR,  & ! IN : Forcing
- 		                 P8W, RAINBL,        SR,                                & ! IN : Forcing
+ 		     SWDDIF,   GLW,                                         &
+                     P8W, RAINBL,        SR,                                & ! IN : Forcing
                      IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
                     TSK,      HFX,      QFX,        LH,   GRDFLX,    SMSTAV, & ! IN/OUT LSM eqv
                  SMSTOT,SFCRUNOFF, UDRUNOFF,    ALBEDO,    SNOWC,     SMOIS, & ! IN/OUT LSM eqv
@@ -4095,9 +4095,9 @@ IF (ITIME > 0) THEN
                 ids,ide,  jds,jde,  kds,kde,                    &
                 ims,ime,  jms,jme,  kms,kme,                    &
                 its,ite,  jts,jte,  kts,kte,                    &
-                   LANDUSEF, landusef2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                   mosaic_cat_index, mosaic_cat,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-                   TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic, TMN_mosaic,             &      ! Added by Aaron A. IN/OUT LSM
+                   LANDUSEF, landusef2, number_land_use_catagories,                    &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                   mosaic_cat_index, number_mosaic_catagories,                           &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                   TSK_mosaic, HFX_mosaic, QFX_mosaic, LH_mosaic,                        &      ! Added by Aaron A. IN/OUT LSM
                    GRDFLX_mosaic, SFCRUNOFF_mosaic, UDRUNOFF_mosaic,                     &      ! Added by Aaorn A. IN/OUT LSM
                    ALBEDO_mosaic, SNOWC_mosaic, TSLB_mosaic, SMOIS_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
                    SH2O_mosaic,  CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
@@ -4131,11 +4131,12 @@ IF (ITIME > 0) THEN
                    QDRIPRXY_mosaic, QTHROSXY_mosaic, QTHRORXY_mosaic, QSNSUBXY_mosaic,   &
                    QSNFROXY_mosaic, QSUBCXY_mosaic, QFROCXY_mosaic, QEVACXY_mosaic,      &
                    QDEWCXY_mosaic, QFRZCXY_mosaic, QMELTCXY_mosaic, QSNBOTXY_mosaic,     &
-                   QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHVXY_mosaic,        &
+                   QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHGXY_mosaic,  PAHVXY_mosaic,        &
                    PAHBXY_mosaic, FPICEXY_mosaic,                                        &
                    ACC_SSOILXY_mosaic, ACC_QINSURXY_mosaic, ACC_QSEVAXY_mosaic,          &
                    ACC_ETRANIXY_mosaic, EFLXBXY_mosaic, SOILENERGY_mosaic, SNOWENERGY_mosaic, &
-                   CANHSXY_mosaic, ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic, ACC_ECANXY_mosaic, ACC_EDIRXY_mosaic, &
+                   CANHSXY_mosaic, ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic,               &
+                   ACC_ECANXY_mosaic, ACC_EDIRXY_mosaic, ACC_ETRANXY_mosaic,&
 
                    TR_URB2D_mosaic,TB_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
                    TG_URB2D_mosaic,TC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
@@ -4146,12 +4147,12 @@ IF (ITIME > 0) THEN
                    G_URB2D_mosaic,RN_URB2D_mosaic,                                       & !H urban  Aaron A. Mosaic
                    TS_URB2D_mosaic,CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic,                 & !H urban  Aaron A. Mosaic
                    CMC_SFCDIF_mosaic, CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic,             &
-                   CHGR_SFCDIF_mosaic, XXXR_URB2D_mosaic, XXXB_URB2D_mosaic,             &
+                   CHGR_SFCDIF_mosaic, XXXR_URB2D_mosaic, XXXB_URB2D_mosaic,  XXXC_URB2D_mosaic,             &
                    XXXG_URB2D_mosaic, CMCR_URB2D_mosaic, TGR_URB2D_mosaic,               &
                    TGRL_URB3D_mosaic, SMR_URB3D_mosaic, DRELR_URB2D_mosaic,              &
                    DRELB_URB2D_mosaic, DRELG_URB2D_mosaic, FLXHUMR_URB2D_mosaic,         &
                    FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,                           &
-
+                   COSZEN,           XLAT,                                               &
                    cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
                    chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
                    tr_urb2d,       tb_urb2d,       tg_urb2d,                             & !H urban
@@ -4162,36 +4163,21 @@ IF (ITIME > 0) THEN
                    psim_urb2d,     psih_urb2d,      u10_urb2d,  v10_urb2d,               & !O urban
                    GZ1OZ0_urb2d,     AKMS_URB2D,                                         & !O urban
                    th2_urb2d,       q2_urb2d,      ust_urb2d,                            & !O urban
-                   declin_urb,      omg_urb2d,                                           & !I urban
+                   declin,          hrang,                                           & !I urban
                    num_roof_layers,      num_wall_layers,      num_road_layers,          & !I urban
                    dzr,            dzb,            dzg,                                  & !I urban
                    cmcr_urb2d,      tgr_urb2d,     tgrl_urb3d,  smr_urb3d,               & !H urban
                    drelr_urb2d,    drelb_urb2d,    drelg_urb2d,                          & !H urban
                    flxhumr_urb2d,  flxhumb_urb2d,  flxhumg_urb2d,                        & !H urban
-                   julday,             julyr,                                            &
+                   julday,             yr,                                            &
                    frc_urb2d,    utype_urb2d,                                            & !I urban
                    chs,           chs2,           cqs2,                                  & !H
-                   num_urban_ndm,  urban_map_zrd,  urban_map_zwd, urban_map_gd,          & !I multi-layer urban
-                   urban_map_zd,  urban_map_zdf,   urban_map_bd, urban_map_wd,           & !I multi-layer urban
-                   urban_map_gbd,  urban_map_fbd,                                        & !I multi-layer urban
-                   num_urban_hi,                                                         & !I multi-layer urban
-                   trb_urb4d,      tw1_urb4d,      tw2_urb4d,  tgb_urb4d,                & !H multi-layer urban
-                   tlev_urb3d,     qlev_urb3d,                                           & !H multi-layer urban
-                   tw1lev_urb3d,   tw2lev_urb3d,                                         & !H multi-layer urban
-                   tglev_urb3d,    tflev_urb3d,                                          & !H multi-layer urban
-                   sf_ac_urb3d,    lf_ac_urb3d,    cm_ac_urb3d,                          & !H multi-layer urban
-                   sfvent_urb3d,   lfvent_urb3d,                                         & !H multi-layer urban
-                   sfwin1_urb3d,   sfwin2_urb3d,                                         & !H multi-layer urban
-                   sfw1_urb3d,     sfw2_urb3d,      sfr_urb3d,  sfg_urb3d,               & !H multi-layer urban
-                   lp_urb2d,       hi_urb2d,       lb_urb2d,  hgt_urb2d,                 & !H multi-layer urban
+                   lb_urb2d,      hgt_urb2d,  lp_urb2d,                 & !H multi-layer urban
                    mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
-                   th_phy,            rho,          p_phy,        ust,                   & !I multi-layer urban
+                   theta_urban,      rho_urban,    p_urban,        ust,                  & !I multi-layer urban
                    gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
-                   a_u_bep,        a_v_bep,        a_t_bep,    a_q_bep,                  & !O multi-layer urban
-                   a_e_bep,        b_u_bep,        b_v_bep,                              & !O multi-layer urban
-                   b_t_bep,        b_q_bep,        b_e_bep,    dlg_bep,                  & !O multi-layer urban
-                   dl_u_bep,         sf_bep,         vl_bep,                             & !O multi-layer urban
-                   MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL, &
+                   RAINCV, RAINNCV, RAINSHV,        &
+                   SNOWNCV, GRAUPELNCV, HAILNCV,        &
                    RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic)
 
 
@@ -4211,8 +4197,7 @@ ENDIF ! End mosaic if else swap
                 igrid, output_timestep, llanduse, split_output_count, hgrid,                &
                 ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                         &
                 iswater, mapproj, lat1, lon1, dx, dy, truelat1, truelat2, cen_lon,          &
-                nsoil, nsnow, dzs, startdate, olddate, spinup_loop, spinup_loops, IVGTYP, ISLTYP, &
-                number_mosaic_catagories)
+                nsoil, nsnow, dzs, startdate, olddate, spinup_loop, spinup_loops, IVGTYP, ISLTYP,number_mosaic_catagories)
 
            DEFINE_MODE_LOOP : do imode = 1, 2
 
@@ -4480,8 +4465,7 @@ subroutine lsm_restart()
   call prepare_restart_file (trim(outdir), version, igrid, llanduse, olddate, startdate, &
        ixfull, jxfull, ixpar, jxpar, xstartpar, ystartpar,                               &
        nsoil, nsnow, num_urban_hi, dx, dy, truelat1, truelat2, mapproj, lat1, lon1,   &
-       cen_lon, iswater, ivgtyp                                                       &
-       number_mosaic_catagories)
+       cen_lon, iswater, ivgtyp, number_mosaic_catagories)
 
   call add_to_restart(TSLB      , "SOIL_T", layers="SOIL")
   call add_to_restart(TSNOXY    , "SNOW_T", layers="SNOW")
