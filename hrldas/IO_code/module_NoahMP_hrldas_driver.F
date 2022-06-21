@@ -2074,18 +2074,20 @@ IF(IOPT_MOSAIC == 1) THEN
   ALLOCATE ( FLXHUMB_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( FLXHUMG_URB2D_mosaic  (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
 
-ENDIF
-
-IF (IOPT_HUE.eq.1) THEN
-
   ALLOCATE ( RUNONSFXY (XSTART:XEND,  YSTART:YEND) )
   ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
+IF (IOPT_HUE.eq.1) THEN
+
+  !ALLOCATE ( RUNONSFXY (XSTART:XEND,  YSTART:YEND) )
+  !ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
   ALLOCATE ( DETENTION_STORAGEXY (XSTART:XEND,  YSTART:YEND) )
   ALLOCATE ( DETENTION_STORAGEXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
   ALLOCATE ( VOL_FLUX_RUNONXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( VOL_FLUX_SMXY_mosaic (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
 
 end if
+
+END IF
 !------------------------------------------------------------------------
 !Added by Aaron Alexander for noahmp mosaic scheme
 !------------------------------------------------------------------------
@@ -3459,7 +3461,7 @@ if (IOPT_MOSAIC.eq.0) then
 
    endif !end mosaic if else statement
   endif !end of the restart or non-restart call
-
+  WRITE(*,*) "POST INITILIZATION"
 
   NTIME=(KHOUR)*3600./nint(dtbl)*(spinup_loops+1)
   spinup_loop = 0
@@ -4041,7 +4043,9 @@ IF (ITIME > 0) THEN
 
 ! Timing information for SFLX:
  call system_clock(count=count_before_sflx, count_rate=clock_rate)
-
+ 
+ WRITE(*,*) "GOT HERE"
+ 
  CALL noahmplsm_mosaic_hue(ITIMESTEP,        YR,   JULIAN,   COSZEN,XLAT,XLONG, & ! IN : Time/Space-related
                    DZ8W,       DTBL,       DZS,    NUM_SOIL_LAYERS,       DX,            & ! IN : Model configuration
  	                 IVGTYP,   ISLTYP,    VEGFRA,   GVFMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
@@ -4313,9 +4317,8 @@ ENDIF ! End mosaic if else swap
               call add_to_output(APARXY     , "APAR"    , "Photosynthesis active energy by canopy" , "W m{-2}"             )
         IF (IOPT_MOSAIC.eq.1) then
 
-              call add_to_output(t2mvxy_mosaic , "T2MV_MOS", "Mosaic 2m Air Temp vegetated",       "K", "MOS1"             )
-              call add_to_output(t2mbxy_mosaic , "T2MB_MOS", "Mosaic 2m Air Temp bare",            "K", "MOS1"             )
-              call add_to_output(fvegxy_mosaic , "FVEG_MOS", "Mosaic Green Vegetation Fraction",   "[-]", "MOS1"           )
+              call add_to_output(SFCRUNOFF_mosaic , "SFCRUNOFF_mos", "Surface Runoff From Each Landtype",       "mm", "MOS1"             )
+              call add_to_output(SMOIS_mosaic , "SOIL_M_mos", "Volumetric Soil Moisture From Each Landtype",       "m{3} m{-3}", "MOS2"             )
               call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weights, add up to 1", "[-]", "MOS1")
               call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS", "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
         END IF ! end if mosaic

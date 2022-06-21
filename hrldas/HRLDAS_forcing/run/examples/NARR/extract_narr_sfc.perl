@@ -5,10 +5,10 @@
 	 "20","21","22","23","24","25","26","27","28","29", 
 	 "30","31");
 	 
-@yrs = ("10");
+@yrs = ("13");
 
-$day_start = 1;
-$day_end = 3;
+$day_start = 213;
+$day_end = 304;
 
 @hrs = ("00","03","06","09","12","15","18","21");
 
@@ -17,8 +17,8 @@ $day_end = 3;
 
 @vars = ("APCP","DLWRF","DSWRF"); 
 
-$data_dir = "/d1/barlage/data/NARR/raw";
-$results_dir = "/d1/barlage/data/NARR/extracted";
+$data_dir = "/glade/scratch/galexand/jupiter-intell/NARR_denver/raw";
+$results_dir = "/glade/scratch/galexand/jupiter-intell/NARR_denver/extracted_NARR/";
 
 for $var (@vars)
  {

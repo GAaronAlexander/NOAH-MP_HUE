@@ -850,7 +850,7 @@ contains
   PAH    = 0.0
   CROPLU = .FALSE.
   CANHS  = 0.0
-
+BEG_WB=0.0
 ! --------------------------------------------------------------------------------------------------
 ! HUE Noah-MP changes if there is a green roof
 ! you have to have a detention storage amount, and a green roof number of
@@ -858,6 +858,7 @@ contains
 ! add check to see if green roof specific variables are present and the vegitation type is green roof, if not crash
 ! values are based on Locatelli et al. 2014 (single layer green roof)
 ! added by Aaron A.
+RUNONSRF = 0.0
   GREEN_ROOF = .false.
   IF(OPT_HUE.eq.1) THEN 
     IF(VEGTYP.EQ.46) THEN
@@ -884,7 +885,6 @@ contains
              SWDOWN  ,BDFALL   ,RAIN    ,SNOW    ,FP      ,FPICE   , PRCP )
 
 ! snow/soil layer thickness (m)
-
      DO IZ = ISNOW+1, NSOIL
          IF(IZ == ISNOW+1) THEN
            DZSNSO(IZ) = - ZSNSO(IZ)
@@ -892,6 +892,7 @@ contains
            DZSNSO(IZ) = ZSNSO(IZ-1) - ZSNSO(IZ)
          END IF
      END DO
+
      ! add green roof check for the depth of the growing medium Aaron A.
      ! Note that these are for a negative datum
      IF (GREEN_ROOF) THEN
@@ -937,11 +938,18 @@ IF(OPT_HUE.eq.1) THEN
        END IF
      END IF
 ELSE
+IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) DZSNSO
      IF(IST == 1) THEN
         BEG_WB = CANLIQ + CANICE + SNEQV + WA
         DO IZ = 1,NSOIL
            BEG_WB = BEG_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
         END DO
+        IF ((ILOC.eq.4).and.(JLOC.eq.129)) THEN
+            WRITE(*,*) 'CANLIQ', CANLIQ, 'CANICE', CANICE
+            WRITE(*,*) 'SMC', SMC
+            WRITE(*,*) 'SNEQV', SNEQV, 'WA' , WA, 'BEG_WB', BEG_WB
+        END IF
+
      END IF
 END IF ! end the HUE change to the water balance
 ! vegetation phenology
@@ -1755,11 +1763,12 @@ ENDIF   ! CROPTYPE == 0
   REAL                                        :: ERRSW  !error in shortwave radiation balance [w/m2]
   REAL                                        :: FSRVG
   CHARACTER(len=256)                          :: message
+  REAL              :: old_dwater, old_prcp, old_ecan, old_etran, old_edir
 ! --------------------------------------------------------------------------------------------------
 !jref:start
    ERRSW   = SWDOWN - (FSA + FSR)
 !   ERRSW   = SWDOWN - (SAV+SAG + FSRV+FSRG)
-
+END_WB = 0.0
    IF (ABS(ERRSW) > 0.01) THEN            ! w/m2
    WRITE(*,*) "VEGETATION!"
    WRITE(*,*) "SWDOWN*FVEG =",SWDOWN*FVEG
@@ -1861,6 +1870,15 @@ ENDIF   ! CROPTYPE == 0
        END DO
 
      END IF
+      old_dwater = ACC_DWATER
+      old_prcp = ACC_PRCP 
+      old_ecan = ACC_ECAN
+      old_etran = ACC_ETRAN
+      old_edir = ACC_EDIR
+      IF ((ILOC.eq.4).and.(JLOC.eq.129)) THEN
+            WRITE(*,*) 'CANLIQ', CANLIQ, 'CANICE', CANICE
+            WRITE(*,*) 'SNEQV', SNEQV, 'WA' , WA
+        END IF
 
       ! accumualted water change (only for canopy and snow during non-soil timestep)
       ACC_DWATER = ACC_DWATER + (END_WB - BEG_WB)  ! snow, canopy, and soil water change
@@ -1881,6 +1899,13 @@ ENDIF   ! CROPTYPE == 0
            endif
            write(message, *) 'ERRWAT =',ERRWAT, "kg m{-2} timestep{-1}"
            call wrf_message(trim(message))
+           WRITE(*,*) 'OLD THINGS     ACCDWATER', old_dwater
+           WRITE(*,*) 'ACC_PRCP', old_prcp, 'ACC_ECAN',old_ecan
+           WRITE(*,*) 'ACC_ETRAN', old_etran, 'ACC_EDIR', old_edir
+           WRITE(*,*) 'VEGTYP', VEGTYP, 'SMC2', SMC2, 'SMC', SMC
+           WRITE(*,*) 'RUNSRF', RUNSRF, 'CANLIQ',CANLIQ
+           WRITE(*,*) 'END_WB', END_WB, 'BEG_WB', BEG_WB
+           WRITE(*,*) 'CANICE', CANICE, 'SNEQV', SNEQV
            IF(OPT_HUE.eq.1) THEN
              WRITE(message, &
              '("     I      J     END-BEG     PRCP     IRMIRATE     IRFIRATE      ECAN     EDIR    ETRAN   RUNSRF   RUNSUB   ZWT   QTLDRN  RUNONSRF   DETENTION_STORAGE ")')
@@ -6643,7 +6668,7 @@ END IF
   REAL                :: CANMAS  !total canopy mass (kg/m2)
 ! --------------------------------------------------------------------
 ! initialization
-
+     
       ECAN    = 0.0
 
 ! --------------------------- liquid water ------------------------------
@@ -6780,7 +6805,6 @@ END IF
                   SFCTMP ,ILOC   ,JLOC   ,                 & !in
                   ISNOW  ,SNOWH  ,DZSNSO ,STC    ,SNICE  , & !inout
                   SNLIQ  ,SNEQV  )                           !inout
-
 ! MB: do each if block separately
 
    IF(ISNOW < 0) &        ! when multi-layer
@@ -6860,7 +6884,7 @@ END IF
           SNOWH = SNOWH + DZSNSO(IZ)
        ENDDO
    END IF
-
+IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) 'END SNOWATER', ISNOW, ZSNSO, SNOWH,DZSNSO
   END SUBROUTINE SNOWWATER
 
 !== begin snowfall =================================================================================
@@ -11622,7 +11646,7 @@ MODULE NOAHMP_TABLES
 
     IMPLICIT NONE
 
-    INTEGER, PRIVATE, PARAMETER :: MVT   = 27
+    INTEGER, PRIVATE, PARAMETER :: MVT   = 47 !max number 
     INTEGER, PRIVATE, PARAMETER :: MBAND = 2
     INTEGER, PRIVATE, PARAMETER :: MSC   = 8
     INTEGER, PRIVATE, PARAMETER :: MAX_SOILTYP = 30
@@ -11974,7 +11998,16 @@ CONTAINS
          SAI_JAN, SAI_FEB, SAI_MAR, SAI_APR, SAI_MAY, SAI_JUN,SAI_JUL,SAI_AUG,SAI_SEP,SAI_OCT,SAI_NOV,SAI_DEC, &
          LAI_JAN, LAI_FEB, LAI_MAR, LAI_APR, LAI_MAY, LAI_JUN,LAI_JUL,LAI_AUG,LAI_SEP,LAI_OCT,LAI_NOV,LAI_DEC, &
          RHOL_VIS, RHOL_NIR, RHOS_VIS, RHOS_NIR, TAUL_VIS, TAUL_NIR, TAUS_VIS, TAUS_NIR, SLAREA, EPS1, EPS2, EPS3, EPS4, EPS5
-
+    !added by Aaron Alexander 8 Oct 2020
+    NAMELIST / noahmp_nlcd_veg_categories / VEG_DATASET_DESCRIPTION, NVEG
+    NAMELIST / noahmp_nlcd_parameters / ISURBAN, ISWATER, ISBARREN, ISICE, ISCROP, EBLFOREST, NATURAL, &
+         LCZ_1,LCZ_2,LCZ_3,LCZ_4,LCZ_5,LCZ_6,LCZ_7,LCZ_8,LCZ_9,LCZ_10,LCZ_11,&
+         CH2OP, DLEAF, Z0MVT, HVT, HVB, DEN, RC, MFSNO, SCFFAC, XL, CWPVT, C3PSN, KC25, AKC, KO25, AKO, AVCMX, AQE, &
+         LTOVRC,  DILEFC,  DILEFW,  RMF25 ,  SLA   ,  FRAGR ,  TMIN  ,  VCMX25,  TDLEF ,  BP, MP, QE25, RMS25, RMR25, ARM, &
+         FOLNMX, WDPOOL, WRRAT, MRP, NROOT, RGL, RS, HS, TOPT, RSMAX, &
+         SAI_JAN, SAI_FEB, SAI_MAR, SAI_APR, SAI_MAY, SAI_JUN,SAI_JUL,SAI_AUG,SAI_SEP,SAI_OCT,SAI_NOV,SAI_DEC, &
+         LAI_JAN, LAI_FEB, LAI_MAR, LAI_APR, LAI_MAY, LAI_JUN,LAI_JUL,LAI_AUG,LAI_SEP,LAI_OCT,LAI_NOV,LAI_DEC, &
+         RHOL_VIS, RHOL_NIR, RHOS_VIS, RHOS_NIR, TAUL_VIS, TAUL_NIR, TAUS_VIS, TAUS_NIR, SLAREA, EPS1, EPS2, EPS3, EPS4, EPS5
     ! Initialize our variables to bad values, so that if the namelist read fails, we come to a screeching halt as soon as we try to use anything.
     CH2OP_TABLE  = -1.0E36
     DLEAF_TABLE  = -1.0E36
@@ -12062,6 +12095,9 @@ CONTAINS
     else if ( trim(DATASET_IDENTIFIER) == "MODIFIED_IGBP_MODIS_NOAH" ) then
        read(15,noahmp_modis_veg_categories)
        read(15,noahmp_modis_parameters)
+    else if ( trim(DATASET_IDENTIFIER) == "NLCD40" ) then !added by Aaron Alexander 8 Oct 2020
+       read(15,noahmp_nlcd_veg_categories)
+       read(15,noahmp_nlcd_parameters)
     else
        write(*,'("WARNING: Unrecognized DATASET_IDENTIFIER in subroutine READ_MP_VEG_PARAMETERS")')
        write(*,'("WARNING: DATASET_IDENTIFIER = ''", A, "''")') trim(DATASET_IDENTIFIER)

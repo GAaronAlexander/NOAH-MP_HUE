@@ -10,13 +10,13 @@
 @noleap_days = (0,31,59,90,120,151,181,212,243,273,304,334,365);
 @leap_days   = (0,31,60,91,121,152,182,213,244,274,305,335,366);
 
-$yyyy = "2010";
-$mm = "01";
+$yyyy = "2013";
+$mm = "08";
 $dd = "01";
 $hh = "00";
 
-$data_dir = "/d1/barlage/data/NARR/raw";
-$results_dir = "/d1/barlage/data/NARR/extracted";
+$data_dir = "/glade/scratch/galexand/jupiter-intell/NARR_denver/raw";
+$results_dir = "/glade/scratch/galexand/jupiter-intell/NARR_denver/extracted_NARR/";
 
 $filesfc = "${data_dir}/merged_AWIP32.$yyyy$mm$dd$hh.RS.sfc";
 $fileflx = "${data_dir}/merged_AWIP32.$yyyy$mm$dd$hh.RS.flx";

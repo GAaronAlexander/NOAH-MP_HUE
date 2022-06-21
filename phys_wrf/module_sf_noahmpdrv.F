@@ -1472,7 +1472,6 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
 !------------------------------------------------------------------------------------------!
 ! Transfer veg parameters
 !------------------------------------------------------------------------------------------!
-
   parameters%CH2OP  =  CH2OP_TABLE(VEGTYPE)       !maximum intercepted h2o per unit lai+sai (mm)
   parameters%DLEAF  =  DLEAF_TABLE(VEGTYPE)       !characteristic leaf dimension (m)
   parameters%Z0MVT  =  Z0MVT_TABLE(VEGTYPE)       !momentum roughness length (m)
@@ -1489,7 +1488,6 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
   parameters%DILEFW = DILEFW_TABLE(VEGTYPE)       !coeficient for leaf stress death [1/s]
   parameters%FRAGR  =  FRAGR_TABLE(VEGTYPE)       !fraction of growth respiration  !original was 0.3
   parameters%LTOVRC = LTOVRC_TABLE(VEGTYPE)       !leaf turnover [1/s]
-
   parameters%C3PSN  =  C3PSN_TABLE(VEGTYPE)       !photosynthetic pathway: 0. = c4, 1. = c3
   parameters%KC25   =   KC25_TABLE(VEGTYPE)       !co2 michaelis-menten constant at 25c (pa)
   parameters%AKC    =    AKC_TABLE(VEGTYPE)       !q10 for kc25
@@ -1507,31 +1505,25 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
   parameters%ARM    =    ARM_TABLE(VEGTYPE)       !q10 for maintenance respiration
   parameters%FOLNMX = FOLNMX_TABLE(VEGTYPE)       !foliage nitrogen concentration when f(n)=1 (%)
   parameters%TMIN   =   TMIN_TABLE(VEGTYPE)       !minimum temperature for photosynthesis (k)
-
   parameters%XL     =     XL_TABLE(VEGTYPE)       !leaf/stem orientation index
   parameters%RHOL   =   RHOL_TABLE(VEGTYPE,:)     !leaf reflectance: 1=vis, 2=nir
   parameters%RHOS   =   RHOS_TABLE(VEGTYPE,:)     !stem reflectance: 1=vis, 2=nir
   parameters%TAUL   =   TAUL_TABLE(VEGTYPE,:)     !leaf transmittance: 1=vis, 2=nir
   parameters%TAUS   =   TAUS_TABLE(VEGTYPE,:)     !stem transmittance: 1=vis, 2=nir
-
   parameters%MRP    =    MRP_TABLE(VEGTYPE)       !microbial respiration parameter (umol co2 /kg c/ s)
   parameters%CWPVT  =  CWPVT_TABLE(VEGTYPE)       !empirical canopy wind parameter
-
   parameters%WRRAT  =  WRRAT_TABLE(VEGTYPE)       !wood to non-wood ratio
   parameters%WDPOOL = WDPOOL_TABLE(VEGTYPE)       !wood pool (switch 1 or 0) depending on woody or not [-]
   parameters%TDLEF  =  TDLEF_TABLE(VEGTYPE)       !characteristic T for leaf freezing [K]
-
   parameters%NROOT  =  NROOT_TABLE(VEGTYPE)       !number of soil layers with root present
   parameters%RGL    =    RGL_TABLE(VEGTYPE)       !Parameter used in radiation stress function
   parameters%RSMIN  =     RS_TABLE(VEGTYPE)       !Minimum stomatal resistance [s m-1]
   parameters%HS     =     HS_TABLE(VEGTYPE)       !Parameter used in vapor pressure deficit function
   parameters%TOPT   =   TOPT_TABLE(VEGTYPE)       !Optimum transpiration air temperature [K]
   parameters%RSMAX  =  RSMAX_TABLE(VEGTYPE)       !Maximal stomatal resistance [s m-1]
-
 !------------------------------------------------------------------------------------------!
 ! Transfer rad parameters
 !------------------------------------------------------------------------------------------!
-
    parameters%ALBSAT    = ALBSAT_TABLE(SOILCOLOR,:)
    parameters%ALBDRY    = ALBDRY_TABLE(SOILCOLOR,:)
    parameters%ALBICE    = ALBICE_TABLE
@@ -1603,7 +1595,6 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
 !------------------------------------------------------------------------------------------!
 ! Transfer global parameters
 !------------------------------------------------------------------------------------------!
-
    parameters%CO2        =         CO2_TABLE
    parameters%O2         =          O2_TABLE
    parameters%TIMEAN     =      TIMEAN_TABLE
@@ -1630,7 +1621,6 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
 ! ----------------------------------------------------------------------
 !  Transfer soil parameters
 ! ----------------------------------------------------------------------
-
     do isoil = 1, size(soiltype)
       parameters%BEXP(isoil)   = BEXP_TABLE   (SOILTYPE(isoil))
       parameters%DKSAT(isoil)  = DKSAT_TABLE  (SOILTYPE(isoil))
@@ -1693,10 +1683,10 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
     parameters%SLOPE  = SLOPE_TABLE(SLOPETYPE)
 
     IF(parameters%URBAN_FLAG)THEN  ! Hardcoding some urban parameters for soil
-       parameters%SMCMAX = 0.45
-       parameters%SMCREF = 0.42
-       parameters%SMCWLT = 0.40
-       parameters%SMCDRY = 0.40
+       !parameters%SMCMAX = 0.45
+       !parameters%SMCREF = 0.42
+       !parameters%SMCWLT = 0.40
+       !parameters%SMCDRY = 0.40
        parameters%CSOIL  = 3.E6
     ENDIF
 
@@ -4271,6 +4261,7 @@ END SUBROUTINE noahmp_urban
 
           ENDDO
       ENDDO
+
   !===========================================================================
   ! Swap the data so that 'paired' land-types are. We are going to
   ! order them in a specific way.
@@ -4321,6 +4312,7 @@ END SUBROUTINE noahmp_urban
 
 
   ENDIF !end hue noahmp sort
+
   !===========================================================================
   ! normalize
   !===========================================================================
@@ -4352,7 +4344,7 @@ END SUBROUTINE noahmp_urban
 
           ENDDO
       ENDDO
-
+WRITE(*,*) "POST NORMALIZATION"
   !===========================================================================
   ! initilize the variables
   !===========================================================================
@@ -4414,21 +4406,21 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
               TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
               SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
               SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
-
-              DETENTION_STORAGEXY_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,J) = 0.
+              IF (noahmp_HUE_iopt.eq.1) THEN 
+                DETENTION_STORAGEXY_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,J) = 0.
+              ENDIF
               ENDDO
-
            !!snow things
            isnowxy_mosaic(i,mosaic_i,j)=isnowxy(i,j)
-
+           
            DO snow_layer=1,7
-            zsnsoxy_mosaic(i,7*(mosaic_i-1)+snow_layer,j)=zsnsoxy(i,snow_layer,j)
+            zsnsoxy_mosaic(i,7*(mosaic_i-1)+snow_layer,j)=zsnsoxy(i,snow_layer-3,j)
            ENDDO
-
-           DO top_layer=1,3
-            tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,snow_layer,j)
-            snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,snow_layer,j)
-            snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,snow_layer,j)
+           
+          DO top_layer=1,3
+            tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,snow_layer-3,j)
+            snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,snow_layer-3,j)
+            snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,snow_layer-3,j)
            ENDDO
 
            ! Noah-MP irrigation scheme !pvk
@@ -5693,15 +5685,15 @@ type(noahmp_parameters) :: parameters
 
       REAL, DIMENSION (ims:ime, jms:jme) :: RUNONSFXY_mosaic_avg
 
-
+      !REAL, DIMENSION (ims:ime, 1:(nsoil+3)*mosaic_cat, jms:jme) DZSNO_mosaic !thickness of the different layers for soil and snow
 
       INTEGER, DIMENSION( ims:ime, jms:jme ) :: isnowxy_mosaic_avg
 
       REAL, DIMENSION( ims:ime, 1:NSOIL, jms:jme )                     ::  TSLB_mosaic_avg,SMOIS_mosaic_avg,SH2O_mosaic_avg,SMOISEQ_mosaic_avg, ACC_ETRANIXY_mosaic_avg
 
-      REAL, DIMENSION( ims:ime, -2:0, jms:jme) :: tsnoxy_mosaic_avg, snicexy_mosaic_avg, snliqxy_mosaic_avg
+      REAL, DIMENSION( ims:ime, 1:3, jms:jme) :: tsnoxy_mosaic_avg, snicexy_mosaic_avg, snliqxy_mosaic_avg
 
-      REAL, DIMENSION( ims:ime, -2:NSOIL, jms:jme) :: zsnsoxy_mosaic_avg
+      REAL, DIMENSION( ims:ime, 1:7, jms:jme) :: zsnsoxy_mosaic_avg
 
      !HUE noah-mp variables
      INTEGER, DIMENSION( ims:ime, jms:jme ) ::    IVGTYP_dominant
@@ -5721,8 +5713,7 @@ type(noahmp_parameters) :: parameters
      !------------------------------------------------------------------
      !Begin code calls
      !------------------------------------------------------------------
-
-
+      IPRINT_mosaic = .false.
 
          CALL NOAHMP_OPTIONS(IDVEG  ,IOPT_CRS  ,IOPT_BTR  ,IOPT_RUN  ,IOPT_SFC  ,IOPT_FRZ , &
                      IOPT_INF  ,IOPT_RAD  ,IOPT_ALB  ,IOPT_SNF  ,IOPT_TBOT, IOPT_STC  ,     &
@@ -5780,8 +5771,7 @@ type(noahmp_parameters) :: parameters
          END DO
 
          JLOOP : DO J=jts,jte ! Begin DO loop for J Aaron A.
-
-            IF(ITIMESTEP == 1)THEN
+             IF(ITIMESTEP == 1)THEN
                DO I=its,ite
                   IF((XLAND(I,J)-1.5) >= 0.) THEN    ! Open water case
                      IF(XICE(I,J) == 1. .AND. IPRINT) PRINT *,' sea-ice at water point, I=',I,'J=',J
@@ -5803,7 +5793,6 @@ type(noahmp_parameters) :: parameters
                ENDDO
             ENDIF                                                               ! end of initialization over ocean
 
-
     !-----------------------------------------------------------------------
        ILOOP : DO I = its, ite
 
@@ -5820,12 +5809,10 @@ type(noahmp_parameters) :: parameters
           IF((XLAND(I,J)-1.5) >= 0.) CYCLE ILOOP   ! Open water case
 
 
-
                IVGTYP_dominant(I,J)=IVGTYP(I,J)                            ! SAVE THE DOMINANT Vegitation
 
 
                ! INITIALIZE THE AREA-AVERAGED variables (all average variables thtat I added)
-
                TSK_mosaic_avg(i,j) = 0.0
                HFX_mosaic_avg(i,j) = 0.0
                QFX_mosaic_avg(i,j) = 0.0
@@ -5936,7 +5923,7 @@ type(noahmp_parameters) :: parameters
 
                ENDDO
 
-               DO LAYER=-2,0
+               DO LAYER=1,3
 
                    tsnoxy_mosaic_avg(i,LAYER,j) = 0.0
                    snicexy_mosaic_avg(i,LAYER,j) = 0.0
@@ -5944,7 +5931,7 @@ type(noahmp_parameters) :: parameters
 
                ENDDO
 
-               DO LAYER=-2,NSOIL
+               DO LAYER=1,7
 
                    zsnsoxy_mosaic_avg(i,LAYER,j) = 0.0
 
@@ -6003,11 +5990,9 @@ type(noahmp_parameters) :: parameters
                IRNUMFI_mosaic_avg(i,j) = 0
 
 
-
                ! These are needed for the
 
                MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
-
 
                ! We need to move from our 3D data to the 2D data sets
                !These are the IN/Out values that have an LSM equivelant
@@ -6021,7 +6006,7 @@ type(noahmp_parameters) :: parameters
                UDRUNOFF(I,J) = UDRUNOFF_mosaic(I,mosaic_i,J)
                ALBEDO(I,J) = ALBEDO_mosaic(I,mosaic_i,J)
                SNOWC(I,J) = SNOWC_mosaic(I,mosaic_i,J)
-
+               
                !These are the soil variables
                DO LAYER=1,NSOIL
 
@@ -6033,7 +6018,6 @@ type(noahmp_parameters) :: parameters
 
                ENDDO
 
-
                SNOW(I,J) = SNOW_mosaic(I,mosaic_i,J)
                SNOWH(I,J) = SNOWH_mosaic(I,mosaic_i,J)
                CANWAT(I,J) = CANWAT_mosaic(I,mosaic_i,J)
@@ -6044,9 +6028,9 @@ type(noahmp_parameters) :: parameters
                ZNT(I,J) = ZNT_mosaic(I,mosaic_i,J)
                Z0(I,J) = Z0_mosaic(I,mosaic_i,J)
                RS(I,J) = rs_mosaic(I,mosaic_i,J)
-
                !These are IN/OUT variables that do not have an LSM equivelant
                ISNOWXY(I,J) = isnowxy_mosaic(I,mosaic_i,J)
+IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM IN THE DRIVER FOR THE MOSAIC PASSOFF', ISNOWXY(I,J), mosaic_i, isnowxy_mosaic(I,1:5,J)
                TVXY(I,J) = tvxy_mosaic(I,mosaic_i,J)
                TGXY(I,J) = tgxy_mosaic(I,mosaic_i,J)
                CANICEXY(I,J) = canicexy_mosaic(I,mosaic_i,J)
@@ -6077,17 +6061,16 @@ type(noahmp_parameters) :: parameters
                XSAIXY(I,J) = xsaixy_mosaic(I,mosaic_i,J)
                DEEPRECHXY(I,J) = deeprechxy_mosaic(I,mosaic_i,J)
                RECHXY(I,J) = rechxy_mosaic(I,mosaic_i,J)
-
                !SNOW VARIABLES
 
-               DO LAYER=-2,0
-                   TSNOXY(I,LAYER,J) = tsnoxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
-                   SNICEXY(I,LAYER,J) = snicexy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
-                   SNLIQXY(I,LAYER,J) = snliqxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+               DO LAYER=1,3
+                   TSNOXY(I,LAYER-3,J) = tsnoxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+                   SNICEXY(I,LAYER-3,J) = snicexy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
+                   SNLIQXY(I,LAYER-3,J) = snliqxy_mosaic(I,3*(mosaic_i - 1)+LAYER,J)
                ENDDO
 
-               DO LAYER=-2,NSOIL
-                   ZSNSOXY(I,LAYER,J) = zsnsoxy_mosaic(I,7*(mosaic_i - 1)+LAYER,J)
+               DO LAYER=1,7
+                   ZSNSOXY(I,LAYER-3,J) = zsnsoxy_mosaic(I,7*(mosaic_i - 1)+LAYER,J)
                ENDDO
 
                ! additional IN/OUT variables that have to be added
@@ -6125,18 +6108,48 @@ type(noahmp_parameters) :: parameters
 
 
                ENDIF
-
-
                !-----------------------------------------------------------------------
                ! insert the NOAHMP MODEL and the URBAN models
                !-----------------------------------------------------------------------
-
      ! add break down if this is just a mosaic scheme, or if it is a mosaic and HUE
      ! scheme. If there is no HUE option, we continue as normally
 
      !     2D to 1D
 
      ! IN only
+
+ ! for using soil update timestep difference from noahmp main timestep
+         calculate_soil = .false.
+         soil_update_steps = nint(soilstep/DT)  ! 3600 = 1 hour
+         soil_update_steps = max(soil_update_steps,1)
+         if ( soil_update_steps == 1 ) then
+           ACC_SSOILXY  = 0.0
+           ACC_QINSURXY = 0.0
+           ACC_QSEVAXY  = 0.0
+           ACC_ETRANIXY = 0.0
+           ACC_DWATERXY = 0.0
+           ACC_PRCPXY   = 0.0
+           ACC_ECANXY   = 0.0
+           ACC_ETRANXY  = 0.0
+           ACC_EDIRXY   = 0.0
+         end if
+         if ( soil_update_steps > 1 ) then
+          if ( mod(itimestep,soil_update_steps) == 1 ) then
+           ACC_SSOILXY  = 0.0
+           ACC_QINSURXY = 0.0
+           ACC_QSEVAXY  = 0.0
+           ACC_ETRANIXY = 0.0
+           ACC_DWATERXY = 0.0
+           ACC_PRCPXY   = 0.0
+           ACC_ECANXY   = 0.0
+           ACC_ETRANXY  = 0.0
+           ACC_EDIRXY   = 0.0
+          end if
+         end if
+
+         if (mod(itimestep,soil_update_steps) == 0) calculate_soil = .true.
+     ! end soil timestep
+
 
             COSZ   = COSZIN  (I,J)                         ! cos zenith angle []
             LAT    = XLAT  (I,J)                           ! latitude [rad]
@@ -6257,11 +6270,13 @@ type(noahmp_parameters) :: parameters
              ELSE
                SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
                SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
-
+               
+               SMC_intermediate (1:NSOIL) = SMOIS(I,1:NSOIL,J)
+               SH2O_intermediate(1:NSOIL) = SH2O(I,1:NSOIL,J)
              END IF !if else hue noahmp vs. just mosaic
 
-
             ISNOW                 = ISNOWXY (I,J)                ! snow layers []
+            
             STC  (-NSNOW+1:    0) = TSNOXY  (I,-NSNOW+1:    0,J) ! snow temperatures [K]
             STC  (      1:NSOIL)  = TSLB    (I,      1:NSOIL,J)  ! soil temperatures [K]
             SWE                   = SNOW    (I,J)                ! snow water equivalent [mm]
@@ -6319,7 +6334,6 @@ type(noahmp_parameters) :: parameters
 #ifdef WRF_HYDRO
             WATBLED               = ZWATBLE2D (I,J)              ! water table depth for tile drainage
 #endif
-
      ! irrigation vars
             IRRFRA                = IRFRACT(I,J)    ! irrigation fraction
             SIFAC                 = SIFRACT(I,J)    ! sprinkler irrigation fraction
@@ -6375,7 +6389,6 @@ type(noahmp_parameters) :: parameters
                IF(IPRINT) PRINT *, i,j,'RESET SOIL in surfce.F'
                SOILTYP = 7
             ENDIF
-
               IF( IVGTYP(I,J) == ISURBAN_TABLE    .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
                   IVGTYP(I,J) == LCZ_3_TABLE      .or. IVGTYP(I,J) == LCZ_4_TABLE .or. IVGTYP(I,J) == LCZ_5_TABLE .or. &
                   IVGTYP(I,J) == LCZ_6_TABLE      .or. IVGTYP(I,J) == LCZ_7_TABLE .or. IVGTYP(I,J) == LCZ_8_TABLE .or. &
@@ -6391,23 +6404,16 @@ type(noahmp_parameters) :: parameters
 
             ENDIF
 
-
             CALL TRANSFER_MP_PARAMETERS(VEGTYP,SOILTYP,SLOPETYP,SOILCOLOR,CROPTYPE,parameters)
-
             if(iopt_soil == 3 .and. .not. parameters%urban_flag) then
-
      	sand = 0.01 * soilcomp(i,1:4,j)
      	clay = 0.01 * soilcomp(i,5:8,j)
              orgm = 0.0
-
              if(opt_pedo == 1) call pedotransfer_sr2006(nsoil,sand,clay,orgm,parameters)
-
             end if
-
             GRAIN = GRAINXY (I,J)                ! mass of grain XING [g/m2]
             GDD   = GDDXY (I,J)                  ! growing degree days XING
             PGS   = PGSXY (I,J)                  ! growing degree days XING
-
             if(iopt_crop == 1 .and. croptype > 0) then
               parameters%PLTDAY = PLANTING(I,J)
      	 parameters%HSDAY  = HARVEST (I,J)
@@ -6417,7 +6423,6 @@ type(noahmp_parameters) :: parameters
      	 parameters%GDDS4  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS4
      	 parameters%GDDS5  = SEASON_GDD(I,J) / 1770.0 * parameters%GDDS5
             end if
-
             if(iopt_irr == 2) then
               parameters%PLTDAY = PLANTING(I,J)
               parameters%HSDAY  = HARVEST (I,J)
@@ -6425,7 +6430,6 @@ type(noahmp_parameters) :: parameters
 
      !=== hydrological processes for vegetation in urban model ===
      !=== irrigate vegetaion only in urban area, MAY-SEP, 9-11pm
-
               IF( IVGTYP(I,J) == ISURBAN_TABLE    .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
                     IVGTYP(I,J) == LCZ_3_TABLE      .or. IVGTYP(I,J) == LCZ_4_TABLE .or. IVGTYP(I,J) == LCZ_5_TABLE .or. &
                     IVGTYP(I,J) == LCZ_6_TABLE      .or. IVGTYP(I,J) == LCZ_7_TABLE .or. IVGTYP(I,J) == LCZ_8_TABLE .or. &
@@ -6442,7 +6446,6 @@ type(noahmp_parameters) :: parameters
               ENDIF
 
             ENDIF
-
      ! Initialized local
 
             FICEOLD = 0.0
@@ -6575,8 +6578,7 @@ type(noahmp_parameters) :: parameters
               RUNSB  = RUNSB * dt
          ELSE
               ICE=0                              ! Neither sea ice or land ice.
-
-
+IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM IN THE DRIVER RIGHT BEFORE SFLX', ISNOW
               CALL NOAHMP_SFLX (parameters, &
                  I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
                  DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
@@ -6626,12 +6628,10 @@ type(noahmp_parameters) :: parameters
                  , sfcheadrt(i,j), WATBLED                                   &
 #endif
  )            ! OUT :
-
                  QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
                  LH(I,J)  = FCEV + FGEV  + FCTR  + FIRR
 
         ENDIF ! glacial split ends
-
 #ifdef WRF_HYDRO
      !AD_CHANGE: Glacier cells can produce small negative subsurface runoff for mass balance.
      !           This will crash channel routing, so only pass along positive runoff.
@@ -6678,7 +6678,6 @@ type(noahmp_parameters) :: parameters
 
 
 
-
                   TSK      (I,J)                = TRAD
                   HFX      (I,J)                = FSH
                   GRDFLX   (I,J)                = SSOIL
@@ -6705,6 +6704,7 @@ type(noahmp_parameters) :: parameters
                   QSFC     (I,J)                = QSFC1D
 
                   ISNOWXY  (I,J)                = ISNOW
+IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'WE GOT BACK FROM SFLX', ISNOWXY(I,J), ISNOW
                   TVXY     (I,J)                = TV
                   TGXY     (I,J)                = TG
                   CANLIQXY (I,J)                = CANLIQ
@@ -6886,7 +6886,7 @@ type(noahmp_parameters) :: parameters
           !-----------------------------------------------------------------------
           !BEGIN URBAN MODEL
           !---------------------------------------------------------------------
-
+          
           IF (SF_URBAN_PHYSICS == 1 ) THEN         ! Beginning of UCM CALL if block
 
           !--------------------------------------
@@ -7191,7 +7191,6 @@ type(noahmp_parameters) :: parameters
           ! URBAN CANOPY MODEL END
           !--------------------------------------
 
-
           !-----------------------------------------------------------------------
           ! Done with the NOAH-UCM MOSAIC based off of DAN LI Aaron A.
           !-----------------------------------------------------------------------
@@ -7232,6 +7231,7 @@ type(noahmp_parameters) :: parameters
               !IN/OUT with no GENERIC LSM
 
               isnowxy_mosaic(I,mosaic_i,J) = ISNOWXY(I,J)
+IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'MOSAIC STORE', ISNOWXY_MOSAIC(I,mosaic_i,J), ISNOWXY(I,J)
               tvxy_mosaic(I,mosaic_i,J) = TVXY(I,J)
               tgxy_mosaic(I,mosaic_i,J) = TGXY(I,J)
               canicexy_mosaic(I,mosaic_i,J) = CANICEXY(I,J)
@@ -7368,18 +7368,17 @@ type(noahmp_parameters) :: parameters
 
               !SNOW VARIABLES
 
-                  DO LAYER=-2,0
-                      tsnoxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = TSNOXY(I,LAYER,J)
-                      snicexy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNICEXY(I,LAYER,J)
-                      snliqxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNLIQXY(I,LAYER,J)
+                  DO LAYER=1,3
+                      tsnoxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = TSNOXY(I,LAYER-3,J)
+                      snicexy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNICEXY(I,LAYER-3,J)
+                      snliqxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J) = SNLIQXY(I,LAYER-3,J)
                   ENDDO
 
-                  DO LAYER=-2,NSOIL
-                      zsnsoxy_mosaic(I,7*(mosaic_i - 1) + LAYER, J) = ZSNSOXY(I,LAYER,J)
+                  DO LAYER=1,7
+                      zsnsoxy_mosaic(I,7*(mosaic_i - 1) + LAYER, J) = ZSNSOXY(I,LAYER-3,J)
                   ENDDO
 
               !HUE THINGS
-
               RUNONSFXY_mosaic(I,mosaic_i,J) =  RUNONSFXY_mosaic(I,mosaic_i,J) + RUNONSRF * DT
               IF (VEGTYP.eq.46) THEN
                 DETENTION_STORAGEXY(I,J) = DETENTION_STORAGE
@@ -7394,11 +7393,10 @@ type(noahmp_parameters) :: parameters
               IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
                 IVGTYP(I,J) == LCZ_3_TABLE .or. IVGTYP(I,J) == 42 .or. IVGTYP(I,J) == 44 .or. &
                 IVGTYP(I,J) == 45.or. IVGTYP(I,J) == ISBARREN_TABLE ) THEN
-
                 FAREA2 = 0.0 !This is a fix to change how the urban areas/barren areas
                 ! We are only going to be outputting the average of the vegetated area.
               ENDIF
-
+              
 
               TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
 
@@ -7527,6 +7525,16 @@ type(noahmp_parameters) :: parameters
               IRNUMMI_mosaic_avg(I,J) = IRNUMMI_mosaic_avg(I,J) + IRNUMMI_mosaic(I,mosaic_i,J)
               IRNUMFI_mosaic_avg(I,J) = IRNUMFI_mosaic_avg(I,J) + IRNUMFI_mosaic(I,mosaic_i,J)
 
+               DO LAYER=1,3
+                      tsnoxy_mosaic_avg(I, LAYER,J) = tsnoxy_mosaic_avg(I, LAYER,J) +  tsnoxy_mosaic(I, 3*(mosaic_i - 1) + LAYER,J)*FAREA
+                      snicexy_mosaic_avg(I,LAYER,J) = snicexy_mosaic_avg(I,LAYER,J) +  snicexy_mosaic(I,3*(mosaic_i - 1) + LAYER,J)*FAREA
+                      snliqxy_mosaic_avg(I,LAYER,J) = SNLIQXY_mosaic_avg(I,LAYER,J) + snliqxy_mosaic(I,3*(mosaic_i - 1) + LAYER,J)*FAREA
+               ENDDO
+
+               DO LAYER=1,7
+                      zsnsoxy_mosaic_avg(I,LAYER,J) = zsnsoxy_mosaic_avg(I,LAYER,J) + zsnsoxy_mosaic(I,7*(mosaic_i - 1) + LAYER,J)*FAREA
+               ENDDO
+
               ! Extra variables averaged needed for extra outputs
               QINTSXY_mosaic_avg(I,J) = QINTSXY_mosaic_avg(I,J) + QINTSXY_mosaic(I,mosaic_i,J)*FAREA
               QINTRXY_mosaic_avg(I,J) = QINTRXY_mosaic_avg(I,J) + QINTRXY_mosaic(I,mosaic_i,J)*FAREA
@@ -7567,7 +7575,6 @@ type(noahmp_parameters) :: parameters
               RUNONSFXY_mosaic_avg(I,J) = RUNONSFXY_mosaic_avg(I,J) + RUNONSFXY_mosaic(I,mosaic_i,J)*FAREA
 
              END DO MOSAIC_LOOP  !Loop over each of the mosaic variables
-
               !-------------------------------------------------------------------
               !WE now send the Mosaic Values to 2D variables so they can be called in other routines
               !-------------------------------------------------------------------
@@ -7578,10 +7585,10 @@ type(noahmp_parameters) :: parameters
 
               FAREA2 = 0.
 
-              DO LAYER= 1,mosaic_cat
-                IF( IVGTYP(I,J) /= ISURBAN_TABLE .or. IVGTYP(I,J) /= LCZ_1_TABLE .or. IVGTYP(I,J) /= LCZ_2_TABLE .or. &
-                  IVGTYP(I,J) /= LCZ_3_TABLE .or. IVGTYP(I,J) /= 42 .or. IVGTYP(I,J) /= 44 .or. &
-                  IVGTYP(I,J) /= 45.or. IVGTYP(I,J) /= ISBARREN_TABLE ) THEN
+              DO mosaic_i= 1,mosaic_cat
+                IF( mosaic_cat_index(I,mosaic_i,J) /= ISURBAN_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= LCZ_1_TABLE .or. &
+                   mosaic_cat_index(I,mosaic_i,J) /= LCZ_2_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= LCZ_3_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= 42 .or. & 
+                   mosaic_cat_index(I,mosaic_i,J)/= 44 .or. IVGTYP(I,J) /= 45.or. mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE ) THEN
 
                   FAREA2 = FAREA2 + landusef2(I,mosaic_i,J)
                 ENDIF
@@ -7624,6 +7631,17 @@ type(noahmp_parameters) :: parameters
               ENDDO
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
+              IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM AFTER THE DRIVER FOR AVERAGING', ISNOWXY(I,J), isnowxy_mosaic_avg(I,J), mosaic_cat, isnowxy_mosaic(i,1:5,j)
+              IF(SNOWH(I,J).ne.0.0.and.QSNOWXY(I,J).eq.0.0) THEN
+              DO LAYER= 1,mosaic_cat 
+                 IF ((SNOWH_MOSAIC(I,LAYER,J).ne.0.0).and.(QSNOWXY_mosaic(I,LAYER,J).eq.0.0)) THEN
+                     SNOWH_mosaic(I,1:mosaic_cat,J) = 0.0
+                 ENDIF
+              ENDDO 
+              SNOWH(I,J) = 0.0
+              ELSE
+              SNOWH(I,J) = SNOWH_mosaic_avg(I,J)
+              ENDIF 
               TVXY(I,J) = tvxy_mosaic_avg(I,J)/FAREA2
               TGXY(I,J) = tgxy_mosaic_avg(I,J)
               CANICEXY(I,J) = canicexy_mosaic_avg(I,J)
@@ -7754,7 +7772,15 @@ type(noahmp_parameters) :: parameters
               ACC_PRCPXY(I,J) = ACC_PRCPXY_mosaic_avg(I,J)
               ACC_ECANXY(I,J) = ACC_ECANXY_mosaic_avg(I,J)
 
+               DO LAYER=1,3
+                      TSNOXY(I, LAYER-3,J) = tsnoxy_mosaic_avg(I, LAYER,J) 
+                      snicexy(I,LAYER-3,J) = snicexy_mosaic_avg(I,LAYER,J)
+                      snliqxy(I,LAYER-3,J) = SNLIQXY_mosaic_avg(I,LAYER,J) 
+               ENDDO
 
+               DO LAYER=1,7
+                      zsnsoxy(I,LAYER-3,J) = zsnsoxy_mosaic_avg(I,LAYER,J)
+               ENDDO
               !HUE THINGS
               RUNONSFXY(I,J) = RUNONSFXY_mosaic_avg(I,J)
 

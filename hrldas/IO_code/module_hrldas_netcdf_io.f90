@@ -380,7 +380,10 @@ contains
     integer :: ncid
     real, dimension(xstart:xend,ystart:yend) :: xdum
     integer :: rank
-
+    
+    IF (noahmp_mosaic_scheme.eq.1) THEN
+     ALLOCATE ( LANDUSEF (xstart:xend,1:ncat,ystart:yend) )
+    ENDIF
     rank = 0
 
 
@@ -1372,7 +1375,7 @@ contains
        stop "MODULE_NOAHLSM_HRLDAS_INPUT:  get_landuse_netcdf:  nf90_inq_varid"
     endif
 
-    iret = nf90_get_var(ncid, varid, values=inlu, start=(/xstart, ystart,1,1/), count=(/xend-xstart+1, yend-ystart+1, NCAT,1/))
+    iret = nf90_get_var(ncid, varid, inlu, start=(/xstart, ystart,1,1/), count=(/xend-xstart+1, yend-ystart+1, NCAT,1/))
     if (iret /= 0) then
        print*, 'name = "', trim(name)//'"'
        stop "MODULE_NOAHLSM_HRLDAS_INPUT:  get_landuse_netcdf:  nf90_get_var"
