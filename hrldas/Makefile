@@ -9,7 +9,7 @@ endif
 	(cd ../phys_wrf;		make)
 	(cd IO_code;			make)
 	(cd run;			make)
-	(cd HRLDAS_forcing;		make)
+	#(cd HRLDAS_forcing;		make)
 
 clean:
 	(cd Utility_routines;		make clean)
@@ -30,4 +30,4 @@ endif
 	(cd ../phys_wrf;		make)
 	(cd IO_code;			make NoahMP MOD_OPT="-DNoahMP")
 	(cd run;			make -f Makefile NoahMP)
-	(cd HRLDAS_forcing;		make)
+	#(cd HRLDAS_forcing;		make)
