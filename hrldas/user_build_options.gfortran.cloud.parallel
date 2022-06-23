@@ -1,0 +1,21 @@
+
+ COMPILERF90    =       mpif90
+ MPPFLAG        =       YES
+ FREESOURCE     =       -ffree-form  -ffree-line-length-none
+ F90FLAGS       =       -fconvert=big-endian -g -fbounds-check -fno-range-check -fallow-argument-mismatch
+ MODFLAG        =       -I ../MPP
+ HYDRO_LIB      =       ../MPP/mpp_land.o ../MPP/CPL_WRF.o
+ LDFLAGS        =
+ CPP            =       cpp
+ CPPFLAGS       =       -P -traditional -DMPP_LAND -D_GFORTRAN_ # -DSPATIAL_SOIL
+ LIBS           =
+ LIBJASPER      =      -ljpeg -L/miniconda/lib -ljasper
+ INCJASPER      =      -I/miniconda/include/jasper
+ NETCDFMOD      =      -I/miniconda/include/
+ NETCDFLIB      =      -L/miniconda/lib/ -lnetcdf -lnetcdff
+ BZIP2          =       NO
+ BZIP2_INCLUDE  =       -I/usr/include
+ BZIP2_LIB      =       -L/usr/lib64 -lbz2
+ RM             =       rm -f
+ CC             =       cc
+                           
