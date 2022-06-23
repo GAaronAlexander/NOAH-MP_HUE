@@ -1667,10 +1667,10 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
     parameters%SLOPE  = SLOPE_TABLE(SLOPETYPE)
 
     IF(parameters%URBAN_FLAG)THEN  ! Hardcoding some urban parameters for soil
-       parameters%SMCMAX = 0.45
-       parameters%SMCREF = 0.42
-       parameters%SMCWLT = 0.40
-       parameters%SMCDRY = 0.40
+       !parameters%SMCMAX = 0.45
+       !parameters%SMCREF = 0.42
+       !parameters%SMCWLT = 0.40
+       !parameters%SMCDRY = 0.40
        parameters%CSOIL  = 3.E6
     ENDIF
 
@@ -4386,9 +4386,9 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
            ENDDO
            
           DO top_layer=1,3
-            tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,snow_layer-3,j)
-            snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,snow_layer-3,j)
-            snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,snow_layer-3,j)
+            tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,top_layer-3,j)
+            snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,top_layer-3,j)
+            snliqxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snliqxy(i,top_layer-3,j)
            ENDDO
 
            ! Noah-MP irrigation scheme !pvk
@@ -7367,7 +7367,7 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'MOSAIC STORE', ISNOWXY_MOSAIC(I,mosaic_
                   SMOIS_mosaic_avg(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J) + SMOIS_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
                   SH2O_mosaic_avg(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J) + SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
                   SMOISEQ_mosaic_avg(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J) + SMOISEQ_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
-                  ACC_ETRANIXY_mosaic_avg(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J) + ACC_ETRANIXY(I,NSOIL*(mosaic_i - 1)+LAYER,J)*FAREA2
+                  ACC_ETRANIXY_mosaic_avg(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J) + ACC_ETRANIXY_mosaic(I,NSOIL*(mosaic_i - 1)+LAYER,J)*FAREA2
               ENDDO
 
               !IN OUT LSM NO LSM EQUIVELANTS
@@ -7569,7 +7569,7 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'MOSAIC STORE', ISNOWXY_MOSAIC(I,mosaic_
                   SMOIS(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J)
                   SH2O(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J)
                   SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J)
-                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,mosaic_i,J)/FAREA2
+                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J)/FAREA2
               ENDDO
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat

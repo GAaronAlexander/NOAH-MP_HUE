@@ -12,6 +12,6 @@
 #PBS -M gaalexander3@wisc.edu			
 #
 cd /glade/u/home/galexand/work/noahmp_hue/hrldas/run
-mpiexec_mpt ./hrldas.exe >& milwaukee.log
+mpiexec_mpt ./hrldas.exe >& milwaukee-gfortran-mpi.log
 
 

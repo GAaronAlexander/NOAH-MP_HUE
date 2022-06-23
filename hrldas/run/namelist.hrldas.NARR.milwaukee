@@ -1,10 +1,10 @@
 &NOAHLSM_OFFLINE
 
- HRLDAS_SETUP_FILE = "/glade/scratch/galexand/jupiter-intell/NARR_milwaukee/output-june-august-2010-lowersmois_start/HRLDAS_setup_2010060100_d1"
+ HRLDAS_SETUP_FILE = "/glade/scratch/galexand/jupiter-intell/NARR_milwaukee/forcing-files-june-august-2010/HRLDAS_setup_2010060100_d1"
 ! HRLDAS_SETUP_FILE = "/d1/barlage/data/mptest/wrfinput_d01"
  !MMF_RUNOFF_FILE = "/blah/WRF/wrfleafxyz_d01.nc"
  INDIR = "/glade/scratch/galexand/jupiter-intell/NARR_milwaukee/forcing-files-june-august-2010/"
- OUTDIR = "/glade/scratch/galexand/jupiter-intell/NARR_milwaukee/output-june-august-2010/"
+ OUTDIR = "/glade/scratch/galexand/jupiter-intell/NARR_milwaukee/output-june-august-2010-2/"
 
  START_YEAR  = 2010
  START_MONTH = 06
@@ -14,7 +14,7 @@
 
 ! RESTART_FILENAME_REQUESTED = "/d1/barlage/data/NARR/LDASOUT/RESTART.2010010200_DOMAIN1"
 
- KDAY = 92
+ KDAY = 10
  SPINUP_LOOPS = 0
 
  DYNAMIC_VEG_OPTION                = 4

@@ -5824,10 +5824,14 @@ IF (( parameters%urban_flag ).OR.(VEGTYP.EQ.41).OR.(VEGTYP.EQ.42).OR.(VEGTYP.EQ.
     INTEGER :: NSOIL_ACT
 
   ! add quick switch for Green roof without messing with variable dimesnions Aaron A.
-    IF (PRESENT(GREEN_ROOF).AND.GREEN_ROOF) THEN
-        NSOIL_ACT = NSOIL_GR
+    IF (PRESENT(GREEN_ROOF)) THEN 
+         IF(GREEN_ROOF) THEN
+              NSOIL_ACT = NSOIL_GR
+         ELSE
+             NSOIL_ACT = NSOIL
+         END IF
     ELSE
-        NSOIL_ACT = NSOIL
+         NSOIL_ACT = NSOIL
     END IF
 
 ! ----------------------------------------------------------------------
@@ -6571,7 +6575,7 @@ END IF
                             GREEN_ROOF, NSOIL_GR, DETENTION_STORAGE, PRECIPRATIO_GR, EXPRUN_GR, & ! Optional Green Roof
                             COEF_GR, STORAGEMAX_GR, DETENTIONSTORAGEMAX_GR)   !out)
 
-          IF((OPT_RUN == 1).and.(GREEN_ROOF == .false.)) THEN ! Aaron A.) THEN
+          IF((OPT_RUN.eq.1).and.(GREEN_ROOF.eqv..false.)) THEN ! Aaron A.) THEN
              CALL GROUNDWATER (parameters,NSNOW  ,NSOIL  ,DT_soil  ,SICE   ,ZSOIL  , & !in
                                STC    ,WCND   ,FCRMAX ,ILOC   ,JLOC   , & !in
                                SH2O   ,ZWT    ,WA     ,WT     ,         & !inout
