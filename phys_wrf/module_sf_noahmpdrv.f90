@@ -1,9 +1,19 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 MODULE module_sf_noahmpdrv
 
 !-------------------------------
-#if ( WRF_CHEM == 1 )
-  USE module_data_gocart_dust
-#endif
 !-------------------------------
 
 !
@@ -63,9 +73,6 @@ CONTAINS
 !                SPRIR_RATE_2D,MICIR_RATE_2D,FIRTFAC_2D,IR_RAIN_2D,         &
 !                BVIC_2D,AXAJ_2D,BXAJ_2D,XXAJ_2D,BDVIC_2D,GDVIC_2D,BBVIC_2D,&
 !              KLAT_FAC,TDSMC_FAC,TD_DC,TD_DCOEF,TD_DDRAIN,TD_RADI,TD_SPAC, &
-#ifdef WRF_HYDRO
-               sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &
-#endif
                ids,ide,  jds,jde,  kds,kde,                    &
                ims,ime,  jms,jme,  kms,kme,                    &
                its,ite,  jts,jte,  kts,kte,                    &
@@ -172,9 +179,6 @@ CONTAINS
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QTDRAIN
     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN)    ::  TD_FRACTION
 
-#ifdef WRF_HYDRO
-    REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D   ! for WRF-Hydro
-#endif
 ! placeholders for 3D soil
 !    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(IN) ::  BEXP_3D   ! C-H B exponent
 !    REAL,    DIMENSION( ims:ime, 1:nsoil, jms:jme ), INTENT(IN) ::  SMCDRY_3D ! Soil Moisture Limit: Dry
@@ -495,9 +499,6 @@ CONTAINS
 ! tile drainage
     REAL                                :: QTLDRN       ! tile drainage (mm)
     REAL                                :: TDFRACMP     ! tile drainage map
-#ifdef WRF_HYDRO
-    REAL                                :: WATBLED      ! water table depth for tile drainage
-#endif
 
 ! OUT (with no Noah LSM equivalent)
 
@@ -857,9 +858,6 @@ CONTAINS
 ! tile drainage
        QTLDRN                = 0.                           ! tile drainage (mm)
        TDFRACMP              = TD_FRACTION(I,J)             ! tile drainage map
-#ifdef WRF_HYDRO
-       WATBLED               = ZWATBLE2D (I,J)              ! water table depth for tile drainage
-#endif
 
 ! irrigation vars
        IRRFRA                = IRFRACT(I,J)    ! irrigation fraction
@@ -1059,9 +1057,6 @@ CONTAINS
                                TRAD,   ESOIL,   RUNSF,   RUNSB,     SAG,    SALB, & ! OUT :
                               QSNBOT,PONDING,PONDING1,PONDING2,    T2MB,    Q2MB, & ! OUT :
 			      EMISSI,  FPICE,    CHB2,   QMELT                    & ! OUT :
-#ifdef WRF_HYDRO
-                              , sfcheadrt(i,j)                                      &
-#endif
                               )
 
          FSNO   = 1.0
@@ -1200,9 +1195,6 @@ CONTAINS
             RAININ  , SNOWIN  , ACC_SSOIL, ACC_QINSUR, ACC_QSEVA      , & ! OUT :
             ACC_ETRANI, HCPCT , EFLXB   , CANHS   ,                     & ! OUT :
             ACC_DWATER, ACC_PRCP, ACC_ECAN, ACC_ETRAN, ACC_EDIR         & ! INOUT
-#ifdef WRF_HYDRO
-            , sfcheadrt(i,j), WATBLED                                   &
-#endif
             )            ! OUT :
 
             QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
@@ -1210,14 +1202,6 @@ CONTAINS
 
    ENDIF ! glacial split ends
 
-#ifdef WRF_HYDRO
-!AD_CHANGE: Glacier cells can produce small negative subsurface runoff for mass balance.
-!           This will crash channel routing, so only pass along positive runoff.
-            !soldrain(i,j) = max(RUNSB*dt, 0.0)        !mm , underground runoff
-            soldrain(i,j) = max(RUNSB, 0.0)        !mm , underground runoff
-            INFXSRT(i,j) = RUNSF   !*dt        !mm , surface runoff
-            qtiledrain (i,j) = QTLDRN   !*dt      !mm, tile drainage
-#endif
 
 
 ! INPUT/OUTPUT
@@ -2433,12 +2417,6 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
                                 ISURBAN_TABLE, ISICE_TABLE ,ISWATER_TABLE
   USE module_sf_noahmp_groundwater, ONLY : LATERALFLOW
   USE module_domain, only: domain
-#if (EM_CORE == 1)
-#ifdef DM_PARALLEL
-    USE module_dm        , ONLY : ntasks_x,ntasks_y,local_communicator,mytask,ntasks
-    USE module_comm_dm , ONLY : halo_em_hydro_noahmp_sub
-#endif
-#endif
 
 ! ----------------------------------------------------------------------
   IMPLICIT NONE
@@ -2513,11 +2491,6 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
 
  DO NITER=1,500
 
-#if (EM_CORE == 1)
-#ifdef DM_PARALLEL
-#     include "HALO_EM_HYDRO_NOAHMP.inc"
-#endif
-#endif
 
 !Calculate lateral flow
 
@@ -2543,11 +2516,6 @@ ENDIF
 
  ENDDO
 
-#if (EM_CORE == 1)
-#ifdef DM_PARALLEL
-#     include "HALO_EM_HYDRO_NOAHMP.inc"
-#endif
-#endif
 
 EQWTD=WTD
 
@@ -4582,9 +4550,6 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
               ACC_SSOILXY, ACC_QINSURXY, ACC_QSEVAXY, ACC_ETRANIXY, EFLXBXY, &
               SOILENERGY, SNOWENERGY, CANHSXY, &
               ACC_DWATERXY, ACC_PRCPXY, ACC_ECANXY, ACC_ETRANXY, ACC_EDIRXY, &
-#ifdef WRF_HYDRO
-               sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &    !O
-#endif
                ids,ide,  jds,jde,  kds,kde,                    &
                ims,ime,  jms,jme,  kms,kme,                    &
                its,ite,  jts,jte,  kts,kte,                    &
@@ -4790,9 +4755,6 @@ REAL,    DIMENSION( ims:ime,       60,jms:jme ), INTENT(INOUT) ::  gecros_state 
 REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  QTDRAIN
 REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN)    ::  TD_FRACTION
 
-#ifdef WRF_HYDRO
-REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(INOUT) ::  sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D   ! for WRF-Hydro
-#endif
 
 ! INOUT (with generic LSM equivalent)
 
@@ -5074,9 +5036,6 @@ REAL                                :: TAUSS        ! non-dimensional snow age
 ! tile drainage
 REAL                                :: QTLDRN       ! tile drainage (mm)
 REAL                                :: TDFRACMP     ! tile drainage map
-#ifdef WRF_HYDRO
-REAL                                :: WATBLED      ! water table depth for tile drainage
-#endif
 
 ! OUT (with no Noah LSM equivalent)
 
@@ -6330,9 +6289,6 @@ type(noahmp_parameters) :: parameters
      ! tile drainage
             QTLDRN                = 0.                           ! tile drainage (mm)
             TDFRACMP              = TD_FRACTION(I,J)             ! tile drainage map
-#ifdef WRF_HYDRO
-            WATBLED               = ZWATBLE2D (I,J)              ! water table depth for tile drainage
-#endif
      ! irrigation vars
             IRRFRA                = IRFRACT(I,J)    ! irrigation fraction
             SIFAC                 = SIFRACT(I,J)    ! sprinkler irrigation fraction
@@ -6479,9 +6435,6 @@ type(noahmp_parameters) :: parameters
                                     TRAD,   ESOIL,   RUNSF,   RUNSB,     SAG,    SALB, & ! OUT :
                                    QSNBOT,PONDING,PONDING1,PONDING2,    T2MB,    Q2MB, & ! OUT :
      			      EMISSI,  FPICE,    CHB2,   QMELT                    & ! OUT :
-#ifdef WRF_HYDRO
-                                   , sfcheadrt(i,j)                                      &
-#endif
                                    )
 
               FSNO   = 1.0
@@ -6623,22 +6576,11 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM IN THE DRIVER RIGHT BEFORE SFLX', IS
                  ACC_DWATER, ACC_PRCP, ACC_ECAN, ACC_ETRAN, ACC_EDIR       , & ! INOUT
                  SMC_INTERMEDIATE, SH2O_INTERMEDIATE, BTRANI_dummy, RUNONSRF, NSOIL_GR,                  & ! addtiional variables for HUE added by Aaron A.
                 DETENTION_STORAGE,FAREAXY,VOL_FLUX_SM,VOL_FLUX_RUNON &
-#ifdef WRF_HYDRO
-                 , sfcheadrt(i,j), WATBLED                                   &
-#endif
  )            ! OUT :
                  QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
                  LH(I,J)  = FCEV + FGEV  + FCTR  + FIRR
 
         ENDIF ! glacial split ends
-#ifdef WRF_HYDRO
-     !AD_CHANGE: Glacier cells can produce small negative subsurface runoff for mass balance.
-     !           This will crash channel routing, so only pass along positive runoff.
-                 !soldrain(i,j) = max(RUNSB*dt, 0.0)        !mm , underground runoff
-                 soldrain(i,j) = max(RUNSB, 0.0)        !mm , underground runoff
-                 INFXSRT(i,j) = RUNSF   !*dt        !mm , surface runoff
-                 qtiledrain (i,j) = QTLDRN   !*dt      !mm, tile drainage
-#endif
 
 
      ! INPUT/OUTPUT

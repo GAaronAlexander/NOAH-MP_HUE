@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 module module_NoahMP_hrldas_driver
 
   USE module_hrldas_netcdf_io
@@ -7,29 +20,14 @@ module module_NoahMP_hrldas_driver
   USE module_date_utilities
   USE noahmp_tables, ONLY:  LCZ_1_TABLE,LCZ_2_TABLE,LCZ_3_TABLE,LCZ_4_TABLE,LCZ_5_TABLE, &
                  LCZ_6_TABLE,LCZ_7_TABLE,LCZ_8_TABLE,LCZ_9_TABLE,LCZ_10_TABLE,LCZ_11_TABLE
-#ifdef MPP_LAND
   use module_mpp_land, only: MPP_LAND_PAR_INI, mpp_land_init, getLocalXY, mpp_land_bcast_char
   use module_mpp_land, only: check_land, my_id , node_info
   use module_cpl_land, only: cpl_land_init
-#endif
 
   IMPLICIT NONE
 
-#ifdef MPP_LAND
   include "mpif.h"
-#endif
 
-#ifdef WRF_HYDRO
-   REAL,    allocatable, DIMENSION(:,:)   :: infxsrt,sfcheadrt,soldrain,qtiledrain,ZWATBLE2D
-   integer :: forc_typ, snow_assim, HRLDAS_ini_typ
-   REAL,    allocatable, DIMENSION(:,:)   :: etpnd, greenfrac, prcp0
-   real :: etpnd1
-   character(len=19) :: forcDate
-   character(len = 256):: GEO_STATIC_FLNM
-   real, allocatable, dimension(:) :: zsoil
-   integer :: kk
-   integer  :: finemesh, finemesh_factor
-#endif
 
   character(len=9), parameter :: version = "v20150506"
   integer :: LDASIN_VERSION
@@ -824,9 +822,7 @@ module module_NoahMP_hrldas_driver
   REAL              :: LAT1
   REAL              :: LON1
 
-#ifdef MPP_LAND
   integer ix_tmp, jx_tmp
-#endif
 
 !---------------------------------------------------------------------
 !  NAMELIST start
@@ -936,9 +932,6 @@ module module_NoahMP_hrldas_driver
   REAL, DIMENSION(MAX_SOIL_LEVELS) :: soil_thick_input       ! depth to soil interfaces from namelist [m]
 
   namelist / NOAHLSM_OFFLINE /    &
-#ifdef WRF_HYDRO
-       finemesh,finemesh_factor,forc_typ, snow_assim , GEO_STATIC_FLNM, HRLDAS_ini_typ, &
-#endif
        indir, nsoil, soil_thick_input, forcing_timestep, noah_timestep, &
        start_year, start_month, start_day, start_hour, start_min, &
        outdir, skip_first_output, &
@@ -985,9 +978,7 @@ module module_NoahMP_hrldas_driver
 
     ! initilization for stand alone parallel code.
     integer, optional, intent(in) :: wrfits,wrfite,wrfjts,wrfjte
-#ifdef MPP_LAND
     call  MPP_LAND_INIT()
-#endif
 
 ! Initialize namelist variables to dummy values, so we can tell
 ! if they have not been set properly.
@@ -1338,25 +1329,9 @@ endif
 ! Initialize gridded domain
 !----------------------------------------------------------------------
 
-#ifdef MPP_LAND
-#ifdef WRF_HYDRO
-    if(finemesh .ne. 0) then
-         xstart = (wrfits-1)*finemesh_factor + 1
-         xend = (wrfite-1)*finemesh_factor
-         ystart = (wrfjts-1)*finemesh_factor + 1
-         yend = (wrfjte-1)*finemesh_factor
-         call CPL_LAND_INIT(xstart,xend, ystart,yend)
-         ix_tmp = xend - xstart + 1
-         jx_tmp = yend - ystart + 1
-    else
-#endif
        call read_dim(hrldas_setup_file,ix_tmp,jx_tmp)
        call MPP_LAND_PAR_INI(1,ix_tmp,jx_tmp,1)
        call getLocalXY(ix_tmp,jx_tmp,xstart,ystart,xend,yend)
-#ifdef WRF_HYDRO
-    endif
-#endif
-#endif
 
   call read_hrldas_hdrinfo(hrldas_setup_file, ix, jx, xstart, xend, ystart, yend, &
        iswater, islake, isurban, isice, llanduse, dx, dy, truelat1, truelat2, cen_lon, lat1, lon1, &
@@ -1368,14 +1343,9 @@ endif
 
   startdate = olddate
 
-#ifdef MPP_LAND
    ix = ix_tmp
    jx = jx_tmp
-#endif
 
-#ifdef WRF_HYDRO
-    forcdate = olddate
-#endif
 
   ids = xstart
   ide = xend
@@ -2093,10 +2063,6 @@ END IF
 !------------------------------------------------------------------------
 
 
-#ifdef WRF_HYDRO
-   allocate( greenfrac   (XSTART:XEND,YSTART:YEND))
-   greenfrac = 0
-#endif
 
   COSZEN     = undefined_real
   XLAT       = undefined_real
@@ -2558,9 +2524,7 @@ END IF
 
      call read_restart(trim(restart_flnm), xstart, xend, xstart, ixfull, jxfull, nsoil, olddate)
 
-#ifdef MPP_LAND
      call mpp_land_bcast_char(19,OLDDATE(1:19))
-#endif
 
      call get_from_restart(xstart, xend, xstart, ixfull, jxfull, "SOIL_T"  , TSLB     )
      call get_from_restart(xstart, xend, xstart, ixfull, jxfull, "SNOW_T"  , TSNOXY   )
@@ -3056,27 +3020,10 @@ if (IOPT_MOSAIC.eq.0) then
      SNOW      =  undefined_real
      SNOWH     =  undefined_real
 
-#ifdef WRF_HYDRO
-  if((forc_typ .gt. 2) .and. (forc_typ .ne. 6) ) HRLDAS_ini_typ = 0
-
-  if(HRLDAS_ini_typ .eq. 1) then
-     ! read initial parameters and conditions from the HRLDAS forcing data
-     if(forc_typ .eq. 2) then
-          inflnm = trim(indir)//"/"//&
-          startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
-          startdate(15:16)//".LDASIN_DOMAIN"//hgrid
-     else
-          inflnm = trim(indir)//"/"//&
-          startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
-          ".LDASIN_DOMAIN"//hgrid
-     endif
-
-#else
 
      inflnm = trim(indir)//"/"//&
           startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
           ".LDASIN_DOMAIN"//hgrid
-#endif
 
      CALL READINIT_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           NSOIL, DZS, OLDDATE, LDASIN_VERSION, SMOIS,       &
@@ -3090,27 +3037,6 @@ if (IOPT_MOSAIC.eq.0) then
      CALL READVEG_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           OLDDATE, IVGTYP, VEGFRA, LAI, GVFMIN, GVFMAX)
 
-#ifdef WRF_HYDRO
-  else   !  HRLDAS_ini_typ
-
-#ifdef MPP_LAND
-    call HYDRO_HRLDAS_ini_mpp   &
-#else
-    call HYDRO_HRLDAS_ini   &
-#endif
-       (trim(hrldas_setup_file), xend-xstart+1,yend-ystart+1, &
-       nsoil,SMOIS(:,1:NSOIL,:),TSLB(:,1:NSOIL,:),SH2O(:,1:NSOIL,:), CANWAT, TSK,SNOW,SNOWH,lai,VEGFRA,IVGTYP,FNDSNOWH)
-
-       greenfrac = 0.0
-#ifdef MPP_LAND
-       call get_greenfrac_mpp &
-#else
-       call get_greenfrac &
-#endif
-        (trim(GEO_STATIC_FLNM),greenfrac, ix, jx, olddate, SHDMAX)
-       !yw GVFMAX = maxval(greenfrac)
-  endif
-#endif
 
 !     SNOW = SNOW * 1000.    ! Convert snow water equivalent to mm. MB: remove v3.7
 
@@ -3238,27 +3164,10 @@ if (IOPT_MOSAIC.eq.0) then
      SNOW      =  undefined_real
      SNOWH     =  undefined_real
 
-#ifdef WRF_HYDRO
-  if((forc_typ .gt. 2) .and. (forc_typ .ne. 6) ) HRLDAS_ini_typ = 0
-
-  if(HRLDAS_ini_typ .eq. 1) then
-     ! read initial parameters and conditions from the HRLDAS forcing data
-     if(forc_typ .eq. 2) then
-          inflnm = trim(indir)//"/"//&
-          startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
-          startdate(15:16)//".LDASIN_DOMAIN"//hgrid
-     else
-          inflnm = trim(indir)//"/"//&
-          startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
-          ".LDASIN_DOMAIN"//hgrid
-     endif
-
-#else
 
      inflnm = trim(indir)//"/"//&
           startdate(1:4)//startdate(6:7)//startdate(9:10)//startdate(12:13)//&
           ".LDASIN_DOMAIN"//hgrid
-#endif
 
      CALL READINIT_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           NSOIL, DZS, OLDDATE, LDASIN_VERSION, SMOIS,       &
@@ -3272,27 +3181,6 @@ if (IOPT_MOSAIC.eq.0) then
      CALL READVEG_HRLDAS(HRLDAS_SETUP_FILE, xstart, xend, ystart, yend,  &
           OLDDATE, IVGTYP, VEGFRA, LAI, GVFMIN, GVFMAX)
 
-#ifdef WRF_HYDRO
-  else   !  HRLDAS_ini_typ
-
-#ifdef MPP_LAND
-    call HYDRO_HRLDAS_ini_mpp   &
-#else
-    call HYDRO_HRLDAS_ini   &
-#endif
-       (trim(hrldas_setup_file), xend-xstart+1,yend-ystart+1, &
-       nsoil,SMOIS(:,1:NSOIL,:),TSLB(:,1:NSOIL,:),SH2O(:,1:NSOIL,:), CANWAT, TSK,SNOW,SNOWH,lai,VEGFRA,IVGTYP,FNDSNOWH)
-
-       greenfrac = 0.0
-#ifdef MPP_LAND
-       call get_greenfrac_mpp &
-#else
-       call get_greenfrac &
-#endif
-        (trim(GEO_STATIC_FLNM),greenfrac, ix, jx, olddate, SHDMAX)
-       !yw GVFMAX = maxval(greenfrac)
-  endif
-#endif
 
   !     SNOW = SNOW * 1000.    ! Convert snow water equivalent to mm. MB: remove v3.7
 
@@ -3472,46 +3360,6 @@ if (IOPT_MOSAIC.eq.0) then
   call system_clock(count=clock_count_1)   ! Start a timer
 
 
-#ifdef WRF_HYDRO
-   allocate( infxsrt   (ix,jx) )
-   allocate( sfcheadrt (ix,jx) )
-   allocate( soldrain  (ix,jx) )
-   allocate( etpnd     (ix,jx) )
-   allocate( prcp0     (ix,jx) )
-   allocate( qtiledrain(ix,jx) )
-   allocate( ZWATBLE2D (ix,jx) )
-
-   prcp0     = 0
-   sfcheadrt = 0.0
-   infxsrt   = 0.0
-   etpnd     = 0.0
-   soldrain  = 0.0
-   qtiledrain= 0.0
-   ZWATBLE2D = 0.0
-
-   allocate(zsoil (NSOIL))
-   zsoil = 0
-
-   zsoil(1) = -1*soil_thick_input(1)
-   do kk = 2, NSOIL
-      zsoil(kk) = zsoil(kk-1)-soil_thick_input(kk)
-   end do
-
-   print*, "zsoil/soil_thick_input = ", soil_thick_input(1:NSOIL)
-
-   call hrldas_drv_HYDRO_ini(TSLB(:,1:NSOIL,:),SMOIS(:,1:NSOIL,:),SH2O(:,1:NSOIL,:), &
-         infxsrt,sfcheadrt,soldrain,qtiledrain,ZWATBLE2D,ix,jx,NSOIL, SMOIS,real(noah_timestep),&
-         olddate,zsoil(1:NSOIL))
-
-   if(finemesh .ne. 0 ) then
-       if(restart_flag) then
-          NTIME_out =  10
-       else
-          NTIME_out =  1
-       endif
-       return
-   endif
-#endif
 
    NTIME_out = NTIME
 
@@ -3538,39 +3386,8 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
      ! Build a filename template
      inflnm_template = trim(indir)//"/<date>.LDASIN_DOMAIN"//hgrid
 
-#ifdef MPP_LAND
      call mpp_land_bcast_char(19,OLDDATE(1:19))
-#endif
 
-#ifdef WRF_HYDRO
-
-#ifdef MPP_LAND
-     call mpp_land_bcast_char(19,forcDate(1:19))
-#endif
-     if(finemesh .ne. 0) goto 991
-
-     if(forc_typ .eq. 0) then
-        CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
-             XSTART, XEND, YSTART, YEND,                                  &
-       forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
-       forcing_name_LW,forcing_name_SW,forcing_name_PR,forcing_name_SN, &
-       T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),          &
-       P8W(:,1,:), GLW, SWDOWN, RAINBL_tmp, SNOWBL, VEGFRA, update_veg, LAI, update_lai, reset_spinup_date, startdate)
-        VEGFRA = VEGFRA * 100.
-     else
-        if(olddate == forcDate) then
-           LAI_tmp = LAI
-           CALL HYDRO_frocing_drv(trim(indir), forc_typ,snow_assim,olddate,                      &
-               xstart, xend, ystart, yend,    &
-               T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),P8W(:,1,:),    &
-               GLW,SWDOWN,RAINBL_tmp,LAI,VEGFRA,SNOWH,ITIME,FORCING_TIMESTEP,prcp0)
-
-           call geth_newdate(newdate, forcDate, FORCING_TIMESTEP)
-           forcDate = newdate
-        endif
-     endif
-
-#else
      CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
           XSTART, XEND, YSTART, YEND,                                  &
        forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
@@ -3581,7 +3398,6 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
            VEGFRA = VEGFRA * 100.   ! added for input vegfra as a fraction (0~1)
        endif
 
-#endif
 
 991  continue
 
@@ -3742,9 +3558,6 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
 !                SPRIR_RATE_2D,MICIR_RATE_2D,FIRTFAC_2D,IR_RAIN_2D,           &
 !		 BVIC_2D,AXAJ_2D,BXAJ_2D,XXAJ_2D,BDVIC_2D,GDVIC_2D,BBVIC_2D,  &
 
-#ifdef WRF_HYDRO
-                 sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &    !O
-#endif
                 ids,ide, jds,jde, kds,kde,                      &
                 ims,ime, jms,jme, kms,kme,                      &
                 its,ite, jts,jte, kts,kte,        &
@@ -3893,39 +3706,8 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
   ! Build a filename template
   inflnm_template = trim(indir)//"/<date>.LDASIN_DOMAIN"//hgrid
 
-#ifdef MPP_LAND
   call mpp_land_bcast_char(19,OLDDATE(1:19))
-#endif
 
-#ifdef WRF_HYDRO
-
-#ifdef MPP_LAND
-  call mpp_land_bcast_char(19,forcDate(1:19))
-#endif
-  if(finemesh .ne. 0) goto 9955
-
-  if(forc_typ .eq. 0) then
-     CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
-          XSTART, XEND, YSTART, YEND,                                  &
-    forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
-    forcing_name_LW,forcing_name_SW,forcing_name_PR,forcing_name_SN, &
-    T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),          &
-    P8W(:,1,:), GLW, SWDOWN, RAINBL_tmp, SNOWBL, VEGFRA, update_veg, LAI, update_lai, reset_spinup_date, startdate)
-     VEGFRA = VEGFRA * 100.
-  else
-     if(olddate == forcDate) then
-        LAI_tmp = LAI
-        CALL HYDRO_frocing_drv(trim(indir), forc_typ,snow_assim,olddate,                      &
-            xstart, xend, ystart, yend,    &
-            T_PHY(:,1,:),QV_CURR(:,1,:),U_PHY(:,1,:),V_PHY(:,1,:),P8W(:,1,:),    &
-            GLW,SWDOWN,RAINBL_tmp,LAI,VEGFRA,SNOWH,ITIME,FORCING_TIMESTEP,prcp0)
-
-        call geth_newdate(newdate, forcDate, FORCING_TIMESTEP)
-        forcDate = newdate
-     endif
-  endif
-
-#else
   CALL READFORC_HRLDAS(INFLNM_TEMPLATE, FORCING_TIMESTEP, OLDDATE,  &
        XSTART, XEND, YSTART, YEND,                                  &
     forcing_name_T,forcing_name_Q,forcing_name_U,forcing_name_V,forcing_name_P, &
@@ -3936,7 +3718,6 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
         VEGFRA = VEGFRA * 100.   ! added for input vegfra as a fraction (0~1)
     endif
 
-#endif
 
 9955  continue
 
@@ -4093,9 +3874,6 @@ IF (ITIME > 0) THEN
                ACC_SSOILXY, ACC_QINSURXY, ACC_QSEVAXY, ACC_ETRANIXY, EFLXBXY, &
                SOILENERGY, SNOWENERGY, CANHSXY, &
                ACC_DWATERXY, ACC_PRCPXY, ACC_ECANXY, ACC_ETRANXY, ACC_EDIRXY, &
-#ifdef WRF_HYDRO
-                sfcheadrt,INFXSRT,soldrain,qtiledrain,ZWATBLE2D,             &    !O
-#endif
                 ids,ide,  jds,jde,  kds,kde,                    &
                 ims,ime,  jms,jme,  kms,kme,                    &
                 its,ite,  jts,jte,  kts,kte,                    &
@@ -4452,10 +4230,6 @@ ENDIF ! End mosaic if else swap
           timing_sum, real(sflx_count_sum) / real(clock_rate)
      clock_count_1 = clock_count_2
 
-#ifdef WRF_HYDRO
-      call hrldas_drv_HYDRO(TSLB(:,1:NSOIL,:),SMOIS(:,1:NSOIL,:),SH2O(:,1:NSOIL,:),infxsrt,&
-                            sfcheadrt,soldrain,qtiledrain,ZWATBLE2D,ix,jx,NSOIL)
-#endif
 
 end subroutine land_driver_exe
 
