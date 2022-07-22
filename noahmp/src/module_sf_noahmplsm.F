@@ -931,17 +931,11 @@ IF(OPT_HUE.eq.1) THEN
        END IF
      END IF
 ELSE
-IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) DZSNSO
      IF(IST == 1) THEN
         BEG_WB = CANLIQ + CANICE + SNEQV + WA
         DO IZ = 1,NSOIL
            BEG_WB = BEG_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
         END DO
-        IF ((ILOC.eq.4).and.(JLOC.eq.129)) THEN
-            WRITE(*,*) 'CANLIQ', CANLIQ, 'CANICE', CANICE
-            WRITE(*,*) 'SMC', SMC
-            WRITE(*,*) 'SNEQV', SNEQV, 'WA' , WA, 'BEG_WB', BEG_WB
-        END IF
 
      END IF
 END IF ! end the HUE change to the water balance
@@ -6898,7 +6892,6 @@ END IF
           SNOWH = SNOWH + DZSNSO(IZ)
        ENDDO
    END IF
-IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) 'END SNOWATER', ISNOW, ZSNSO, SNOWH,DZSNSO
   END SUBROUTINE SNOWWATER
 
 !== begin snowfall =================================================================================
