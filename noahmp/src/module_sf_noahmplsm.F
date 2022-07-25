@@ -1077,7 +1077,6 @@ END IF ! end the HUE change to the water balance
     QVAP = MAX( FGEV/LATHEAG, 0.0)       ! positive part of fgev; Barlage change to ground v3.6
     QDEW = ABS( MIN(FGEV/LATHEAG, 0.0))  ! negative part of fgev
     EDIR = QVAP - QDEW
-    WRITE(*,*) 'QVAP',QVAP,'QDEW',QDEW
     IF(OPT_HUE.eq.1) BTRANI_dummy(1:NSOIL) = BTRANI(1:NSOIL) ! added by Aaron A. for HUE
 ! compute water budgets (water storages, ET components, and runoff)
 
@@ -1855,7 +1854,6 @@ END_WB = 0.0
 
 
      ELSE
-
        END_WB = CANLIQ + CANICE + SNEQV + WA
        DO IZ = 1,NSOIL
           END_WB = END_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
@@ -6443,7 +6441,6 @@ END IF
        QSNSUB = MIN(QVAP, SNEQV/DT)
      ENDIF
      QSEVA = QVAP-QSNSUB
-
      QSNFRO = 0.0
      IF (SNEQV > 0.0) THEN
         QSNFRO = QDEW
@@ -6855,7 +6852,6 @@ END IF
    END IF
 
 ! sum up snow mass for layered snow
-
    IF(ISNOW < 0) THEN  ! MB: only do for multi-layer
        SNEQV = 0.0
        DO IZ = ISNOW+1,0
@@ -7017,7 +7013,7 @@ END IF
                 SNICE(J+1) = SNICE(J+1) + SNICE(J)
                 DZSNSO(J+1) = DZSNSO(J+1) + DZSNSO(J)
              ELSE
-               IF (ISNOW_OLD < -1) THEN    ! MB/KM: change to ISNOW
+               IF (ISNOW < -1) THEN    ! MB/KM: change to ISNOW ! Changed to ISNOW based on this advice. Aaron a. (STopped it from crashing)
                 SNLIQ(J-1) = SNLIQ(J-1) + SNLIQ(J)
                 SNICE(J-1) = SNICE(J-1) + SNICE(J)
                 DZSNSO(J-1) = DZSNSO(J-1) + DZSNSO(J)
@@ -7494,7 +7490,6 @@ END IF
 ! ----------------------------------------------------------------------
 
 !for the case when SNEQV becomes '0' after 'COMBINE'
-
    IF(SNEQV == 0.0) THEN
       SICE(1) =  SICE(1) + (QSNFRO-QSNSUB)*DT/(DZSNSO(1)*1000.0)  ! Barlage: SH2O->SICE v3.6
       IF(SICE(1) < 0.0) THEN
@@ -7534,7 +7529,7 @@ END IF
 ! for deep snow
 
    IF ( ISNOW < 0 ) THEN !KWM added this IF statement to prevent out-of-bounds array references
-
+      
       WGDIF = SNICE(ISNOW+1) - QSNSUB*DT + QSNFRO*DT
       SNICE(ISNOW+1) = WGDIF
       IF (WGDIF < 1.0e-6 .and. ISNOW <0) THEN

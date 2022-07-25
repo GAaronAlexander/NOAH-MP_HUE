@@ -4063,9 +4063,9 @@ ENDIF ! End mosaic if else swap
               !call add_to_output(TSNOXY     , "SNOW_T"  , "snow temperature"                     , "K"              , "SNOW")
         ! Snow - 2D terms
               !call add_to_output(SNOWH      , "SNOWH"   , "Snow depth"                           , "m"                     )
-              !call add_to_output(SNOW       , "SNEQV"   , "Snow water equivalent"                , "kg m{-2}"              )
+              call add_to_output(SNOW       , "SNEQV"   , "Snow water equivalent"                , "kg m{-2}"              )
               !call add_to_output(QSNOWXY    , "QSNOW"   , "Snowfall rate on the ground"          , "mm s{-1}"              )
-              !call add_to_output(QRAINXY    , "QRAIN"   , "Rainfall rate on the ground"          , "mm s{-1}"              )
+              call add_to_output(QRAINXY    , "QRAIN"   , "Rainfall rate on the ground"          , "mm s{-1}"              )
               !call add_to_output(ISNOWXY    , "ISNOW"   , "Number of snow layers"                , "count"                 )
               !call add_to_output(SNOWC      , "FSNO"    , "Snow-cover fraction on the ground"      , ""                    )
               !call add_to_output(ACSNOW     , "ACSNOW"  , "accumulated snow fall"                  , "mm"                  )
