@@ -6530,7 +6530,6 @@ type(noahmp_parameters) :: parameters
               RUNSB  = RUNSB * dt
          ELSE
               ICE=0                              ! Neither sea ice or land ice.
-IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM IN THE DRIVER RIGHT BEFORE SFLX', ISNOW
               CALL NOAHMP_SFLX (parameters, &
                  I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
                  DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
@@ -6645,7 +6644,6 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM IN THE DRIVER RIGHT BEFORE SFLX', IS
                   QSFC     (I,J)                = QSFC1D
 
                   ISNOWXY  (I,J)                = ISNOW
-IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'WE GOT BACK FROM SFLX', ISNOWXY(I,J), ISNOW
                   TVXY     (I,J)                = TV
                   TGXY     (I,J)                = TG
                   CANLIQXY (I,J)                = CANLIQ
@@ -7172,7 +7170,6 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'WE GOT BACK FROM SFLX', ISNOWXY(I,J), I
               !IN/OUT with no GENERIC LSM
 
               isnowxy_mosaic(I,mosaic_i,J) = ISNOWXY(I,J)
-IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'MOSAIC STORE', ISNOWXY_MOSAIC(I,mosaic_i,J), ISNOWXY(I,J)
               tvxy_mosaic(I,mosaic_i,J) = TVXY(I,J)
               tgxy_mosaic(I,mosaic_i,J) = TGXY(I,J)
               canicexy_mosaic(I,mosaic_i,J) = CANICEXY(I,J)
@@ -7572,7 +7569,6 @@ IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'MOSAIC STORE', ISNOWXY_MOSAIC(I,mosaic_
               ENDDO
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
-              IF ((I.eq.4).and.(J.eq.129)) WRITE(*,*) 'IM AFTER THE DRIVER FOR AVERAGING', ISNOWXY(I,J), isnowxy_mosaic_avg(I,J), mosaic_cat, isnowxy_mosaic(i,1:5,j)
               IF(SNOWH(I,J).ne.0.0.and.QSNOWXY(I,J).eq.0.0) THEN
               DO LAYER= 1,mosaic_cat 
                  IF ((SNOWH_MOSAIC(I,LAYER,J).ne.0.0).and.(QSNOWXY_mosaic(I,LAYER,J).eq.0.0)) THEN

@@ -938,17 +938,11 @@ IF(OPT_HUE.eq.1) THEN
        END IF
      END IF
 ELSE
-IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) DZSNSO
      IF(IST == 1) THEN
         BEG_WB = CANLIQ + CANICE + SNEQV + WA
         DO IZ = 1,NSOIL
            BEG_WB = BEG_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
         END DO
-        IF ((ILOC.eq.4).and.(JLOC.eq.129)) THEN
-            WRITE(*,*) 'CANLIQ', CANLIQ, 'CANICE', CANICE
-            WRITE(*,*) 'SMC', SMC
-            WRITE(*,*) 'SNEQV', SNEQV, 'WA' , WA, 'BEG_WB', BEG_WB
-        END IF
 
      END IF
 END IF ! end the HUE change to the water balance
@@ -1085,10 +1079,12 @@ END IF ! end the HUE change to the water balance
 
     SICE(:) = MAX(0.0, SMC(:) - SH2O(:))
     SNEQVO  = SNEQV
-
+    
+    
     QVAP = MAX( FGEV/LATHEAG, 0.0)       ! positive part of fgev; Barlage change to ground v3.6
     QDEW = ABS( MIN(FGEV/LATHEAG, 0.0))  ! negative part of fgev
     EDIR = QVAP - QDEW
+    WRITE(*,*) 'QVAP',QVAP,'QDEW',QDEW
     IF(OPT_HUE.eq.1) BTRANI_dummy(1:NSOIL) = BTRANI(1:NSOIL) ! added by Aaron A. for HUE
 ! compute water budgets (water storages, ET components, and runoff)
 
@@ -1875,10 +1871,6 @@ END_WB = 0.0
       old_ecan = ACC_ECAN
       old_etran = ACC_ETRAN
       old_edir = ACC_EDIR
-      IF ((ILOC.eq.4).and.(JLOC.eq.129)) THEN
-            WRITE(*,*) 'CANLIQ', CANLIQ, 'CANICE', CANICE
-            WRITE(*,*) 'SNEQV', SNEQV, 'WA' , WA
-        END IF
 
       ! accumualted water change (only for canopy and snow during non-soil timestep)
       ACC_DWATER = ACC_DWATER + (END_WB - BEG_WB)  ! snow, canopy, and soil water change
@@ -6888,7 +6880,6 @@ END IF
           SNOWH = SNOWH + DZSNSO(IZ)
        ENDDO
    END IF
-IF ((ILOC.eq.4).and.(JLOC.eq.129)) WRITE(*,*) 'END SNOWATER', ISNOW, ZSNSO, SNOWH,DZSNSO
   END SUBROUTINE SNOWWATER
 
 !== begin snowfall =================================================================================
