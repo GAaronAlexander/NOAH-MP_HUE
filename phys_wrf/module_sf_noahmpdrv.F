@@ -7391,7 +7391,8 @@ type(noahmp_parameters) :: parameters
                 IVGTYP(I,J) == 45.or. IVGTYP(I,J) == ISBARREN_TABLE ) THEN
                 FAREA2 = 0.0 !This is a fix to change how the urban areas/barren areas
                 ! We are only going to be outputting the average of the vegetated area.
-              ENDIF
+                WRITE(*,*) 'WE ARE IN THE FOR LOOP'
+               ENDIF
               
 
               TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
@@ -7582,10 +7583,10 @@ type(noahmp_parameters) :: parameters
               FAREA2 = 0.
 
               DO mosaic_i= 1,mosaic_cat
-                IF( mosaic_cat_index(I,mosaic_i,J) /= ISURBAN_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= LCZ_1_TABLE .or. &
-                   mosaic_cat_index(I,mosaic_i,J) /= LCZ_2_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= LCZ_3_TABLE .or. mosaic_cat_index(I,mosaic_i,J) /= 42 .or. & 
-                   mosaic_cat_index(I,mosaic_i,J)/= 44 .or. IVGTYP(I,J) /= 45.or. mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE ) THEN
-
+                IF( (mosaic_cat_index(I,mosaic_i,J) /= ISURBAN_TABLE) .and.( mosaic_cat_index(I,mosaic_i,J) /= LCZ_1_TABLE) .and. &
+                   (mosaic_cat_index(I,mosaic_i,J) /= LCZ_2_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= LCZ_3_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= 42) .and. & 
+                   (mosaic_cat_index(I,mosaic_i,J)/= 44) .and. (IVGTYP(I,J) /= 45).and. (mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE) ) THEN
+                  
                   FAREA2 = FAREA2 + landusef2(I,mosaic_i,J)
                 ENDIF
               END DO
@@ -7671,7 +7672,7 @@ type(noahmp_parameters) :: parameters
               RECHXY(I,J) = rechxy_mosaic_avg(I,J)
 
               !out variables only
-
+              if(FAREA2.lt.0.99) WRITE(*,*) FAREA2
               T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)/FAREA2
               T2MBXY(I,J) = t2mbxy_mosaic_avg(I,J)
               Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)/FAREA2

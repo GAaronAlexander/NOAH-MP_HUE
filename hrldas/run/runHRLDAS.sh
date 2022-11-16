@@ -2,7 +2,7 @@
 #
 # LSF batch script to run the test MPI code
 #
-#PBS -N HRLDAS-jupiter-intel-milwaukee
+#PBS -N HRLDAS-restart-test
 #PBS -A UWIS0037                                     
 #PBS -l walltime=04:00:00                            
 #PBS -q regular                                      
