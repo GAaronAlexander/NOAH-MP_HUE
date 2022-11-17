@@ -2437,7 +2437,6 @@ END IF
      ISWATER, ISLAKE, IVGTYP, ISLTYP, TERRAIN, TMN, XLAT, XLONG, XLAND, SEAICE,MSFTX,MSFTY, &
      IOPT_MOSAIC, geogrid_file_name_for_mosaic,number_land_use_catagories,LANDUSEF) !Added by Aaron A.
 
-
   WHERE(SEAICE > 0.0) XICE = 1.0
 
 !------------------------------------------------------------------------
@@ -3814,7 +3813,6 @@ IF (ITIME > 0) THEN
 ! Timing information for SFLX:
  call system_clock(count=count_before_sflx, count_rate=clock_rate)
  
- WRITE(*,*) "GOT HERE"
  
  CALL noahmplsm_mosaic_hue(ITIMESTEP,        YR,   JULIAN,   COSZEN,XLAT,XLONG, & ! IN : Time/Space-related
                    DZ8W,       DTBL,       DZS,    NUM_SOIL_LAYERS,       DX,            & ! IN : Model configuration

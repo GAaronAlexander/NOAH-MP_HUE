@@ -5989,6 +5989,7 @@ type(noahmp_parameters) :: parameters
                RS(I,J) = rs_mosaic(I,mosaic_i,J)
                !These are IN/OUT variables that do not have an LSM equivelant
                ISNOWXY(I,J) = isnowxy_mosaic(I,mosaic_i,J)
+               if (ISNOWXY(I,J)<0) WRITE(*,*) I,J,'BAD',XLAND(I,J)
                TVXY(I,J) = tvxy_mosaic(I,mosaic_i,J)
                TGXY(I,J) = tgxy_mosaic(I,mosaic_i,J)
                CANICEXY(I,J) = canicexy_mosaic(I,mosaic_i,J)
@@ -7333,7 +7334,6 @@ type(noahmp_parameters) :: parameters
                 IVGTYP(I,J) == 45.or. IVGTYP(I,J) == ISBARREN_TABLE ) THEN
                 FAREA2 = 0.0 !This is a fix to change how the urban areas/barren areas
                 ! We are only going to be outputting the average of the vegetated area.
-                WRITE(*,*) 'WE ARE IN THE FOR LOOP'
                ENDIF
               
 
@@ -7614,7 +7614,6 @@ type(noahmp_parameters) :: parameters
               RECHXY(I,J) = rechxy_mosaic_avg(I,J)
 
               !out variables only
-              if(FAREA2.lt.0.99) WRITE(*,*) FAREA2
               T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)/FAREA2
               T2MBXY(I,J) = t2mbxy_mosaic_avg(I,J)
               Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)/FAREA2
