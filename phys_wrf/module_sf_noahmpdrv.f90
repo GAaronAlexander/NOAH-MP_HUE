@@ -634,17 +634,18 @@ CONTAINS
     REAL, DIMENSION( 1:nsoil ) :: SAND
     REAL, DIMENSION( 1:nsoil ) :: CLAY
     REAL, DIMENSION( 1:nsoil ) :: ORGM
+    ! added for complience with Noah-mp HUE scheme (doesnt change a thing, jsut stops an error) Aaron A.
+    REAL,    DIMENSION( 1:nsoil)  ::  SMC_intermediate     ! volumetric soil moisture [m3/m3]
+    REAL,    DIMENSION( 1:nsoil)  ::  SH2O_intermediate      ! volumetric liquid soil moisture [m3/m3]
 
     type(noahmp_parameters) :: parameters
 
 
 ! ----------------------------------------------------------------------
-
     CALL NOAHMP_OPTIONS(IDVEG  ,IOPT_CRS  ,IOPT_BTR  ,IOPT_RUN  ,IOPT_SFC  ,IOPT_FRZ , &
                 IOPT_INF  ,IOPT_RAD  ,IOPT_ALB  ,IOPT_SNF  ,IOPT_TBOT, IOPT_STC  ,     &
 		IOPT_RSF  ,IOPT_SOIL ,IOPT_PEDO ,IOPT_CROP ,IOPT_IRR , IOPT_IRRM ,     &
                 IOPT_INFDV,IOPT_TDRN,IOPT_MOSAIC, IOPT_HUE )
-
     IPRINT    =  .false.                     ! debug printout
 
 ! for using soil update timestep difference from noahmp main timestep
@@ -804,6 +805,10 @@ CONTAINS
        ISNOW                 = ISNOWXY (I,J)                ! snow layers []
        SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
        SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
+       ! added by Aaron A.
+       SMC_intermediate(1:NSOIL) = SMOIS(I, 1:NSOIL,J)     ! volumetric soil moisture [m3/m3] Aaron a. doesnt change a thing
+       SH2O_intermediate(1:NSOIL) = SH2O(I, 1:NSOIL,J)      ! volumetric liquid soil moisture [m3/m3] Aaron a. Doesnt change a thing
+       ! end added by Aaron A.
        STC  (-NSNOW+1:    0) = TSNOXY  (I,-NSNOW+1:    0,J) ! snow temperatures [K]
        STC  (      1:NSOIL)  = TSLB    (I,      1:NSOIL,J)  ! soil temperatures [K]
        SWE                   = SNOW    (I,J)                ! snow water equivalent [mm]
@@ -970,7 +975,6 @@ CONTAINS
 !       parameters%td_ddrain = TD_DDRAIN(I,J)      ! depth of drain
 !       parameters%td_radi   = TD_RADI  (I,J)      ! tile radius
 !       parameters%td_spac   = TD_SPAC  (I,J)      ! tile spacing
-
 
        CALL TRANSFER_MP_PARAMETERS(VEGTYP,SOILTYP,SLOPETYP,SOILCOLOR,CROPTYPE,parameters)
 
@@ -1195,8 +1199,8 @@ CONTAINS
             RAININ  , SNOWIN  , ACC_SSOIL, ACC_QINSUR, ACC_QSEVA      , & ! OUT :
             ACC_ETRANI, HCPCT , EFLXB   , CANHS   ,                     & ! OUT :
             ACC_DWATER, ACC_PRCP, ACC_ECAN, ACC_ETRAN, ACC_EDIR         & ! INOUT
+            ,SMC_INTERMEDIATE, SH2O_INTERMEDIATE                        & ! added by AARON A. changes nothing without mosaic
             )            ! OUT :
-
             QFX(I,J) = ECAN + ESOIL + ETRAN + EIRR
             LH(I,J)  = FCEV + FGEV  + FCTR  + FIRR
 
@@ -1452,6 +1456,9 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
              VEGTYPE == LCZ_9_TABLE      .or. VEGTYPE == LCZ_10_TABLE .or. VEGTYPE == LCZ_11_TABLE ) THEN
       parameters%URBAN_FLAG = .TRUE.
   ENDIF
+  IF( VEGTYPE == 42 .or. VEGTYPE == 44 .or. VEGTYPE == 45) THEN
+     parameters%URBAN_FLAG = .TRUE.
+  ENDIF
 
 !------------------------------------------------------------------------------------------!
 ! Transfer veg parameters
@@ -1605,6 +1612,36 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
 ! ----------------------------------------------------------------------
 !  Transfer soil parameters
 ! ----------------------------------------------------------------------
+! Adjust the parameter definitions associated with the soil IF the vegetation type
+! is equal to permeable pavements. This soil type is based on the baseline soil
+! type within the WRF SOIL.TBL, but has a higher saturated hydraulic conductivity
+
+IF(VEGTYPE.EQ.44) THEN !Permeable Pavement Added by Aaron A.
+    do isoil = 1, 2
+      parameters%BEXP(isoil)   = BEXP_TABLE   (1)
+      parameters%DKSAT(isoil)  = 1.0E-4
+      parameters%DWSAT(isoil)  = DWSAT_TABLE  (1)
+      parameters%PSISAT(isoil) = PSISAT_TABLE (1)
+      parameters%QUARTZ(isoil) = QUARTZ_TABLE (1)
+      parameters%SMCDRY(isoil) = SMCDRY_TABLE (1)
+      parameters%SMCMAX(isoil) = 0.4
+      parameters%SMCREF(isoil) = SMCREF_TABLE (1)
+      parameters%SMCWLT(isoil) = SMCWLT_TABLE (1)
+    end do
+ ELSE IF(VEGTYPE.EQ.46) THEN ! Green Roof Added by Aaron A.
+    do isoil = 1, size(soiltype)
+      parameters%BEXP(isoil)   = BEXP_TABLE   (4)
+      parameters%DKSAT(isoil)  = DKSAT_TABLE  (4)
+      parameters%DWSAT(isoil)  = DWSAT_TABLE  (4)
+      parameters%PSISAT(isoil) = PSISAT_TABLE (4)
+      parameters%QUARTZ(isoil) = QUARTZ_TABLE (5)
+      parameters%SMCDRY(isoil) = 0.1
+      parameters%SMCMAX(isoil) = 0.4
+      parameters%SMCREF(isoil) = 0.335
+      parameters%SMCWLT(isoil) = 0.1
+
+    end do
+ELSE
     do isoil = 1, size(soiltype)
       parameters%BEXP(isoil)   = BEXP_TABLE   (SOILTYPE(isoil))
       parameters%DKSAT(isoil)  = DKSAT_TABLE  (SOILTYPE(isoil))
@@ -1616,6 +1653,9 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
       parameters%SMCREF(isoil) = SMCREF_TABLE (SOILTYPE(isoil))
       parameters%SMCWLT(isoil) = SMCWLT_TABLE (SOILTYPE(isoil))
     end do
+ENDIF
+
+
     parameters%F1     = F1_TABLE(SOILTYPE(1))
     parameters%REFDK  = REFDK_TABLE
     parameters%REFKDT = REFKDT_TABLE
@@ -1666,7 +1706,7 @@ SUBROUTINE TRANSFER_MP_PARAMETERS(VEGTYPE,SOILTYPE,SLOPETYPE,SOILCOLOR,CROPTYPE,
     parameters%KDT    = parameters%REFKDT * parameters%DKSAT(1) / parameters%REFDK
     parameters%SLOPE  = SLOPE_TABLE(SLOPETYPE)
 
-    IF(parameters%URBAN_FLAG)THEN  ! Hardcoding some urban parameters for soil
+    IF((parameters%URBAN_FLAG).or.(VEGTYPE.EQ.41))THEN  ! Hardcoding some urban parameters for soil
        !parameters%SMCMAX = 0.45
        !parameters%SMCREF = 0.42
        !parameters%SMCWLT = 0.40
@@ -3401,12 +3441,8 @@ ILOOP : DO I = its, ite
     FRC_URB  = FRC_URB2D(I,J)
     LB_URB   = LB_URB2D(I,J)
     CHECK    = 0
-    IF (I.EQ.73.AND.J.EQ.125)THEN
-      CHECK = 1
-    END IF
 
 ! Call urban
-
     CALL cal_mon_day(julian,julyr,jmonth,jday)
     CALL urban(LSOLAR_URB,                                                             & ! I
           num_roof_layers, num_wall_layers, num_road_layers,                           & ! C
@@ -3709,63 +3745,64 @@ END SUBROUTINE noahmp_urban
 !
 !============================================================================================
    SUBROUTINE NOAHMP_MOSAIC_INIT(XLAND, SNOW , SNOWH , CANWAT , ISLTYP ,   IVGTYP, XLAT, &
-          TSLB , SMOIS , SH2O , DZS , FNDSOILW , FNDSNOWH ,             &
-          TSK, isnowxy , tvxy     ,tgxy     ,canicexy ,         TMN,     XICE,   &
-          canliqxy ,eahxy    ,tahxy    ,cmxy     ,chxy     ,                     &
-          fwetxy   ,sneqvoxy ,alboldxy ,qsnowxy, qrainxy, wslakexy, zwtxy, waxy, &
-          wtxy     ,tsnoxy   ,zsnsoxy  ,snicexy  ,snliqxy  ,lfmassxy ,rtmassxy , &
-          stmassxy ,woodxy   ,stblcpxy ,fastcpxy ,xsaixy   ,lai      ,           &
-          grainxy  ,gddxy    ,                                                   &
-          croptype ,cropcat  ,                      &
-       irnumsi, irnummi, irnumfi, irwatsi,                                    &
-       irwatmi, irwatfi, ireloss, irsivol,                                    &
-       irmivol, irfivol, irrsplh,                                             &
-!jref:start
-       t2mvxy   ,t2mbxy   ,chstarxy,            &
-!jref:end
-       num_soil_layers, restart,                 &
-       allowed_to_read , iopt_run,  iopt_crop, iopt_irr, iopt_irrm,          &
-       sf_urban_physics, ISWATER, ISICE,                        &  ! urban scheme
-       ids,ide, jds,jde, kds,kde,                &
-       ims,ime, jms,jme, kms,kme,                &
-       its,ite, jts,jte, kts,kte,                &
-       smoiseq, smcwtdxy, rechxy, deeprechxy,    &
-       LANDUSEF, LANDUSEF2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-       mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
-       noahmp_HUE_iopt,                                                      &
-       TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
-       CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
-       isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
-       TMN_mosaic, canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,              &      ! Added by Aaron A.
-       cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A.
-       alboldxy_mosaic, qsnowxy_mosaic,qrainxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
-       waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
-       snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
-       stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
-       xsaixy_mosaic, lai_mosaic, grainxy_mosaic, gddxy_mosaic,              &      ! Added by Aaron A.
-       t2mvxy_mosaic, t2mbxy_mosaic, chstarxy_mosaic,                        &      ! Added by Aaron A.
+                           TSLB , SMOIS , SH2O , DZS , FNDSOILW , FNDSNOWH ,             &
+                           TSK, isnowxy , tvxy     ,tgxy     ,canicexy ,         TMN,     XICE,   &
+                           canliqxy ,eahxy    ,tahxy    ,cmxy     ,chxy     ,                     &
+                           fwetxy   ,sneqvoxy ,alboldxy ,qsnowxy, qrainxy, wslakexy, zwtxy, waxy, &
+                           wtxy     ,tsnoxy   ,zsnsoxy  ,snicexy  ,snliqxy  ,lfmassxy ,rtmassxy , &
+                           stmassxy ,woodxy   ,stblcpxy ,fastcpxy ,xsaixy   ,lai      ,           &
+                           grainxy  ,gddxy    ,                                                   &
+                           croptype ,cropcat  ,                      &
+                           irnumsi, irnummi, irnumfi, irwatsi,                                    &
+                           irwatmi, irwatfi, ireloss, irsivol,                                    &
+                           irmivol, irfivol, irrsplh,                                             &
+                    !jref:start
+                           t2mvxy   ,t2mbxy   ,chstarxy,            &
+                    !jref:end
+                           num_soil_layers, restart,                 &
+                           allowed_to_read , iopt_run,  iopt_crop, iopt_irr, iopt_irrm,          &
+                           sf_urban_physics, ISWATER, ISICE,                        &  ! urban scheme
+                           ISURBAN, fractional_seaice,                              &
+                           ids,ide, jds,jde, kds,kde,                &
+                           ims,ime, jms,jme, kms,kme,                &
+                           its,ite, jts,jte, kts,kte,                &
+                           smoiseq, smcwtdxy, rechxy, deeprechxy,    &
+                           LANDUSEF, LANDUSEF2, NLCAT, IOPT_MOSAIC,                     &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                           mosaic_cat_index, mosaic_cat,                                         &      ! Added by Aaron A. **IMPORTANT FOR THE FOR LOOPS OF FRACTIONAL LAND USE
+                           IOPT_HUE,                                                      &
+                           TSK_mosaic, TSLB_mosaic, SMOIS_mosaic, SH2O_mosaic,                   &      ! Added by Aaron A.
+                           CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,                             &      ! Added by Aaron A.
+                           isnowxy_mosaic, tvxy_mosaic, tgxy_mosaic, canicexy_mosaic,            &      ! Added by Aaron A.
+                           canliqxy_mosaic, eahxy_mosaic, tahxy_mosaic,              &      ! Added by Aaron A.
+                           cmxy_mosaic, chxy_mosaic, fwetxy_mosaic, sneqvoxy_mosaic,             &      ! Added by Aaron A.
+                           alboldxy_mosaic, qsnowxy_mosaic,qrainxy_mosaic, wslakexy_mosaic, zwtxy_mosaic,       &      ! Added by Aaron A.
+                           waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A.
+                           snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A.
+                           stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A.
+                           xsaixy_mosaic, lai_mosaic,               &      ! Added by Aaron A.
 
-       IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &
-       IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &
-       IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &
+                           IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &
+                           IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &
+                           IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &
 
 
-       smoiseq_mosaic,  smcwtdxy_mosaic, rechxy_mosaic, deeprechxy_mosaic,   &
+                           smoiseq_mosaic,  smcwtdxy_mosaic, rechxy_mosaic, deeprechxy_mosaic,   &
 
-       TR_URB2D_mosaic, TB_URB2D_mosaic,                                     &      ! Added by Aaron A.
-       TG_URB2D_mosaic, TC_URB2D_mosaic, QC_URB2D_mosaic,                    &      ! Added by Aaron A.
-       TRL_URB3D_mosaic, TBL_URB3D_mosaic,                                   &      ! Added by Aaron A.
-       TGL_URB3D_mosaic, SH_URB2D_mosaic, LH_URB2D_mosaic,                   &      ! Added by Aaron A.
-       G_URB2D_mosaic, RN_URB2D_mosaic, TS_URB2D_mosaic,                     &      ! Added by Aaron A.
-       CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic, CMC_SFCDIF_mosaic,              &
-       CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic, CHGR_SFCDIF_mosaic,            &
-       XXXR_URB2D_mosaic, XXXB_URB2D_mosaic, XXXG_URB2D_mosaic,              &
-       CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
-       TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
-       DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
-       FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,     &
-       DETENTION_STORAGEXY_mosaic                                            &
-         )                                                            ! Added by Aaron A.             ! Added by Aaron A.
+                           TR_URB2D_mosaic, TB_URB2D_mosaic,                                     &      ! Added by Aaron A.
+                           TG_URB2D_mosaic, TC_URB2D_mosaic, QC_URB2D_mosaic,                    &      ! Added by Aaron A.
+                           TRL_URB3D_mosaic, TBL_URB3D_mosaic,                                   &      ! Added by Aaron A.
+                           TGL_URB3D_mosaic, SH_URB2D_mosaic, LH_URB2D_mosaic,                   &      ! Added by Aaron A.
+                           G_URB2D_mosaic, RN_URB2D_mosaic, TS_URB2D_mosaic,                     &      ! Added by Aaron A.
+                           CMR_SFCDIF_mosaic, CHR_SFCDIF_mosaic, CMC_SFCDIF_mosaic,              &
+                           CHC_SFCDIF_mosaic, CMGR_SFCDIF_mosaic, CHGR_SFCDIF_mosaic,            &
+                           XXXR_URB2D_mosaic, XXXB_URB2D_mosaic, XXXG_URB2D_mosaic,              &
+                           XXXC_URB2D_mosaic,                                                    &
+                           CMCR_URB2D_mosaic, TGR_URB2D_mosaic,                                  &
+                           TGRL_URB3D_mosaic, SMR_URB3D_mosaic,                                  &
+                           DRELR_URB2D_mosaic, DRELB_URB2D_mosaic, DRELG_URB2D_mosaic,           &
+                           FLXHUMR_URB2D_mosaic, FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,     &
+                           DETENTION_STORAGEXY_mosaic,                       & ! HUE Specific Variables
+                           Z0, ZNT_mosaic, Z0_mosaic)                                                   ! Added by Aaron A. )                                                            ! Added by Aaron A.             ! Added by Aaron A.
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ! This initilization functions to first generate an ordering of fractioanl land use based on each grid cell.
@@ -3795,7 +3832,7 @@ END SUBROUTINE noahmp_urban
          &                           ims,ime, jms,jme, kms,kme,  &
          &                           its,ite, jts,jte, kts,kte
 
-    INTEGER, INTENT(IN)       ::     num_soil_layers, iopt_run, iopt_crop, ISWATER, ISICE
+    INTEGER, INTENT(IN)       ::     num_soil_layers, iopt_run, iopt_crop, ISWATER,ISURBAN, ISICE, fractional_seaice
 
     LOGICAL, INTENT(IN)       ::     restart,                    &
          &                           allowed_to_read
@@ -3897,7 +3934,6 @@ END SUBROUTINE noahmp_urban
 
   !variables with dimensions 1:mosaic_cat
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TSK_mosaic
-  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TMN_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CANWAT_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOW_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: SNOWH_mosaic
@@ -3922,8 +3958,6 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rtmassxy_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stmassxy_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: woodxy_mosaic
-  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: grainxy_mosaic
-  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gddxy_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stblcpxy_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fastcpxy_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: xsaixy_mosaic
@@ -3947,13 +3981,8 @@ END SUBROUTINE noahmp_urban
   REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TBL_URB3D_mosaic
   REAL, OPTIONAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ), INTENT(INOUT) :: TGL_URB3D_mosaic
 
-  !Now add the final mosaic checks for jref:start and jref:end
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mvxy_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: t2mbxy_mosaic
-  REAL, OPTIONAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), INTENT(INOUT) :: chstarxy_mosaic
-
   ! Needed for future integration of
-  REAL, DIMENSION(ims:ime,1:num_soil_layers*mosaic_cat,jms:jme), INTENT(INOUT) , OPTIONAL :: smoiseq_mosaic !equilibrium soil moisture content [m3m-3]
+  REAL, DIMENSION(ims:ime,1:num_soil_layers*mosaic_cat,jms:jme), INTENT(INOUT) , OPTIONAL :: smoiseq_mosaic ! equilibrium soil moisture content [m3m-3]
   REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: smcwtdxy_mosaic    !deep soil moisture content [m3m-3]
   REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: deeprechxy_mosaic  !deep recharge [m]
   REAL, DIMENSION(ims:ime,1:mosaic_cat, jms:jme), INTENT(INOUT) , OPTIONAL :: rechxy_mosaic      !accu
@@ -3993,6 +4022,7 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXR_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXB_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXG_URB2D_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: XXXC_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: CMCR_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: TGR_URB2D_mosaic
 
@@ -4006,14 +4036,17 @@ END SUBROUTINE noahmp_urban
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMB_URB2D_mosaic
   REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: FLXHUMG_URB2D_mosaic
   ! HUE Variables
-  REAL, DIMENSION( ims:ime, 1:num_soil_layers*mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT) :: DETENTION_STORAGEXY_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT) :: DETENTION_STORAGEXY_mosaic
 
-
+  !variables for surface roughness
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme) , OPTIONAL, INTENT(INOUT) :: Z0_mosaic
+  REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme) , OPTIONAL, INTENT(INOUT) :: ZNT_mosaic
+  REAL, DIMENSION( ims:ime, jms:jme) , OPTIONAL, INTENT(INOUT) :: Z0
 
 
 
   INTEGER :: ij, i,j,mosaic_i,LastSwap,NumPairs,soil_k, Temp2,Temp5,Temp7, ICE,temp_index
-  REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x 
+  REAL :: Temp, Temp3,Temp4,Temp6,xice_threshold,x
   INTEGER, DIMENSION(7) :: HUE_noahmp_extracatagories ! added by Aaron A.
   INTEGER :: LC, CAT_interested, temp_master_index
   REAL :: temp_master_LUF
@@ -4024,7 +4057,12 @@ END SUBROUTINE noahmp_urban
   IPRINT=.false.
 
 
-  xice_threshold = 0.5
+  if ( fractional_seaice == 0 ) then
+     xice_threshold = 0.5
+  else if ( fractional_seaice == 1 ) then
+     xice_threshold = 0.02
+  endif
+
 
   !===========================================================================
   ! CHOOSE THE TILES
@@ -4066,6 +4104,7 @@ END SUBROUTINE noahmp_urban
                IF (NumPairs == 0) EXIT
                    LastSwap = 1
           DO  mosaic_i=1, NumPairs
+
             IF(LANDUSEF2(i,mosaic_i, j) < LANDUSEF2(i,mosaic_i+1, j)  ) THEN
                Temp = LANDUSEF2(i,mosaic_i, j)
                LANDUSEF2(i,mosaic_i, j)=LANDUSEF2(i,mosaic_i+1, j)
@@ -4230,60 +4269,265 @@ END SUBROUTINE noahmp_urban
           ENDDO
       ENDDO
 
-  !===========================================================================
-  ! Swap the data so that 'paired' land-types are. We are going to
-  ! order them in a specific way.
-  ! Ordered so:
-  ! Urban Tree over pavement (41)
-  ! Urban Tree (47)
-  ! Urban To Turfgrass (42)
-  ! Urban Turfgrass (43)
-  ! Urban to Permeable Pavement (45)
-  ! Urban Permeable Pavement (44)
-  ! Green Roof (46)
-  ! EVERYTHING ELSE
-  !===========================================================================
-  HUE_noahmp_extracatagories = (/41,47,42,43,45,44,46/)
-  IF (noahmp_HUE_iopt.eq.1) THEN ! this means that there are extra land-use values
-    DO i = its,itf
-      do j = jts, jtf
+      !===========================================================================
+      ! Swap the data so that 'paired' land-types are. We are going to
+      ! order them in a specific way.
+      ! Ordered so:
+      ! Urban Tree over pavement (41)
+      ! Urban Tree (47)
+      ! Urban To Turfgrass (42)
+      ! Urban Turfgrass (43)
+      ! Urban to Permeable Pavement (45)
+      ! Urban Permeable Pavement (44)
+      ! Green Roof (46)
+      ! EVERYTHING ELSE
+      ! This assumes that you have done the work to add in extra grids
+      ! Note we do not need to re-organize 46, because there
+      ! is no paired land use
+      !===========================================================================
+      IF (iopt_HUE.eq.1) THEN ! this means that there are extra land-use values
+    
+        DO i = its,itf ! Loop over the i tile
+          do j = jts, jtf ! loop over the j tile
+            !set our indicies
+            index_41 = -1
+            index_47 = -1
+            index_42 = -1
+            index_43 = -1
+            index_45 = -1
+            index_44 = -1
 
-        DO LC = 1,size(HUE_noahmp_extracatagories)
-          CAT_interested = HUE_noahmp_extracatagories(LC)
-
+            ! first find the locations of the indexes
             DO  mosaic_i=1, NLCAT
+              ! first reorganizing 41 and 47
+              IF (mosaic_cat_index(i,mosaic_i,j).eq.41) THEN
+                index_41 = mosaic_i
 
-              !Check if we have the interested catagory
-                IF(mosaic_cat_index(i,mosaic_i,j) == CAT_interested) THEN
-                  ! Determine if the interested catagory is in the
-                    IF(mosaic_i==LC)THEN ! we are already in the correct space!
-                      EXIT ! There is nothing to do!
-                    ELSE
-                      temp_master_index = mosaic_cat_index(i,mosaic_i,j)
-                      mosaic_cat_index(i,LC+1:mosaic_i+1,j) = mosaic_cat_index(i,LC:mosaic_i,j)
-                      mosaic_cat_index(i,LC,j) = temp_master_index
+              elseif (mosaic_cat_index(i,mosaic_i,j).eq.47) then
+                index_47 = mosaic_i
 
-                      temp_master_LUF = LANDUSEF2(i,mosaic_i,j)
-                      LANDUSEF2(i,LC+1:mosaic_i,j) = LANDUSEF2(i,LC:mosaic_i-1,j)
-                      LANDUSEF2(i,LC,j) = temp_master_LUF
+              ENDIF
+            ENDDO
 
-                      EXIT !We re-ordered what we needed to do !
-                    ENDIF
-                ENDIF
+            ! check to see if these are still negavitve. If they aren't, we can
+            ! re-organize
 
-              ENDDO ! end the number of LAND-USE CATs
+            if ((index_41.gt.0).and.(index_47.gt.0) ) then !we can reorganize
+              if ((LANDUSEF2(i,index_41,j).gt.0.).and.(LANDUSEF2(i,index_47,j).gt.0.)) THEN
 
-            ENDDO ! end HUE_noahmp_extracatagories loop
-          ENDDO ! end j loop
-        ENDDO ! end i loop
+                  if ( index_41.lt.index_47 ) then !means that we are 41.....47, move together
+
+                    temp_master_index= mosaic_cat_index(i,index_47,j)
+                    mosaic_cat_index(i,index_41+2:index_47,j) = mosaic_cat_index(i,index_41+1:index_47-1,j)
+                    mosaic_cat_index(i,index_41+1,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_47,j)
+                    LANDUSEF2(i,index_41+2:index_47,j) = LANDUSEF2(i,index_41+1:index_47-1,j)
+                    LANDUSEF2(i,index_41+1,j) = temp_master_LUF
+                  ELSE !This means we are ordered 47 .... 41, so we need to move and then swap
+
+                    temp_master_index = mosaic_cat_index(i,index_41,j)
+                    mosaic_cat_index(i,index_47+2:index_41,j) = mosaic_cat_index(i,index_47+1:index_41-1,j)
+                    mosaic_cat_index(i,index_47+1,j) = temp_master_index
+                    
+                    temp_master_LUF = LANDUSEF2(i,index_41,j)
+                    LANDUSEF2(i,index_47+2:index_41,j) = LANDUSEF2(i,index_47+1:index_41-1,j)
+                    LANDUSEF2(i,index_47+1,j) = temp_master_LUF
+                    ! now swap so it goes 41 47 instead of 47 41
+
+                    temp_master_index = mosaic_cat_index(i,index_47,j)
+                    mosaic_cat_index(i,index_47,j) = mosaic_cat_index(i,index_47+1,j)
+                    mosaic_cat_index(i,index_47+1,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_47,j)
+                    LANDUSEF2(i,index_47,j) = LANDUSEF2(i,index_47+1,j)
+                    LANDUSEF2(i,index_47+1,j) = temp_master_LUF
+
+                  end if
+                  
+                else !make sure that if HUE is active but not all of the new 
+                    if ((LANDUSEF2(i,index_41,j).eq.0.)) then
+                         temp_master_index = mosaic_cat_index(i,index_41,j)
+                         mosaic_cat_index(i,index_41:NLCAT-1,j) = mosaic_cat_index(i,index_41+1:NLCAT,j)
+                        mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                        temp_master_LUF = LANDUSEF2(i,index_41,j)
+                        LANDUSEF2(i,index_41:NLCAT-1,j) = LANDUSEF2(i,index_41+1:NLCAT,j)
+                        LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                        
+                    else if  ((LANDUSEF2(i,index_47,j).eq.0.)) then
+                         temp_master_index = mosaic_cat_index(i,index_41,j)
+                         mosaic_cat_index(i,index_41:NLCAT-1,j) = mosaic_cat_index(i,index_41+1:NLCAT,j)
+                        mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                        temp_master_LUF = LANDUSEF2(i,index_41,j)
+                        LANDUSEF2(i,index_41:NLCAT-1,j) = LANDUSEF2(i,index_41+1:NLCAT,j)
+                        LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                    endif
+            end if
+        end if ! end the urban tree loop
+
+      ! repeat process because index locations of 42 and 43 may have changed!
+
+            ! first find the locations of the indexes for 42 and 43
+            DO  mosaic_i=1, NLCAT
+              ! first reorganizing 42 and 43
+              IF (mosaic_cat_index(i,mosaic_i,j).eq.42) THEN
+                index_42 = mosaic_i
+
+              elseif (mosaic_cat_index(i,mosaic_i,j).eq.43) then
+                index_43 = mosaic_i
+
+              ENDIF
+            ENDDO
+
+            ! check to see if these are still negavitve. If they aren't, we can
+            ! re-organize
+
+            if ((index_42.gt.0).and.(index_43.gt.0) ) then !we can reorganize
+            
+            if ((LANDUSEF2(i,index_42,j).gt.0.).and.(LANDUSEF2(i,index_43,j).gt.0.)) THEN
+
+               if ( index_42.lt.index_43 ) then !means that we are 42.....43, move together
+
+                temp_master_index= mosaic_cat_index(i,index_43,j)
+                mosaic_cat_index(i,index_42+2:index_43,j) = mosaic_cat_index(i,index_42+1:index_43-1,j)
+                mosaic_cat_index(i,index_42+1,j) = temp_master_index
+
+                temp_master_LUF = LANDUSEF2(i,index_43,j)
+                LANDUSEF2(i,index_42+2:index_43,j) = LANDUSEF2(i,index_42+1:index_43-1,j)
+                LANDUSEF2(i,index_42+1,j) = temp_master_LUF
+              ELSE !This means we are ordered 43 .... 42, so we need to move and then swap
+
+                temp_master_index = mosaic_cat_index(i,index_42,j)
+                mosaic_cat_index(i,index_43+2:index_42,j) = mosaic_cat_index(i,index_43+1:index_42-1,j)
+                mosaic_cat_index(i,index_43+1,j) = temp_master_index
+
+                temp_master_LUF = LANDUSEF2(i,index_42,j)
+                LANDUSEF2(i,index_43+2:index_42,j) = LANDUSEF2(i,index_43+1:index_42-1,j)
+                LANDUSEF2(i,index_43+1,j) = temp_master_LUF
+
+                ! now swap so it goes 42 43 instead of 43 42
+
+                temp_master_index = mosaic_cat_index(i,index_43,j)
+                mosaic_cat_index(i,index_43,j) = mosaic_cat_index(i,index_43+1,j)
+                mosaic_cat_index(i,index_43+1,j) = temp_master_index
+
+                temp_master_LUF = LANDUSEF2(i,index_43,j)
+                LANDUSEF2(i,index_43,j) = LANDUSEF2(i,index_43+1,j)
+                LANDUSEF2(i,index_43+1,j) = temp_master_LUF
 
 
+                  
+                end if
+              
+            else !make sure that if HUE is active but not all of the new 
+                if ((LANDUSEF2(i,index_42,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_42,j)
+                     mosaic_cat_index(i,index_42:NLCAT-1,j) = mosaic_cat_index(i,index_42+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
 
-  ENDIF !end hue noahmp sort
+                    temp_master_LUF = LANDUSEF2(i,index_42,j)
+                    LANDUSEF2(i,index_42:NLCAT-1,j) = LANDUSEF2(i,index_42+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
 
-  !===========================================================================
-  ! normalize
-  !===========================================================================
+                else if  ((LANDUSEF2(i,index_43,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_43,j)
+                     mosaic_cat_index(i,index_43:NLCAT-1,j) = mosaic_cat_index(i,index_43+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_43,j)
+                    LANDUSEF2(i,index_43:NLCAT-1,j) = LANDUSEF2(i,index_43+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                endif
+                
+            end if
+
+            end if ! end urban disconnection to turfgrass
+
+      ! repeat process because index locations of 45 and 44 may have changed!
+
+            ! first find the locations of the indexes for 42 and 43
+              DO  mosaic_i=1, NLCAT
+              ! first reorganizing 42 and 43
+                  IF (mosaic_cat_index(i,mosaic_i,j).eq.45) THEN
+                    index_45 = mosaic_i
+
+                  elseif (mosaic_cat_index(i,mosaic_i,j).eq.44) then
+                    index_44 = mosaic_i
+
+                  ENDIF
+                ENDDO
+
+              ! check to see if these are still negavitve. If they aren't, we can
+              ! re-organize
+
+              if ((index_45.gt.0).and.(index_44.gt.0) ) then !we can reorganize
+              
+               if ((LANDUSEF2(i,index_45,j).gt.0.).and.(LANDUSEF2(i,index_44,j).gt.0.)) THEN
+
+                    if ( index_45.lt.index_44) then !means that we are 45.....44, move together
+
+                      temp_master_index= mosaic_cat_index(i,index_44,j)
+                      mosaic_cat_index(i,index_45+2:index_44,j) = mosaic_cat_index(i,index_45+1:index_44-1,j)
+                      mosaic_cat_index(i,index_45+1,j) = temp_master_index
+
+                      temp_master_LUF = LANDUSEF2(i,index_44,j)
+                      LANDUSEF2(i,index_45+2:index_44,j) = LANDUSEF2(i,index_45+1:index_44-1,j)
+                      LANDUSEF2(i,index_45+1,j) = temp_master_LUF
+
+                    ELSE !This means we are ordered 44 .... 45, so we need to move and then swap
+
+                      temp_master_index = mosaic_cat_index(i,index_45,j)
+                      mosaic_cat_index(i,index_44+2:index_45,j) = mosaic_cat_index(i,index_44+1:index_45-1,j)
+                      mosaic_cat_index(i,index_44+1,j) = temp_master_index
+
+                      temp_master_LUF = LANDUSEF2(i,index_45,j)
+                      LANDUSEF2(i,index_44+2:index_45,j) = LANDUSEF2(i,index_44+1:index_45-1,j)
+                      LANDUSEF2(i,index_44+1,j) = temp_master_LUF
+
+                      ! now swap so it goes 45 44 instead of 44 45
+
+                      temp_master_index = mosaic_cat_index(i,index_44,j)
+                      mosaic_cat_index(i,index_44,j) = mosaic_cat_index(i,index_44+1,j)
+                      mosaic_cat_index(i,index_44+1,j) = temp_master_index
+
+                      temp_master_LUF = LANDUSEF2(i,index_44,j)
+                      LANDUSEF2(i,index_44,j) = LANDUSEF2(i,index_44+1,j)
+                      LANDUSEF2(i,index_44+1,j) = temp_master_LUF
+
+                    end if
+                    
+             else !make sure that if HUE is active but not all of the new 
+                if ((LANDUSEF2(i,index_44,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_44,j)
+                     mosaic_cat_index(i,index_44:NLCAT-1,j) = mosaic_cat_index(i,index_44+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_44,j)
+                    LANDUSEF2(i,index_44:NLCAT-1,j) = LANDUSEF2(i,index_44+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+
+                else if  ((LANDUSEF2(i,index_45,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_45,j)
+                     mosaic_cat_index(i,index_45:NLCAT-1,j) = mosaic_cat_index(i,index_45+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_45,j)
+                    LANDUSEF2(i,index_45:NLCAT-1,j) = LANDUSEF2(i,index_45+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                endif
+            end if
+          end if ! end urban to permeable pavements
+      
+
+
+      ENDDO
+      ENDDO
+      ENDIF !end hue noahmp sort
+      !===========================================================================
+      ! normalize
+      !===========================================================================
 
      DO i = its,itf
         DO j = jts,jtf
@@ -4316,26 +4560,51 @@ WRITE(*,*) "POST NORMALIZATION"
   !===========================================================================
   ! initilize the variables
   !===========================================================================
+DO i = its,itf !this is always, at least for now
+        DO j = jts,jtf
+               
+             DO mosaic_i=1,mosaic_cat  
+             
+              DO snow_layer=1,7
+                zsnsoxy_mosaic(i,7*(mosaic_i-1)+snow_layer,j)=zsnsoxy(i,snow_layer-3,j)
+              ENDDO
+             ENDDO
+        ENDDO
+ENDDO
+
 IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
   ! things already generated/read in
      DO i = its,itf
         DO j = jts,jtf
-
+               
              DO mosaic_i=1,mosaic_cat
 
                 !add qualifer for the mosaic croptpes
+            ZNT_mosaic(i,mosaic_i,j)=Z0(i,j) !roughness following Dan Li in Noah model
+            Z0_mosaic(i,mosaic_i,j)=Z0(i,j) !roughness following Dan LI in Noah Model
+            
+            IF (ALL(TSK_mosaic .EQ. 0)) THEN ! warm season coupling of restart. Add the rest later!! aarona
+               TSK_mosaic(i,mosaic_i,j)=TSK(i,j)
+               CANWAT_mosaic(i,mosaic_i,j)=CANWAT(i,j)
+               canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
+               canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j) 
 
-            TSK_mosaic(i,mosaic_i,j)=TSK(i,j)
-            CANWAT_mosaic(i,mosaic_i,j)=CANWAT(i,j)
+              DO soil_k=1,num_soil_layers
+
+              TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+              SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+              SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+
+              ENDDO
+           ENDIF
             SNOW_mosaic(i,mosaic_i,j)=SNOW(i,j)
             SNOWH_mosaic(i,mosaic_i,j)=SNOWH(i,j)
 
-            TMN_mosaic(i,mosaic_i,j)=TMN(i,j)
             tvxy_mosaic(i,mosaic_i,j)=tvxy(i,j)
             tgxy_mosaic(i,mosaic_i,j)=tgxy(i,j)
 
-            canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
-            canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j)
+            !canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
+            !canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j)
 
             eahxy_mosaic(i,mosaic_i,j)=eahxy(i,j)
             tahxy_mosaic(i,mosaic_i,j)=tahxy(i,j)
@@ -4358,33 +4627,30 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
             stmassxy_mosaic(i,mosaic_i,j)=stmassxy(i,j)
 
             woodxy_mosaic(i,mosaic_i,j)=woodxy(i,j)
-            grainxy_mosaic(i,mosaic_i,j)=grainxy(i,j)
-            gddxy_mosaic(i,mosaic_i,j)=gddxy(i,j)
             stblcpxy_mosaic(i,mosaic_i,j)=stblcpxy(i,j)
             fastcpxy_mosaic(i,mosaic_i,j)=fastcpxy(i,j)
             xsaixy_mosaic(i,mosaic_i,j)=xsaixy(i,j)
             lai_mosaic(i,mosaic_i,j)=lai(i,j)
 
-            t2mvxy_mosaic(i,mosaic_i,j)=t2mvxy(i,j)
-            t2mbxy_mosaic(i,mosaic_i,j)=t2mbxy(i,j)
-            chstarxy_mosaic(i,mosaic_i,j)=chstarxy(i,j)
 
-              DO soil_k=1,num_soil_layers
+             ! DO soil_k=1,num_soil_layers
 
-              TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
-              SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
-              SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
-              IF (noahmp_HUE_iopt.eq.1) THEN 
-                DETENTION_STORAGEXY_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,J) = 0.
+              !TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+              !SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+              !SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+
+              !ENDDO
+
+              IF (IOPT_HUE.eq.1) THEN
+                DETENTION_STORAGEXY_mosaic(i,mosaic_i,J) = 0.
               ENDIF
-              ENDDO
            !!snow things
            isnowxy_mosaic(i,mosaic_i,j)=isnowxy(i,j)
-           
+
            DO snow_layer=1,7
             zsnsoxy_mosaic(i,7*(mosaic_i-1)+snow_layer,j)=zsnsoxy(i,snow_layer-3,j)
            ENDDO
-           
+
           DO top_layer=1,3
             tsnoxy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=tsnoxy(i,top_layer-3,j)
             snicexy_mosaic(i,3*(mosaic_i-1)+top_layer,j)=snicexy(i,top_layer-3,j)
@@ -4395,7 +4661,7 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
                         if(iopt_irr >= 1 .and. iopt_irr <= 3) then
                            if(iopt_irrm == 0 .or. iopt_irrm ==1) then       ! sprinkler
                               IRNUMSI_mosaic(i,mosaic_i,j) = 0
-                              IRNUMSI_mosaic(i,mosaic_i,j) = 0.
+                              IRWATSI_mosaic(i,mosaic_i,j) = 0.
                               IRELOSS_mosaic(i,mosaic_i,j) = 0.
                               IRRSPLH_mosaic(i,mosaic_i,j) = 0.
                            else if (iopt_irrm == 0 .or. iopt_irrm ==2) then ! micro or drip
@@ -4409,7 +4675,7 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
                            end if
                         end if
 
-           
+
            TR_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
            TB_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
            TG_URB2D_mosaic(i,mosaic_i,j)=TSK(i,j)
@@ -4456,6 +4722,7 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
           XXXR_URB2D_mosaic(I,mosaic_i,J)=0.
           XXXB_URB2D_mosaic(I,mosaic_i,J)=0.
           XXXG_URB2D_mosaic(I,mosaic_i,J)=0.
+          XXXC_URB2D_mosaic(I,mosaic_i,J)=0.
           CMCR_URB2D_mosaic(I,mosaic_i,J)=0.
 
           TGR_URB2D_mosaic(I,mosaic_i,J)=TSK(I,J)+0.
@@ -4505,41 +4772,41 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
 !--------------------------------
 SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XLONG, & ! IN : Time/Space-related
                   DZ8W,       DT,       DZS,    NSOIL,       DX,            & ! IN : Model configuration
-	        IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
-		 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
-	       PLANTING,  HARVEST,SEASON_GDD,                               &
+                IVGTYP,   ISLTYP,    VEGFRA,   VEGMAX,      TMN,            & ! IN : Vegetation/Soil characteristics
+                 XLAND,     XICE,XICE_THRES,  CROPCAT,                      & ! IN : Vegetation/Soil characteristics
+               PLANTING,  HARVEST,SEASON_GDD,                               &
                  IDVEG, IOPT_CRS,  IOPT_BTR, IOPT_RUN, IOPT_SFC, IOPT_FRZ,  & ! IN : User options
               IOPT_INF, IOPT_RAD,  IOPT_ALB, IOPT_SNF,IOPT_TBOT, IOPT_STC,  & ! IN : User options
               IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP, IOPT_IRR,  & ! IN : User options
-              IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, IOPT_MOSAIC, IOPT_HUE, soilstep,  &
-               IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
-	      SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
+        IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, IOPT_MOSAIC, IOPT_HUE, soilstep,  & ! IN: User options (aaron a.)
+              IZ0TLND, SF_URBAN_PHYSICS,                                    & ! IN : User options
+              SOILCOMP,  SOILCL1,  SOILCL2,   SOILCL3,  SOILCL4,            & ! IN : User options
                    T3D,     QV3D,     U_PHY,    V_PHY,    SWDOWN,     SWDDIR,&
                 SWDDIF,      GLW,                                           & ! IN : Forcing
-		 P8W3D,PRECIP_IN,        SR,                                & ! IN : Forcing
-              IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
+                 P8W3D,PRECIP_IN,        SR,                                & ! IN : Forcing
+                IRFRACT, SIFRACT,   MIFRACT,  FIFRACT,                      & ! IN : Irrigation fractions
                    TSK,      HFX,      QFX,        LH,   GRDFLX,    SMSTAV, & ! IN/OUT LSM eqv
                 SMSTOT,SFCRUNOFF, UDRUNOFF,    ALBEDO,    SNOWC,     SMOIS, & ! IN/OUT LSM eqv
-		  SH2O,     TSLB,     SNOW,     SNOWH,   CANWAT,    ACSNOM, & ! IN/OUT LSM eqv
-		ACSNOW,    EMISS,     QSFC,                                 & ! IN/OUT LSM eqv
- 		    Z0,      ZNT,                                           & ! IN/OUT LSM eqv
-        IRNUMSI,  IRNUMMI,  IRNUMFI,   IRWATSI,  IRWATMI,    IRWATFI, & ! IN/OUT Irrigation
-        IRELOSS,  IRSIVOL,  IRMIVOL,   IRFIVOL,  IRRSPLH,   LLANDUSE, & ! IN/OUT Irrigation
+                  SH2O,     TSLB,     SNOW,     SNOWH,   CANWAT,    ACSNOM, & ! IN/OUT LSM eqv
+                ACSNOW,    EMISS,     QSFC,                                 & ! IN/OUT LSM eqv
+                    Z0,      ZNT,                                           & ! IN/OUT LSM eqv
+              IRNUMSI,  IRNUMMI,  IRNUMFI,   IRWATSI,  IRWATMI,    IRWATFI, & ! IN/OUT Irrigation
+              IRELOSS,  IRSIVOL,  IRMIVOL,   IRFIVOL,  IRRSPLH,   LLANDUSE, & ! IN/OUT Irrigation
                ISNOWXY,     TVXY,     TGXY,  CANICEXY, CANLIQXY,     EAHXY, & ! IN/OUT Noah MP only
-	         TAHXY,     CMXY,     CHXY,    FWETXY, SNEQVOXY,  ALBOLDXY, & ! IN/OUT Noah MP only
-               QSNOWXY, QRAINXY, WSLAKEXY,    ZWTXY,      WAXY,     WTXY,    TSNOXY, & ! IN/OUT Noah MP only
-	       ZSNSOXY,  SNICEXY,  SNLIQXY,  LFMASSXY, RTMASSXY,  STMASSXY, & ! IN/OUT Noah MP only
-	        WOODXY, STBLCPXY, FASTCPXY,   XLAIXY,   XSAIXY,   TAUSSXY, & ! IN/OUT Noah MP only
-	       SMOISEQ, SMCWTDXY,DEEPRECHXY,   RECHXY,  GRAINXY,    GDDXY,PGSXY,  & ! IN/OUT Noah MP only
+                 TAHXY,     CMXY,     CHXY,    FWETXY, SNEQVOXY,  ALBOLDXY, & ! IN/OUT Noah MP only
+      QSNOWXY, QRAINXY, WSLAKEXY,    ZWTXY,      WAXY,     WTXY,    TSNOXY, & ! IN/OUT Noah MP only
+               ZSNSOXY,  SNICEXY,  SNLIQXY,  LFMASSXY, RTMASSXY,  STMASSXY, & ! IN/OUT Noah MP only
+                 WOODXY, STBLCPXY, FASTCPXY,   XLAIXY,   XSAIXY,   TAUSSXY, & ! IN/OUT Noah MP only
+	     SMOISEQ, SMCWTDXY,DEEPRECHXY,   RECHXY,  GRAINXY,    GDDXY,PGSXY,  & ! IN/OUT Noah MP only
                GECROS_STATE,                                                & ! IN/OUT gecros model
-               QTDRAIN, TD_FRACTION,                                  &
-	        T2MVXY,   T2MBXY,    Q2MVXY,   Q2MBXY,                      & ! OUT Noah MP only
-	        TRADXY,    NEEXY,    GPPXY,     NPPXY,   FVEGXY,   RUNSFXY, & ! OUT Noah MP only !added by Aaron A.
-	       RUNSBXY,   ECANXY,   EDIRXY,   ETRANXY,    FSAXY,    FIRAXY, & ! OUT Noah MP only
-	        APARXY,    PSNXY,    SAVXY,     SAGXY,  RSSUNXY,   RSSHAXY, & ! OUT Noah MP only
-		BGAPXY,   WGAPXY,    TGVXY,     TGBXY,    CHVXY,     CHBXY, & ! OUT Noah MP only
-		 SHGXY,    SHCXY,    SHBXY,     EVGXY,    EVBXY,     GHVXY, & ! OUT Noah MP only
-		 GHBXY,    IRGXY,    IRCXY,     IRBXY,     TRXY,     EVCXY, & ! OUT Noah MP only
+                     QTDRAIN, TD_FRACTION,                                  &
+                T2MVXY,   T2MBXY,    Q2MVXY,   Q2MBXY,                      & ! OUT Noah MP only
+                TRADXY,    NEEXY,    GPPXY,     NPPXY,   FVEGXY,   RUNSFXY, & ! OUT Noah MP only !added by Aaron A.
+               RUNSBXY,   ECANXY,   EDIRXY,   ETRANXY,    FSAXY,    FIRAXY, & ! OUT Noah MP only
+                APARXY,    PSNXY,    SAVXY,     SAGXY,  RSSUNXY,   RSSHAXY, & ! OUT Noah MP only
+                BGAPXY,   WGAPXY,    TGVXY,     TGBXY,    CHVXY,     CHBXY, & ! OUT Noah MP only
+		         SHGXY,    SHCXY,    SHBXY,     EVGXY,    EVBXY,     GHVXY, & ! OUT Noah MP only
+		         GHBXY,    IRGXY,    IRCXY,     IRBXY,     TRXY,     EVCXY, & ! OUT Noah MP only
               CHLEAFXY,   CHUCXY,   CHV2XY,    CHB2XY, RS,                  & ! OUT Noah MP only
               QINTSXY   ,QINTRXY   ,QDRIPSXY   ,&
               QDRIPRXY  ,QTHROSXY  ,QTHRORXY   ,&
@@ -4560,7 +4827,7 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           ALBEDO_mosaic, SNOWC_mosaic, TSLB_mosaic, SMOIS_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
                           SH2O_mosaic,  CANWAT_mosaic, SNOW_mosaic, SNOWH_mosaic,               &      ! Added by Aaron A. IN/OUT LSM
                           ACSNOM_mosaic, ACSNOW_mosaic, EMISS_mosaic, QSFC_mosaic,              &      ! Added by Aaron A. IN/OUT LSM
-                          Z0_mosaic, ZNT_mosaic,                                                &      ! Added by Aaron A. IN/OUT LSM
+                          Z0_mosaic, ZNT_mosaic,  RS_mosaic,                                    &      ! Added by Aaron A. IN/OUT LSM
                           IRNUMSI_mosaic, IRNUMMI_mosaic, IRNUMFI_mosaic, IRWATSI_mosaic,       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
                           IRWATMI_mosaic, IRWATFI_mosaic, IRELOSS_mosaic, IRSIVOL_mosaic,       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
                           IRMIVOL_mosaic, IRFIVOL_mosaic, IRRSPLH_mosaic,                       &      ! Added by Aaron A. IN/OUT Irrigation Scheme
@@ -4571,31 +4838,14 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           waxy_mosaic, wtxy_mosaic, tsnoxy_mosaic, zsnsoxy_mosaic,              &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
                           snicexy_mosaic, snliqxy_mosaic, lfmassxy_mosaic, rtmassxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
                           stmassxy_mosaic, woodxy_mosaic, stblcpxy_mosaic, fastcpxy_mosaic,     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
-                          xsaixy_mosaic, xlai_mosaic, grainxy_mosaic, gddxy_mosaic,             &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
-                          PGSXY_mosaic, smoiseq_mosaic, smcwtdxy_mosaic,                        &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          xsaixy_mosaic, xlai_mosaic,                                           &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
+                          smoiseq_mosaic, smcwtdxy_mosaic,                                      &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
                           deeprechxy_mosaic, rechxy_mosaic, taussxy_mosaic,                     &      ! Added by Aaron A. IN/OUT NOAH MP ONLY
-                          t2mvxy_mosaic, t2mbxy_mosaic, q2mvxy_mosaic, q2mbxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          tradxy_mosaic, neexy_mosaic, gppxy_mosaic, nppxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          fvegxy_mosaic, runsfxy_mosaic, runsbxy_mosaic, ecanxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          edirxy_mosaic, etranxy_mosaic, fsaxy_mosaic, firaxy_mosaic,           &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          aparxy_mosaic, psnxy_mosaic, savxy_mosaic, sagxy_mosaic,              &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          rssunxy_mosaic, rsshaxy_mosaic, bgapxy_mosaic, wgapxy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          tgvxy_mosaic, tgbxy_mosaic, chvxy_mosaic, chbxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          shgxy_mosaic, shcxy_mosaic, shbxy_mosaic, evgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          evbxy_mosaic, ghvxy_mosaic, ghbxy_mosaic, irgxy_mosaic,               &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          ircxy_mosaic, irbxy_mosaic, trxy_mosaic, evcxy_mosaic,                &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          chleafxy_mosaic, chucxy_mosaic, chv2xy_mosaic, chb2xy_mosaic,         &      ! Added by Aaron A. OUT NOAH MP ONLY
-                          rs_mosaic, QINTSXY_mosaic, QINTRXY_mosaic, QDRIPSXY_mosaic,           &                                                     ! Added by Aaron A. OUT NOAH MP ONLY
-                          QDRIPRXY_mosaic, QTHROSXY_mosaic, QTHRORXY_mosaic, QSNSUBXY_mosaic,   &
-                          QSNFROXY_mosaic, QSUBCXY_mosaic, QFROCXY_mosaic, QEVACXY_mosaic,      &
-                          QDEWCXY_mosaic, QFRZCXY_mosaic, QMELTCXY_mosaic, QSNBOTXY_mosaic,     &
-                          QMELTXY_mosaic, PONDINGXY_mosaic, PAHXY_mosaic, PAHGXY_mosaic,        &
-                          PAHVXY_mosaic, PAHBXY_mosaic, FPICEXY_mosaic,                         &
                           ACC_SSOILXY_mosaic, ACC_QINSURXY_mosaic, ACC_QSEVAXY_mosaic,          &
-                          ACC_ETRANIXY_mosaic, EFLXBXY_mosaic, SOILENERGY_mosaic, SNOWENERGY_mosaic, &
-                          CANHSXY_mosaic, ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic,               &
+                          ACC_ETRANIXY_mosaic,                                                  &
+                          ACC_DWATERXY_mosaic, ACC_PRCPXY_mosaic,                               &
                           ACC_ECANXY_mosaic, ACC_EDIRXY_mosaic, ACC_ETRANXY_mosaic,             &
-
+                          use_wudapt_lcz,                                                       & !Aaron A. Mosiac
                           TR_URB2D_mosaic,TB_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
                           TG_URB2D_mosaic,TC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
                           QC_URB2D_mosaic,UC_URB2D_mosaic,                                      & !H urban  Aaron A. Mosaic
@@ -4610,8 +4860,6 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           TGRL_URB3D_mosaic, SMR_URB3D_mosaic, DRELR_URB2D_mosaic,              &
                           DRELB_URB2D_mosaic, DRELG_URB2D_mosaic, FLXHUMR_URB2D_mosaic,         &
                           FLXHUMB_URB2D_mosaic, FLXHUMG_URB2D_mosaic,                           &
-
-                          COSZ_URB2D,     XLAT_URB2D,                                           &
                           cmr_sfcdif,     chr_sfcdif,     cmc_sfcdif,                           &
                           chc_sfcdif,    cmgr_sfcdif,    chgr_sfcdif,                           &
                           tr_urb2d,       tb_urb2d,       tg_urb2d,                             & !H urban
@@ -4631,12 +4879,13 @@ SUBROUTINE NOAHMPLSM_MOSAIC_HUE(ITIMESTEP,        YR,   JULIAN,   COSZIN,XLAT,XL
                           julday,             julyr,                                            &
                           frc_urb2d,    utype_urb2d,                                            & !I urban
                           chs,           chs2,           cqs2,                                  & !H
-                          lb_urb2d,  hgt_urb2d,        lp_urb2d,    &
+                          lb_urb2d,  hgt_urb2d,        lp_urb2d,                                &
                           mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
                           th_phy,            rho,          p_phy,        ust,                   & !I multi-layer urban
                           gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
-                  MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL,                     &
-                   RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic )! HUE SPECIFIC VARIABLES
+                          RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, &
+                          VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic,                        &
+                          MP_RAINC, MP_RAINNC, MP_SHCV, MP_SNOW, MP_GRAUP, MP_HAIL )! HUE SPECIFIC VARIABLES
 
 
 !-----------------------------------------------------------------------
@@ -5180,14 +5429,12 @@ type(noahmp_parameters) :: parameters
 !-----------------------------------------------------------------------
 
 ! input variables surface_driver --> lsm
-
+     INTEGER,                                                INTENT(IN   ) :: use_wudapt_lcz
      INTEGER,                                                INTENT(IN   ) :: num_roof_layers
      INTEGER,                                                INTENT(IN   ) :: num_wall_layers
      INTEGER,                                                INTENT(IN   ) :: num_road_layers
-     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  COSZ_URB2D
-     REAL,    DIMENSION( ims:ime,          jms:jme ), INTENT(IN   ) ::  XLAT_URB2D
-     INTEGER,        DIMENSION( ims:ime, jms:jme ),          INTENT(IN   ) :: UTYPE_URB2D
-     REAL,           DIMENSION( ims:ime, jms:jme ),          INTENT(IN   ) :: FRC_URB2D
+     INTEGER,        DIMENSION( ims:ime, jms:jme ),          INTENT(INOUT   ) :: UTYPE_URB2D !aaron A. 
+     REAL,           DIMENSION( ims:ime, jms:jme ),          INTENT(INOUT   ) :: FRC_URB2D ! aarohn A. 
 
      REAL, OPTIONAL, DIMENSION(1:num_roof_layers),           INTENT(IN   ) :: DZR
      REAL, OPTIONAL, DIMENSION(1:num_wall_layers),           INTENT(IN   ) :: DZB
@@ -5427,9 +5674,6 @@ type(noahmp_parameters) :: parameters
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rtmassxy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stmassxy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: woodxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: grainxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gddxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: pgsxy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: stblcpxy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fastcpxy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: xsaixy_mosaic
@@ -5440,88 +5684,88 @@ type(noahmp_parameters) :: parameters
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rechxy_mosaic
 
      !Variables that are NOAH MP output
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mvxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mvxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tradxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: neexy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gppxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: nppxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fvegxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsfxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ecanxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: edirxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: etranxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fsaxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: firaxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: aparxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: psnxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: savxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: sagxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rssunxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rsshaxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: bgapxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wgapxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgvxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chvxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shgxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shcxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evgxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghvxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irgxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ircxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irbxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: trxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evcxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chleafxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chucxy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chv2xy_mosaic
-      REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chb2xy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mvxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: t2mbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mvxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: q2mbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tradxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: neexy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: gppxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: nppxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fvegxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsfxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: runsbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ecanxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: edirxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: etranxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: fsaxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: firaxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: aparxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: psnxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: savxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: sagxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rssunxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rsshaxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: bgapxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: wgapxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgvxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: tgbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chvxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shgxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shcxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: shbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evgxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghvxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ghbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irgxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: ircxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: irbxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: trxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: evcxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chleafxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chucxy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chv2xy_mosaic
+      !REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: chb2xy_mosaic
       REAL, DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ) , OPTIONAL, INTENT(INOUT):: rs_mosaic
 
       ! These are additional variables
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHXY_mosaic     ! precipitation advected heat
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHGXY_mosaic    ! precipitation advected heat
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHBXY_mosaic    ! precipitation advected heat
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHVXY_mosaic    ! precipitation advected heat
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTSXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTRXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPSXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPRXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHROSXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHRORXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNSUBXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNFROXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSUBCXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFROCXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QEVACXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDEWCXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFRZCXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTCXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNBOTXY_mosaic  !total liquid water (snowmelt + rain through pack)out of snowpack bottom [mm/s]
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTXY_mosaic   !snowmelt due to phase change (mm/s)
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PONDINGXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  FPICEXY_mosaic    !fraction of ice in precip
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHXY_mosaic     ! precipitation advected heat
+      !REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHGXY_mosaic    ! precipitation advected heat
+      !REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHBXY_mosaic    ! precipitation advected heat
+      !REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PAHVXY_mosaic    ! precipitation advected heat
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTSXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QINTRXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPSXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDRIPRXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHROSXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QTHRORXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNSUBXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNFROXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSUBCXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFROCXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QEVACXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QDEWCXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QFRZCXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTCXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QSNBOTXY_mosaic  !total liquid water (snowmelt + rain through pack)out of snowpack bottom [mm/s]
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  QMELTXY_mosaic   !snowmelt due to phase change (mm/s)
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  PONDINGXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  FPICEXY_mosaic    !fraction of ice in precip
       REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_SSOILXY_mosaic
       REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_QINSURXY_mosaic
       REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_QSEVAXY_mosaic
       REAL,    DIMENSION( ims:ime, 1:NSOIL*mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ETRANIXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  EFLXBXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SOILENERGY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SNOWENERGY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  CANHSXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_DWATERXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_PRCPXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ECANXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ETRANXY_mosaic
-      REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_EDIRXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  EFLXBXY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SOILENERGY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  SNOWENERGY_mosaic
+     ! REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  CANHSXY_mosaic
+     REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_DWATERXY_mosaic
+     REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_PRCPXY_mosaic
+     REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ECANXY_mosaic
+     REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_ETRANXY_mosaic
+     REAL,    DIMENSION( ims:ime, 1:mosaic_cat, jms:jme ), OPTIONAL, INTENT(INOUT) ::  ACC_EDIRXY_mosaic
 
       ! Irrigation variables that are needed
       !2D inout irrigation variables
@@ -5607,8 +5851,8 @@ type(noahmp_parameters) :: parameters
             canliqxy_mosaic_avg, eahxy_mosaic_avg, tahxy_mosaic_avg, cmxy_mosaic_avg, chxy_mosaic_avg,          &
             fwetxy_mosaic_avg, sneqvoxy_mosaic_avg, alboldxy_mosaic_avg, qsnowxy_mosaic_avg, qrainxy_mosaic_avg,&
             wslakexy_mosaic_avg, zwtxy_mosaic_avg, waxy_mosaic_avg, wtxy_mosaic_avg, lfmassxy_mosaic_avg,       &
-            rtmassxy_mosaic_avg, stmassxy_mosaic_avg, woodxy_mosaic_avg, grainxy_mosaic_avg, gddxy_mosaic_avg,  &
-            pgsxy_mosaic_avg, stblcpxy_mosaic_avg, fastcpxy_mosaic_avg, xsaixy_mosaic_avg, xlai_mosaic_avg,     &
+            rtmassxy_mosaic_avg, stmassxy_mosaic_avg, woodxy_mosaic_avg,  &
+            stblcpxy_mosaic_avg, fastcpxy_mosaic_avg, xsaixy_mosaic_avg, xlai_mosaic_avg,     &
             taussxy_mosaic_avg, rechxy_mosaic_avg, deeprechxy_mosaic_avg, smcwtdxy_mosaic_avg
 
       REAL, DIMENSION( ims:ime, jms:jme ) :: t2mvxy_mosaic_avg, t2mbxy_mosaic_avg, q2mvxy_mosaic_avg,           &
@@ -5640,7 +5884,7 @@ type(noahmp_parameters) :: parameters
       ! Soil and ACC
       REAL, DIMENSION( ims:ime, jms:jme) :: ACC_SSOILXY_mosaic_avg, ACC_QINSURXY_mosaic_avg, ACC_QSEVAXY_mosaic_avg,  &
             EFLXBXY_mosaic_avg, SOILENERGY_mosaic_avg, SNOWENERGY_mosaic_avg, CANHSXY_mosaic_avg,                     &
-            ACC_DWATERXY_mosaic_avg, ACC_PRCPXY_mosaic_avg, ACC_ECANXY_mosaic_avg
+            ACC_DWATERXY_mosaic_avg, ACC_PRCPXY_mosaic_avg, ACC_ECANXY_mosaic_avg, ACC_ETRANXY_mosaic_avg, ACC_EDIRXY_mosaic_avg
 
       REAL, DIMENSION (ims:ime, jms:jme) :: RUNONSFXY_mosaic_avg
 
@@ -5669,6 +5913,7 @@ type(noahmp_parameters) :: parameters
      REAL                          :: FAREAXY
      REAL,   DIMENSION( 1:nsoil)   :: VOL_FLUX_SM
      REAL                          :: VOL_FLUX_RUNON
+     INTEGER                       :: TRIGGER = 0
      !------------------------------------------------------------------
      !Begin code calls
      !------------------------------------------------------------------
@@ -5813,8 +6058,6 @@ type(noahmp_parameters) :: parameters
                rtmassxy_mosaic_avg(i,j) = 0.0
                stmassxy_mosaic_avg(i,j) = 0.0
                woodxy_mosaic_avg(i,j) = 0.0
-               grainxy_mosaic_avg(i,j) = 0.0
-               pgsxy_mosaic_avg(i,j) = 0.0
                stblcpxy_mosaic_avg(i,j) = 0.0
                fastcpxy_mosaic_avg(i,j) = 0.0
                xsaixy_mosaic_avg(i,j) = 0.0
@@ -5823,7 +6066,6 @@ type(noahmp_parameters) :: parameters
                smcwtdxy_mosaic_avg(i,j) = 0.0
                deeprechxy_mosaic_avg(i,j) = 0.0
                rechxy_mosaic_avg(i,j) = 0.0
-
 
                t2mvxy_mosaic_avg(i,j) = 0.0
                t2mbxy_mosaic_avg(i,j) = 0.0
@@ -5951,11 +6193,13 @@ type(noahmp_parameters) :: parameters
 
                ! These are needed for the
 
-               MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
-
+               MOSAIC_LOOP : DO mosaic_i =1, mosaic_cat !looping from the nth mosaic catagory to the largest mosaic catagory
+               
                ! We need to move from our 3D data to the 2D data sets
                !These are the IN/Out values that have an LSM equivelant
                IVGTYP(I,J) = mosaic_cat_index(I,mosaic_i,J)
+              
+
                TSK(I,J) = TSK_mosaic(I,mosaic_i,J)
                HFX(I,J) = HFX_mosaic(I,mosaic_i,J)
                QFX(I,J) = QFX_mosaic(I,mosaic_i,J)
@@ -5965,7 +6209,7 @@ type(noahmp_parameters) :: parameters
                UDRUNOFF(I,J) = UDRUNOFF_mosaic(I,mosaic_i,J)
                ALBEDO(I,J) = ALBEDO_mosaic(I,mosaic_i,J)
                SNOWC(I,J) = SNOWC_mosaic(I,mosaic_i,J)
-               
+
                !These are the soil variables
                DO LAYER=1,NSOIL
 
@@ -5989,7 +6233,6 @@ type(noahmp_parameters) :: parameters
                RS(I,J) = rs_mosaic(I,mosaic_i,J)
                !These are IN/OUT variables that do not have an LSM equivelant
                ISNOWXY(I,J) = isnowxy_mosaic(I,mosaic_i,J)
-               if (ISNOWXY(I,J)<0) WRITE(*,*) I,J,'BAD',XLAND(I,J)
                TVXY(I,J) = tvxy_mosaic(I,mosaic_i,J)
                TGXY(I,J) = tgxy_mosaic(I,mosaic_i,J)
                CANICEXY(I,J) = canicexy_mosaic(I,mosaic_i,J)
@@ -6011,9 +6254,6 @@ type(noahmp_parameters) :: parameters
                RTMASSXY(I,J) = rtmassxy_mosaic(I,mosaic_i,J)
                STMASSXY(I,J) = stmassxy_mosaic(I,mosaic_i,J)
                WOODXY(I,J) = woodxy_mosaic(I,mosaic_i,J)
-               GRAINXY(I,J) = grainxy_mosaic(I,mosaic_i,J)
-               GDDXY(I,J) = gddxy_mosaic(I,mosaic_i,J)
-               PGSXY(I,J) = pgsxy_mosaic(I,mosaic_i,J)
                STBLCPXY(I,J) = stblcpxy_mosaic(I,mosaic_i,J)
                FASTCPXY(I,J) = fastcpxy_mosaic(I,mosaic_i,J)
                XLAIXY(I,J) = xlai_mosaic(I,mosaic_i,J)
@@ -6059,14 +6299,6 @@ type(noahmp_parameters) :: parameters
 
                !Add in a (WE got here) Print statement
 
-               IF(IPRINT_mosaic) THEN
-
-                   PRINT *, 'BEFORE NOAHMPLSM in NOAHMPDRIVER.F'
-                   PRINT *, 'mosaic_cat', mosaic_cat, 'IVGTYP',IVGTYP(i,j), 'TSK',TSK(i,j),'HFX',HFX(i,j), 'QSFC', QSFC(i,j),   &
-                      'CANWAT', CANWAT(i,j), 'SNOW',SNOW(i,j), 'ALBEDO',ALBEDO(i,j), 'TSLB',TSLB(i,1,j),'CHS',CHS(i,j),'ZNT',ZNT(i,j)
-
-
-               ENDIF
                !-----------------------------------------------------------------------
                ! insert the NOAHMP MODEL and the URBAN models
                !-----------------------------------------------------------------------
@@ -6171,7 +6403,7 @@ type(noahmp_parameters) :: parameters
             ENDIF
 
      ! IN/OUT fields
-            ! all HUE options that re needed
+            ! all HUE options that re needed (note that this could cause a memeory issue if 41 is right on the edge of the defined mosaic layers)
              IF (IOPT_HUE.eq.1) THEN
 
                IF (VEGTYP.EQ.41) THEN !Added by Aaron Alexander
@@ -6182,8 +6414,8 @@ type(noahmp_parameters) :: parameters
                  SMH2O(       1:NSOIL) = SH2O( I, 1:NSOIL, J ) !  Soil water content that is under the pavement
 
                  DO LAYER=1,NSOIL
-                   SMC_intermediate (LAYER) = SMOIS(I+1,NSOIL*(mosaic_i)+LAYER,J)  !  This is the soil moisture of the fully vegetated square
-                   SH2O_intermediate(LAYER) = SH2O(I+1,NSOIL*(mosaic_i)+LAYER,J)   !  This is the soil moisture of the fully vegetated square
+                   SMC_intermediate(LAYER) = SMOIS_mosaic(I,NSOIL*(mosaic_i)+LAYER,J)  !  This is the soil moisture of the fully vegetated square (one mosaic tile down)
+                   SH2O_intermediate(LAYER) = SH2O_mosaic(I,NSOIL*(mosaic_i)+LAYER,J)  !  This is the soil moisture of the fully vegetated square (one mosaic tile down)
 
                  END DO
 
@@ -6195,13 +6427,13 @@ type(noahmp_parameters) :: parameters
                  SH2O_intermediate(1:NSOIL) = SH2O(I,1:NSOIL,J)
 
                ENDIF ! end soil moisture
-               
+
                IF (VEGTYP.EQ.46) THEN
                  ! GREEN ROOF
                  DETENTION_STORAGE = DETENTION_STORAGEXY_mosaic(I,mosaic_i,J)
                ELSE
                  DETENTION_STORAGE = 0.
-               END IF 
+               END IF
 
                ! Turf grass flux runon
                IF( (VEGTYP.EQ.43).OR.(VEGTYP.EQ.44)) THEN
@@ -6229,13 +6461,13 @@ type(noahmp_parameters) :: parameters
              ELSE
                SMC  (      1:NSOIL)  = SMOIS   (I,      1:NSOIL,J)  ! soil total moisture [m3/m3]
                SMH2O(      1:NSOIL)  = SH2O    (I,      1:NSOIL,J)  ! soil liquid moisture [m3/m3]
-               
+
                SMC_intermediate (1:NSOIL) = SMOIS(I,1:NSOIL,J)
                SH2O_intermediate(1:NSOIL) = SH2O(I,1:NSOIL,J)
              END IF !if else hue noahmp vs. just mosaic
 
             ISNOW                 = ISNOWXY (I,J)                ! snow layers []
-            
+
             STC  (-NSNOW+1:    0) = TSNOXY  (I,-NSNOW+1:    0,J) ! snow temperatures [K]
             STC  (      1:NSOIL)  = TSLB    (I,      1:NSOIL,J)  ! soil temperatures [K]
             SWE                   = SNOW    (I,J)                ! snow water equivalent [mm]
@@ -6593,8 +6825,8 @@ type(noahmp_parameters) :: parameters
                 SH2O( I, 1:NSOIL, J ) = SMH2O(       1:NSOIL) !  Soil water content that is under the pavement
 
                 DO LAYER=1,NSOIL
-                  SMOIS(I+1,NSOIL*(mosaic_i)+LAYER,J) = SMC_intermediate (LAYER)   !  This is the soil moisture of the fully vegetated square
-                  SH2O(I+1,NSOIL*(mosaic_i)+LAYER,J)= SH2O_intermediate(LAYER)    !  This is the soil moisture of the fully vegetated square
+                  SMOIS_mosaic(I,NSOIL*(mosaic_i)+LAYER,J) = SMC_intermediate (LAYER)   !  This is the soil moisture of the fully vegetated square
+                  SH2O_mosaic(I,NSOIL*(mosaic_i)+LAYER,J)= SH2O_intermediate(LAYER)    !  This is the soil moisture of the fully vegetated square
 
                 END DO
               ELSE
@@ -6607,9 +6839,17 @@ type(noahmp_parameters) :: parameters
               ! runon flux
               VOL_FLUX_RUNONXY_mosaic(I,mosaic_i,J) = VOL_FLUX_RUNON
               ! soil moisutre flux
+             if (VEGTYP.eq.41) THEN
               DO LAYER=1,NSOIL
                 VOL_FLUX_SMXY_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = VOL_FLUX_SM(LAYER)
               END DO
+               else
+                DO LAYER=1,NSOIL
+                 
+                 VOL_FLUX_SMXY_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J) = 0.
+               END DO
+               
+               endif
 
             ELSE
               SMOIS(I, 1:NSOIL, J ) = SMC(1:NSOIL)
@@ -6826,16 +7066,57 @@ type(noahmp_parameters) :: parameters
           !-----------------------------------------------------------------------
           !BEGIN URBAN MODEL
           !---------------------------------------------------------------------
-          
+
           IF (SF_URBAN_PHYSICS == 1 ) THEN         ! Beginning of UCM CALL if block
 
           !--------------------------------------
           ! URBAN CANOPY MODEL START
           !--------------------------------------
+           IF( IVGTYP(I,J) == ISURBAN_TABLE    .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
+                     IVGTYP(I,J) == LCZ_3_TABLE      .or. IVGTYP(I,J) == LCZ_4_TABLE .or. IVGTYP(I,J) == LCZ_5_TABLE .or. &
+                     IVGTYP(I,J) == LCZ_6_TABLE      .or. IVGTYP(I,J) == LCZ_7_TABLE .or. IVGTYP(I,J) == LCZ_8_TABLE .or. &
+                     IVGTYP(I,J) == LCZ_9_TABLE      .or. IVGTYP(I,J) == LCZ_10_TABLE .or. IVGTYP(I,J) == LCZ_11_TABLE ) THEN
+ 
+      
+                !  UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
+                !  this need to be changed in the mosaic danli
+                IF (use_wudapt_lcz == 1) THEN
+                  IF(IVGTYP(I,J)==ISURBAN_TABLE) UTYPE_URB=5
+                  IF(IVGTYP(I,J)==LCZ_1_TABLE) UTYPE_URB=1
+                  IF(IVGTYP(I,J)==LCZ_2_TABLE) UTYPE_URB=2
+                  IF(IVGTYP(I,J)==LCZ_3_TABLE) UTYPE_URB=3
+                  IF(IVGTYP(I,J)==LCZ_4_TABLE) UTYPE_URB=4
+                  IF(IVGTYP(I,J)==LCZ_5_TABLE) UTYPE_URB=5
+                  IF(IVGTYP(I,J)==LCZ_6_TABLE) UTYPE_URB=6
+                  IF(IVGTYP(I,J)==LCZ_7_TABLE) UTYPE_URB=7
+                  IF(IVGTYP(I,J)==LCZ_8_TABLE) UTYPE_URB=8
+                  IF(IVGTYP(I,J)==LCZ_9_TABLE) UTYPE_URB=9
+                  IF(IVGTYP(I,J)==LCZ_10_TABLE) UTYPE_URB=10
+                  IF(IVGTYP(I,J)==LCZ_11_TABLE) UTYPE_URB=11
+
+                  IF(UTYPE_URB==1) FRC_URB2D(I,J)=1.
+                  IF(UTYPE_URB==2) FRC_URB2D(I,J)=0.99
+                  IF(UTYPE_URB==3) FRC_URB2D(I,J)=1.00
+                  IF(UTYPE_URB==4) FRC_URB2D(I,J)=0.65
+                  IF(UTYPE_URB==5) FRC_URB2D(I,J)=0.7
+                  IF(UTYPE_URB==6) FRC_URB2D(I,J)=0.65
+                  IF(UTYPE_URB==7) FRC_URB2D(I,J)=0.3
+                  IF(UTYPE_URB==8) FRC_URB2D(I,J)=0.85
+                  IF(UTYPE_URB==9) FRC_URB2D(I,J)=0.3
+                  IF(UTYPE_URB==10) FRC_URB2D(I,J)=0.55
+                  IF(UTYPE_URB==11) FRC_URB2D(I,J)=1.
+                ELSE
+                  IF(IVGTYP(I,J)==ISURBAN_TABLE) UTYPE_URB=2
+                  IF(IVGTYP(I,J)==LCZ_1_TABLE) UTYPE_URB=1 ! LOW_DENSITY_RESIDENTIAL
+                  IF(IVGTYP(I,J)==LCZ_2_TABLE) UTYPE_URB=2 ! HIGH_DENSITY_RESIDENTIAL
+                  IF(IVGTYP(I,J)==LCZ_3_TABLE) UTYPE_URB=3 ! HIGH_INTENSITY_INDUSTRIAL
+
+                  IF(UTYPE_URB==1) FRC_URB2D(I,J)=0.5
+                  IF(UTYPE_URB==2) FRC_URB2D(I,J)=0.9
+                  IF(UTYPE_URB==3) FRC_URB2D(I,J)=1.
+                END IF
 
 
-            IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. &
-                IVGTYP(I,J) == LCZ_2_TABLE .or. IVGTYP(I,J) == LCZ_3_TABLE ) THEN
 
               ! Begin addition by Aaron A. on 27 May 2022.
               ! This reads in the mosaic values to hopefully
@@ -6882,7 +7163,7 @@ type(noahmp_parameters) :: parameters
 
 
 
-              UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
+              !UTYPE_URB = UTYPE_URB2D(I,J) !urban type (low, high or industrial)
 
               TA_URB    = T3D(I,1,J)                                ! [K]
               QA_URB    = QV3D(I,1,J)/(1.0+QV3D(I,1,J))             ! [kg/kg]
@@ -6898,8 +7179,8 @@ type(noahmp_parameters) :: parameters
               RHOO_URB  = (P8W3D(I,KTS+1,J)+P8W3D(I,KTS,J))*0.5 / (287.04 * TA_URB * (1.0+ 0.61 * QA_URB)) ![kg/m/m/m]
               ZA_URB    = 0.5*DZ8W(I,1,J)                           ! [m]
               DELT_URB  = DT                                        ! [sec]
-              XLAT_URB  = XLAT_URB2D(I,J)                           ! [deg]
-              COSZ_URB  = COSZ_URB2D(I,J)
+              XLAT_URB  = XLAT(I,J)                           ! [deg]
+              COSZ_URB  = COSZIN(I,J)
               OMG_URB   = OMG_URB2D(I,J)
               ZNT_URB   = ZNT(I,J)
 
@@ -6981,7 +7262,6 @@ type(noahmp_parameters) :: parameters
               END IF
 
           ! Call urban
-
               CALL cal_mon_day(INT(julian),julyr,jmonth,jday)
               CALL urban(LSOLAR_URB,                                                             & ! I
                     num_roof_layers, num_wall_layers, num_road_layers,                           & ! C
@@ -7192,9 +7472,6 @@ type(noahmp_parameters) :: parameters
               rtmassxy_mosaic(I,mosaic_i,J) = RTMASSXY(I,J)
               stmassxy_mosaic(I,mosaic_i,J) = STMASSXY(I,J)
               woodxy_mosaic(I,mosaic_i,J) = WOODXY(I,J)
-              grainxy_mosaic(I,mosaic_i,J) = GRAINXY(I,J)
-              gddxy_mosaic(I,mosaic_i,J) = GDDXY(I,J)
-              pgsxy_mosaic(I,mosaic_i,J) = PGSXY(I,J)
               stblcpxy_mosaic(I,mosaic_i,J) = STBLCPXY(I,J)
               fastcpxy_mosaic(I,mosaic_i,J) = FASTCPXY(I,J)
               xlai_mosaic(I,mosaic_i,J) = XLAIXY(I,J)
@@ -7206,82 +7483,82 @@ type(noahmp_parameters) :: parameters
 
               !OUT ONLY
 
-              t2mvxy_mosaic(I,mosaic_i,J) = T2MVXY(I,J)
-              t2mbxy_mosaic(I,mosaic_i,J) = T2MBXY(I,J)
-              q2mvxy_mosaic(I,mosaic_i,J) = Q2MVXY(I,J)
-              q2mbxy_mosaic(I,mosaic_i,J) = Q2MBXY(I,J)
-              tradxy_mosaic(I,mosaic_i,J) = TRADXY(I,J)
-              neexy_mosaic(I,mosaic_i,J) = NEEXY(I,J)
-              gppxy_mosaic(I,mosaic_i,J) = GPPXY(I,J)
-              nppxy_mosaic(I,mosaic_i,J) = NPPXY(I,J)
-              fvegxy_mosaic(I,mosaic_i,J) = FVEGXY(I,J)
-              runsfxy_mosaic(I,mosaic_i,J) = RUNSFXY(I,J)
-              runsbxy_mosaic(I,mosaic_i,J) = RUNSBXY(I,J)
-              ecanxy_mosaic(I,mosaic_i,J) = ECANXY(I,J)
-              edirxy_mosaic(I,mosaic_i,J) = EDIRXY(I,J)
-              etranxy_mosaic(I,mosaic_i,J) = ETRANXY(I,J)
-              fsaxy_mosaic(I,mosaic_i,J) = FSAXY(I,J)
-              firaxy_mosaic(I,mosaic_i,J) = FIRAXY(I,J)
-              aparxy_mosaic(I,mosaic_i,J) = APARXY(I,J)
-              psnxy_mosaic(I,mosaic_i,J) = PSNXY(I,J)
-              savxy_mosaic(I,mosaic_i,J) = SAVXY(I,J)
-              sagxy_mosaic(I,mosaic_i,J) = SAGXY(I,J)
-              rssunxy_mosaic(I,mosaic_i,J) = RSSUNXY(I,J)
-              rsshaxy_mosaic(I,mosaic_i,J) = RSSHAXY(I,J)
-              bgapxy_mosaic(I,mosaic_i,J) = BGAPXY(I,J)
-              wgapxy_mosaic(I,mosaic_i,J) = WGAPXY(I,J)
-              tgvxy_mosaic(I,mosaic_i,J) = TGVXY(I,J)
-              tgbxy_mosaic(I,mosaic_i,J) = TGBXY(I,J)
-              chvxy_mosaic(I,mosaic_i,J) = CHVXY(I,J)
-              chbxy_mosaic(I,mosaic_i,J) = CHBXY(I,J)
-              shgxy_mosaic(I,mosaic_i,J) = SHGXY(I,J)
-              shcxy_mosaic(I,mosaic_i,J) = SHCXY(I,J)
-              shbxy_mosaic(I,mosaic_i,J) = SHBXY(I,J)
-              evgxy_mosaic(I,mosaic_i,J) = EVGXY(I,J)
-              evbxy_mosaic(I,mosaic_i,J) = EVBXY(I,J)
-              ghvxy_mosaic(I,mosaic_i,J) = GHVXY(I,J)
-              ghbxy_mosaic(I,mosaic_i,J) = GHBXY(I,J)
-              irgxy_mosaic(I,mosaic_i,J) = IRGXY(I,J)
-              ircxy_mosaic(I,mosaic_i,J) = IRCXY(I,J)
-              irbxy_mosaic(I,mosaic_i,J) = IRBXY(I,J)
-              trxy_mosaic(I,mosaic_i,J) = TRXY(I,J)
-              evcxy_mosaic(I,mosaic_i,J) = EVCXY(I,J)
-              chleafxy_mosaic(I,mosaic_i,J) = CHLEAFXY(I,J)
-              chucxy_mosaic(I,mosaic_i,J) = CHUCXY(I,J)
-              chv2xy_mosaic(I,mosaic_i,J) = CHV2XY(I,J)
-              chb2xy_mosaic(I,mosaic_i,J) = CHB2XY(I,J)
+              ! t2mvxy_mosaic(I,mosaic_i,J) = T2MVXY(I,J)
+              ! t2mbxy_mosaic(I,mosaic_i,J) = T2MBXY(I,J)
+              ! q2mvxy_mosaic(I,mosaic_i,J) = Q2MVXY(I,J)
+              ! q2mbxy_mosaic(I,mosaic_i,J) = Q2MBXY(I,J)
+              ! tradxy_mosaic(I,mosaic_i,J) = TRADXY(I,J)
+              ! neexy_mosaic(I,mosaic_i,J) = NEEXY(I,J)
+              ! gppxy_mosaic(I,mosaic_i,J) = GPPXY(I,J)
+              ! nppxy_mosaic(I,mosaic_i,J) = NPPXY(I,J)
+              ! fvegxy_mosaic(I,mosaic_i,J) = FVEGXY(I,J)
+              ! runsfxy_mosaic(I,mosaic_i,J) = RUNSFXY(I,J)
+              ! runsbxy_mosaic(I,mosaic_i,J) = RUNSBXY(I,J)
+              ! ecanxy_mosaic(I,mosaic_i,J) = ECANXY(I,J)
+              ! edirxy_mosaic(I,mosaic_i,J) = EDIRXY(I,J)
+              ! etranxy_mosaic(I,mosaic_i,J) = ETRANXY(I,J)
+              ! fsaxy_mosaic(I,mosaic_i,J) = FSAXY(I,J)
+              ! firaxy_mosaic(I,mosaic_i,J) = FIRAXY(I,J)
+              ! aparxy_mosaic(I,mosaic_i,J) = APARXY(I,J)
+              ! psnxy_mosaic(I,mosaic_i,J) = PSNXY(I,J)
+              ! savxy_mosaic(I,mosaic_i,J) = SAVXY(I,J)
+              ! sagxy_mosaic(I,mosaic_i,J) = SAGXY(I,J)
+              ! rssunxy_mosaic(I,mosaic_i,J) = RSSUNXY(I,J)
+              ! rsshaxy_mosaic(I,mosaic_i,J) = RSSHAXY(I,J)
+              ! bgapxy_mosaic(I,mosaic_i,J) = BGAPXY(I,J)
+              ! wgapxy_mosaic(I,mosaic_i,J) = WGAPXY(I,J)
+              ! tgvxy_mosaic(I,mosaic_i,J) = TGVXY(I,J)
+              ! tgbxy_mosaic(I,mosaic_i,J) = TGBXY(I,J)
+              ! chvxy_mosaic(I,mosaic_i,J) = CHVXY(I,J)
+              ! chbxy_mosaic(I,mosaic_i,J) = CHBXY(I,J)
+              ! shgxy_mosaic(I,mosaic_i,J) = SHGXY(I,J)
+              ! shcxy_mosaic(I,mosaic_i,J) = SHCXY(I,J)
+              ! shbxy_mosaic(I,mosaic_i,J) = SHBXY(I,J)
+              ! evgxy_mosaic(I,mosaic_i,J) = EVGXY(I,J)
+              ! evbxy_mosaic(I,mosaic_i,J) = EVBXY(I,J)
+              ! ghvxy_mosaic(I,mosaic_i,J) = GHVXY(I,J)
+              ! ghbxy_mosaic(I,mosaic_i,J) = GHBXY(I,J)
+              ! irgxy_mosaic(I,mosaic_i,J) = IRGXY(I,J)
+              ! ircxy_mosaic(I,mosaic_i,J) = IRCXY(I,J)
+              ! irbxy_mosaic(I,mosaic_i,J) = IRBXY(I,J)
+              ! trxy_mosaic(I,mosaic_i,J) = TRXY(I,J)
+              ! evcxy_mosaic(I,mosaic_i,J) = EVCXY(I,J)
+              ! chleafxy_mosaic(I,mosaic_i,J) = CHLEAFXY(I,J)
+              ! chucxy_mosaic(I,mosaic_i,J) = CHUCXY(I,J)
+              ! chv2xy_mosaic(I,mosaic_i,J) = CHV2XY(I,J)
+              ! chb2xy_mosaic(I,mosaic_i,J) = CHB2XY(I,J)
 
               !!! NEED TO ADD NEW VARIABLES
 
-              PAHXY_mosaic(I,mosaic_i,J) = PAHXY(I,J)
-              PAHGXY_mosaic(I,mosaic_i,J) = PAHGXY(I,J)
-              PAHBXY_mosaic(I,mosaic_i,J) = PAHBXY(I,J)    ! precipitation advected heat
-              PAHVXY_mosaic(I,mosaic_i,J) = PAHVXY(I,J)    ! precipitation advected heat
-              QINTSXY_mosaic(I,mosaic_i,J) = QINTSXY(I,J)
-              QINTRXY_mosaic(I,mosaic_i,J) = QINTRXY(I,J)
-              QDRIPSXY_mosaic(I,mosaic_i,J) = QDRIPSXY(I,J)
-              QDRIPRXY_mosaic(I,mosaic_i,J) = QDRIPRXY(I,J)
-              QTHROSXY_mosaic(I,mosaic_i,J) = QTHROSXY(I,J)
-              QTHRORXY_mosaic(I,mosaic_i,J) = QTHRORXY(I,J)
-              QSNSUBXY_mosaic(I,mosaic_i,J) = QSNSUBXY(I,J)
-              QSNFROXY_mosaic(I,mosaic_i,J) = QSNFROXY(I,J)
-              QSUBCXY_mosaic(I,mosaic_i,J) = QSUBCXY(I,J)
-              QFROCXY_mosaic(I,mosaic_i,J) = QFROCXY(I,J)
-              QEVACXY_mosaic(I,mosaic_i,J) = QEVACXY(I,J)
-              QDEWCXY_mosaic(I,mosaic_i,J) = QDEWCXY(I,J)
-              QFRZCXY_mosaic(I,mosaic_i,J) = QFRZCXY(I,J)
-              QMELTCXY_mosaic(I,mosaic_i,J) = QMELTCXY(I,J)
-              QSNBOTXY_mosaic(I,mosaic_i,J) = QSNBOTXY(I,J)
-              QMELTXY_mosaic(I,mosaic_i,J) = QMELTXY(I,J)
-              PONDINGXY_mosaic(I,mosaic_i,J) = PONDINGXY(I,J)
-              FPICEXY_mosaic(I,mosaic_i,J) = FPICEXY(I,J)
+              ! PAHXY_mosaic(I,mosaic_i,J) = PAHXY(I,J)
+              ! PAHGXY_mosaic(I,mosaic_i,J) = PAHGXY(I,J)
+              ! PAHBXY_mosaic(I,mosaic_i,J) = PAHBXY(I,J)    ! precipitation advected heat
+              ! PAHVXY_mosaic(I,mosaic_i,J) = PAHVXY(I,J)    ! precipitation advected heat
+              ! QINTSXY_mosaic(I,mosaic_i,J) = QINTSXY(I,J)
+              ! QINTRXY_mosaic(I,mosaic_i,J) = QINTRXY(I,J)
+              ! QDRIPSXY_mosaic(I,mosaic_i,J) = QDRIPSXY(I,J)
+              ! QDRIPRXY_mosaic(I,mosaic_i,J) = QDRIPRXY(I,J)
+              ! QTHROSXY_mosaic(I,mosaic_i,J) = QTHROSXY(I,J)
+              ! QTHRORXY_mosaic(I,mosaic_i,J) = QTHRORXY(I,J)
+              ! QSNSUBXY_mosaic(I,mosaic_i,J) = QSNSUBXY(I,J)
+              ! QSNFROXY_mosaic(I,mosaic_i,J) = QSNFROXY(I,J)
+              ! QSUBCXY_mosaic(I,mosaic_i,J) = QSUBCXY(I,J)
+              ! QFROCXY_mosaic(I,mosaic_i,J) = QFROCXY(I,J)
+              ! QEVACXY_mosaic(I,mosaic_i,J) = QEVACXY(I,J)
+              ! QDEWCXY_mosaic(I,mosaic_i,J) = QDEWCXY(I,J)
+              ! QFRZCXY_mosaic(I,mosaic_i,J) = QFRZCXY(I,J)
+              ! QMELTCXY_mosaic(I,mosaic_i,J) = QMELTCXY(I,J)
+              ! QSNBOTXY_mosaic(I,mosaic_i,J) = QSNBOTXY(I,J)
+              ! QMELTXY_mosaic(I,mosaic_i,J) = QMELTXY(I,J)
+              ! PONDINGXY_mosaic(I,mosaic_i,J) = PONDINGXY(I,J)
+              ! FPICEXY_mosaic(I,mosaic_i,J) = FPICEXY(I,J)
               ACC_SSOILXY_mosaic(I,mosaic_i,J) = ACC_SSOILXY(I,J)
               ACC_QINSURXY_mosaic(I,mosaic_i,J) = ACC_QINSURXY(I,J)
               ACC_QSEVAXY_mosaic(I,mosaic_i,J) = ACC_QSEVAXY(I,J)
-              EFLXBXY_mosaic(I,mosaic_i,J) = EFLXBXY(I,J)
-              SOILENERGY_mosaic(I,mosaic_i,J) = SOILENERGY(I,J)
-              SNOWENERGY_mosaic(I,mosaic_i,J) = SNOWENERGY(I,J)
-              CANHSXY_mosaic(I,mosaic_i,J) = CANHSXY(I,J)
+              ! EFLXBXY_mosaic(I,mosaic_i,J) = EFLXBXY(I,J)
+              ! SOILENERGY_mosaic(I,mosaic_i,J) = SOILENERGY(I,J)
+              ! SNOWENERGY_mosaic(I,mosaic_i,J) = SNOWENERGY(I,J)
+              ! CANHSXY_mosaic(I,mosaic_i,J) = CANHSXY(I,J)
               ACC_DWATERXY_mosaic(I,mosaic_i,J) = ACC_DWATERXY(I,J)
               ACC_PRCPXY_mosaic(I,mosaic_i,J) = ACC_PRCPXY(I,J)
               ACC_ECANXY_mosaic(I,mosaic_i,J) = ACC_ECANXY(I,J)
@@ -7319,9 +7596,13 @@ type(noahmp_parameters) :: parameters
 
               !HUE THINGS
               RUNONSFXY_mosaic(I,mosaic_i,J) =  RUNONSFXY_mosaic(I,mosaic_i,J) + RUNONSRF * DT
-              IF (VEGTYP.eq.46) THEN
-                DETENTION_STORAGEXY(I,J) = DETENTION_STORAGE
-              END IF
+              DETENTION_STORAGEXY_mosaic(I,mosaic_i,J) = DETENTION_STORAGE
+                IF (VEGTYP.eq.46) THEN
+                  DETENTION_STORAGEXY(I,J) = DETENTION_STORAGE
+                else
+                  DETENTION_STORAGEXY(I,J) = 0.0
+                ENDIF
+
               !-------------------------------------------------------------------
               !We now do Grid Averaging!!!!
               !-------------------------------------------------------------------
@@ -7329,16 +7610,21 @@ type(noahmp_parameters) :: parameters
               FAREA = landusef2(I,mosaic_i,J) !This logical option is going to be used multiply
               FAREA2 = landusef2(I,mosaic_i,J)
 
-              IF( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
+        IF( (SF_URBAN_PHYSICS == 0).and.( IVGTYP(I,J) == ISURBAN_TABLE .or. IVGTYP(I,J) == LCZ_1_TABLE .or. IVGTYP(I,J) == LCZ_2_TABLE .or. &
                 IVGTYP(I,J) == LCZ_3_TABLE .or. IVGTYP(I,J) == 42 .or. IVGTYP(I,J) == 44 .or. &
-                IVGTYP(I,J) == 45.or. IVGTYP(I,J) == ISBARREN_TABLE ) THEN
+                IVGTYP(I,J) == 45 .or. IVGTYP(I,J) == ISBARREN_TABLE .or. IVGTYP(I,J) == 16)) THEN
                 FAREA2 = 0.0 !This is a fix to change how the urban areas/barren areas
                 ! We are only going to be outputting the average of the vegetated area.
-               ENDIF
-              
-
+        ENDIF
+        
+        IF ( (SF_URBAN_PHYSICS == 1) .and. (IVGTYP(I,J) == 42 .or. IVGTYP(I,J) == 44 .or. &
+                IVGTYP(I,J) == 45 .or. IVGTYP(I,J) == ISBARREN_TABLE .or. IVGTYP(I,J) == 16)) THEN
+                FAREA2 = 0.0
+        ENDIF
+             
               TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
-
+              !TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + TSK_mosaic(I,mosaic_i,J)*FAREA
+              
               HFX_mosaic_avg(I,J) = HFX_mosaic_avg(I,J) + HFX_mosaic(I,mosaic_i,J)*FAREA
               QFX_mosaic_avg(I,J) = QFX_mosaic_avg(I,J) + QFX_mosaic(I,mosaic_i,J)*FAREA
               LH_mosaic_avg(I,J) =  LH_mosaic_avg(I,J)  + LH_mosaic(I,mosaic_i,J)*FAREA
@@ -7364,7 +7650,7 @@ type(noahmp_parameters) :: parameters
                   SMOIS_mosaic_avg(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J) + SMOIS_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
                   SH2O_mosaic_avg(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J) + SH2O_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
                   SMOISEQ_mosaic_avg(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J) + SMOISEQ_mosaic(I,NSOIL*(mosaic_i-1)+LAYER,J)*FAREA
-                  ACC_ETRANIXY_mosaic_avg(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J) + ACC_ETRANIXY_mosaic(I,NSOIL*(mosaic_i - 1)+LAYER,J)*FAREA2
+                  ACC_ETRANIXY_mosaic_avg(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J) + ACC_ETRANIXY_mosaic(I,NSOIL*(mosaic_i - 1)+LAYER,J)*FAREA
               ENDDO
 
               !IN OUT LSM NO LSM EQUIVELANTS
@@ -7390,9 +7676,6 @@ type(noahmp_parameters) :: parameters
               rtmassxy_mosaic_avg(I,J) = rtmassxy_mosaic_avg(I,J) + rtmassxy_mosaic(I,mosaic_i,J)*FAREA2
               stmassxy_mosaic_avg(I,J) = stmassxy_mosaic_avg(I,J) + stmassxy_mosaic(I,mosaic_i,J)*FAREA2
               woodxy_mosaic_avg(I,J) = woodxy_mosaic_avg(I,J) + woodxy_mosaic(I,mosaic_i,J)*FAREA2
-              grainxy_mosaic_avg(I,J) = grainxy_mosaic_avg(I,J) + grainxy_mosaic(I,mosaic_i,J)*FAREA2
-              gddxy_mosaic_avg(I,J) = gddxy_mosaic_avg(I,J) + gddxy_mosaic(I,mosaic_i,J)*FAREA2
-              pgsxy_mosaic_avg(I,J) = pgsxy_mosaic_avg(I,J) + pgsxy_mosaic(I,mosaic_i,J)*FAREA2
               stblcpxy_mosaic_avg(I,J) = stblcpxy_mosaic_avg(I,J) + stblcpxy_mosaic(I,mosaic_i,J)*FAREA2
               fastcpxy_mosaic_avg(I,J) = fastcpxy_mosaic_avg(I,J) + fastcpxy_mosaic(I,mosaic_i,J)*FAREA2
               xsaixy_mosaic_avg(I,J) = xsaixy_mosaic_avg(I,J) + xsaixy_mosaic(I,mosaic_i,J)*FAREA2
@@ -7404,50 +7687,50 @@ type(noahmp_parameters) :: parameters
 
               !OUT LSM EQUIVELANTS
 
-              t2mvxy_mosaic_avg(I,J) = t2mvxy_mosaic_avg(I,J) + t2mvxy_mosaic(I,mosaic_i,J)*FAREA2
-              t2mbxy_mosaic_avg(I,J) = t2mbxy_mosaic_avg(I,J) + t2mbxy_mosaic(I,mosaic_i,J)*FAREA
-              q2mvxy_mosaic_avg(I,J) = q2mvxy_mosaic_avg(I,J) + q2mvxy_mosaic(I,mosaic_i,J)*FAREA2
-              q2mbxy_mosaic_avg(I,J) = q2mbxy_mosaic_avg(I,J) + q2mbxy_mosaic(I,mosaic_i,J)*FAREA
-              tradxy_mosaic_avg(I,J) = tradxy_mosaic_avg(I,J) + tradxy_mosaic(I,mosaic_i,J)*FAREA
-              neexy_mosaic_avg(I,J) = neexy_mosaic_avg(I,J) + neexy_mosaic(I,mosaic_i,J)*FAREA2
-              gppxy_mosaic_avg(I,J) = gppxy_mosaic_avg(I,J) + gppxy_mosaic(I,mosaic_i,J)*FAREA2
-              nppxy_mosaic_avg(I,J) = nppxy_mosaic_avg(I,J) + nppxy_mosaic(I,mosaic_i,J)*FAREA2
-              fvegxy_mosaic_avg(I,J) = fvegxy_mosaic_avg(I,J) + fvegxy_mosaic(I,mosaic_i,J)*FAREA2
-              runsfxy_mosaic_avg(I,J) = runsfxy_mosaic_avg(I,J) + runsfxy_mosaic(I,mosaic_i,J)*FAREA
-              runsbxy_mosaic_avg(I,J) = runsbxy_mosaic_avg(I,J) + runsbxy_mosaic(I,mosaic_i,J)*FAREA
-              ecanxy_mosaic_avg(I,J) = ecanxy_mosaic_avg(I,J) + ecanxy_mosaic(I,mosaic_i,J)*FAREA2
-              edirxy_mosaic_avg(I,J) = edirxy_mosaic_avg(I,J) + edirxy_mosaic(I,mosaic_i,J)*FAREA2
-              etranxy_mosaic_avg(I,J) = etranxy_mosaic_avg(I,J) + etranxy_mosaic(I,mosaic_i,J)*FAREA2
-              fsaxy_mosaic_avg(I,J) = fsaxy_mosaic_avg(I,J) + fsaxy_mosaic(I,mosaic_i,J)*FAREA
-              firaxy_mosaic_avg(I,J) = firaxy_mosaic_avg(I,J) + firaxy_mosaic(I,mosaic_i,J)*FAREA
-              aparxy_mosaic_avg(I,J) = aparxy_mosaic_avg(I,J) + aparxy_mosaic(I,mosaic_i,J)*FAREA2
-              psnxy_mosaic_avg(I,J) = psnxy_mosaic_avg(I,J) + psnxy_mosaic(I,mosaic_i,J)*FAREA2
-              savxy_mosaic_avg(I,J) = savxy_mosaic_avg(I,J) + savxy_mosaic(I,mosaic_i,J)*FAREA2
-              sagxy_mosaic_avg(I,J) = sagxy_mosaic_avg(I,J) + sagxy_mosaic(I,mosaic_i,J)*FAREA
-              rssunxy_mosaic_avg(I,J) = rssunxy_mosaic_avg(I,J) + rssunxy_mosaic(I,mosaic_i,J)*FAREA2
-              rsshaxy_mosaic_avg(I,J) = rsshaxy_mosaic_avg(I,J) + rsshaxy_mosaic(I,mosaic_i,J)*FAREA2
-              bgapxy_mosaic_avg(I,J) = bgapxy_mosaic_avg(I,J) + bgapxy_mosaic(I,mosaic_i,J)*FAREA2
-              wgapxy_mosaic_avg(I,J) = wgapxy_mosaic_avg(I,J) + wgapxy_mosaic(I,mosaic_i,J)*FAREA2
-              tgvxy_mosaic_avg(I,J) = tgvxy_mosaic_avg(I,J) + tgvxy_mosaic(I,mosaic_i,J)*FAREA2
-              tgbxy_mosaic_avg(I,J) = tgbxy_mosaic_avg(I,J) + tgbxy_mosaic(I,mosaic_i,J)*FAREA
-              chvxy_mosaic_avg(I,J) = chvxy_mosaic_avg(I,J) + chvxy_mosaic(I,mosaic_i,J)*FAREA2
-              chbxy_mosaic_avg(I,J) = chbxy_mosaic_avg(I,J) + chbxy_mosaic(I,mosaic_i,J)*FAREA
-              shgxy_mosaic_avg(I,J) = shgxy_mosaic_avg(I,J) + shgxy_mosaic(I,mosaic_i,J)*FAREA2
-              shcxy_mosaic_avg(I,J) = shcxy_mosaic_avg(I,J) + shcxy_mosaic(I,mosaic_i,J)*FAREA2
-              shbxy_mosaic_avg(I,J) = shbxy_mosaic_avg(I,J) + shbxy_mosaic(I,mosaic_i,J)*FAREA
-              evgxy_mosaic_avg(I,J) = evgxy_mosaic_avg(I,J) + evgxy_mosaic(I,mosaic_i,J)*FAREA2
-              evbxy_mosaic_avg(I,J) = evbxy_mosaic_avg(I,J) + evbxy_mosaic(I,mosaic_i,J)*FAREA
-              ghvxy_mosaic_avg(I,J) = ghvxy_mosaic_avg(I,J) + ghvxy_mosaic(I,mosaic_i,J)*FAREA2
-              ghbxy_mosaic_avg(I,J) = ghbxy_mosaic_avg(I,J) + ghbxy_mosaic(I,mosaic_i,J)*FAREA
-              irgxy_mosaic_avg(I,J) = irgxy_mosaic_avg(I,J) + irgxy_mosaic(I,mosaic_i,J)*FAREA2
-              ircxy_mosaic_avg(I,J) = ircxy_mosaic_avg(I,J) + ircxy_mosaic(I,mosaic_i,J)*FAREA2
-              irbxy_mosaic_avg(I,J) = irbxy_mosaic_avg(I,J) + irbxy_mosaic(I,mosaic_i,J)*FAREA
-              trxy_mosaic_avg(I,J) = trxy_mosaic_avg(I,J) + trxy_mosaic(I,mosaic_i,J)*FAREA2
-              evcxy_mosaic_avg(I,J) = evcxy_mosaic_avg(I,J) +evcxy_mosaic(I,mosaic_i,J)*FAREA2
-              chleafxy_mosaic_avg(I,J) = chleafxy_mosaic_avg(I,J) + chleafxy_mosaic(I,mosaic_i,J)*FAREA2
-              chucxy_mosaic_avg(I,J) = chucxy_mosaic_avg(I,J) + chucxy_mosaic(I,mosaic_i,J)*FAREA2
-              chv2xy_mosaic_avg(I,J) = chv2xy_mosaic_avg(I,J) + chv2xy_mosaic(I,mosaic_i,J)*FAREA2
-              chb2xy_mosaic_avg(I,J) = chb2xy_mosaic_avg(I,J) + chb2xy_mosaic(I,mosaic_i,J)*FAREA
+              t2mvxy_mosaic_avg(I,J) = t2mvxy_mosaic_avg(I,J) + t2mvxy(I,J)*FAREA2
+              t2mbxy_mosaic_avg(I,J) = t2mbxy_mosaic_avg(I,J) + t2mbxy(I,J)*FAREA
+              q2mvxy_mosaic_avg(I,J) = q2mvxy_mosaic_avg(I,J) + q2mvxy(I,J)*FAREA2
+              q2mbxy_mosaic_avg(I,J) = q2mbxy_mosaic_avg(I,J) + q2mbxy(I,J)*FAREA
+              tradxy_mosaic_avg(I,J) = tradxy_mosaic_avg(I,J) + tradxy(I,J)*FAREA
+              neexy_mosaic_avg(I,J) = neexy_mosaic_avg(I,J) + neexy(I,J)*FAREA
+              gppxy_mosaic_avg(I,J) = gppxy_mosaic_avg(I,J) + gppxy(I,J)*FAREA
+              nppxy_mosaic_avg(I,J) = nppxy_mosaic_avg(I,J) + nppxy(I,J)*FAREA
+              fvegxy_mosaic_avg(I,J) = fvegxy_mosaic_avg(I,J) + fvegxy(I,J)*FAREA
+              runsfxy_mosaic_avg(I,J) = runsfxy_mosaic_avg(I,J) + runsfxy(I,J)*FAREA
+              runsbxy_mosaic_avg(I,J) = runsbxy_mosaic_avg(I,J) + runsbxy(I,J)*FAREA
+              ecanxy_mosaic_avg(I,J) = ecanxy_mosaic_avg(I,J) + ecanxy(I,J)*FAREA
+              edirxy_mosaic_avg(I,J) = edirxy_mosaic_avg(I,J) + edirxy(I,J)*FAREA
+              etranxy_mosaic_avg(I,J) = etranxy_mosaic_avg(I,J) + etranxy(I,J)*FAREA
+              fsaxy_mosaic_avg(I,J) = fsaxy_mosaic_avg(I,J) + fsaxy(I,J)*FAREA
+              firaxy_mosaic_avg(I,J) = firaxy_mosaic_avg(I,J) + firaxy(I,J)*FAREA
+              aparxy_mosaic_avg(I,J) = aparxy_mosaic_avg(I,J) + aparxy(I,J)*FAREA
+              psnxy_mosaic_avg(I,J) = psnxy_mosaic_avg(I,J) + psnxy(I,J)*FAREA
+              savxy_mosaic_avg(I,J) = savxy_mosaic_avg(I,J) + savxy(I,J)*FAREA
+              sagxy_mosaic_avg(I,J) = sagxy_mosaic_avg(I,J) + sagxy(I,J)*FAREA
+              rssunxy_mosaic_avg(I,J) = rssunxy_mosaic_avg(I,J) + rssunxy(I,J)*FAREA2
+              rsshaxy_mosaic_avg(I,J) = rsshaxy_mosaic_avg(I,J) + rsshaxy(I,J)*FAREA2
+              bgapxy_mosaic_avg(I,J) = bgapxy_mosaic_avg(I,J) + bgapxy(I,J)*FAREA2
+              wgapxy_mosaic_avg(I,J) = wgapxy_mosaic_avg(I,J) + wgapxy(I,J)*FAREA2
+              tgvxy_mosaic_avg(I,J) = tgvxy_mosaic_avg(I,J) + tgvxy(I,J)*FAREA2
+              tgbxy_mosaic_avg(I,J) = tgbxy_mosaic_avg(I,J) + tgbxy(I,J)*FAREA
+              chvxy_mosaic_avg(I,J) = chvxy_mosaic_avg(I,J) + chvxy(I,J)*FAREA2
+              chbxy_mosaic_avg(I,J) = chbxy_mosaic_avg(I,J) + chbxy(I,J)*FAREA
+              shgxy_mosaic_avg(I,J) = shgxy_mosaic_avg(I,J) + shgxy(I,J)*FAREA
+              shcxy_mosaic_avg(I,J) = shcxy_mosaic_avg(I,J) + shcxy(I,J)*FAREA
+              shbxy_mosaic_avg(I,J) = shbxy_mosaic_avg(I,J) + shbxy(I,J)*FAREA
+              evgxy_mosaic_avg(I,J) = evgxy_mosaic_avg(I,J) + evgxy(I,J)*FAREA
+              evbxy_mosaic_avg(I,J) = evbxy_mosaic_avg(I,J) + evbxy(I,J)*FAREA
+              ghvxy_mosaic_avg(I,J) = ghvxy_mosaic_avg(I,J) + ghvxy(I,J)*FAREA
+              ghbxy_mosaic_avg(I,J) = ghbxy_mosaic_avg(I,J) + ghbxy(I,J)*FAREA
+              irgxy_mosaic_avg(I,J) = irgxy_mosaic_avg(I,J) + irgxy(I,J)*FAREA
+              ircxy_mosaic_avg(I,J) = ircxy_mosaic_avg(I,J) + ircxy(I,J)*FAREA
+              irbxy_mosaic_avg(I,J) = irbxy_mosaic_avg(I,J) + irbxy(I,J)*FAREA
+              trxy_mosaic_avg(I,J) = trxy_mosaic_avg(I,J) + trxy(I,J)*FAREA
+              evcxy_mosaic_avg(I,J) = evcxy_mosaic_avg(I,J) + evcxy(I,J)*FAREA
+              chleafxy_mosaic_avg(I,J) = chleafxy_mosaic_avg(I,J) + chleafxy(I,J)*FAREA2
+              chucxy_mosaic_avg(I,J) = chucxy_mosaic_avg(I,J) + chucxy(I,J)*FAREA2
+              chv2xy_mosaic_avg(I,J) = chv2xy_mosaic_avg(I,J) + chv2xy(I,J)*FAREA2
+              chb2xy_mosaic_avg(I,J) = chb2xy_mosaic_avg(I,J) + chb2xy(I,J)*FAREA
 
               ! Extra Variables for the averaging
               ! irrigation intermediate variables
@@ -7475,41 +7758,43 @@ type(noahmp_parameters) :: parameters
                ENDDO
 
               ! Extra variables averaged needed for extra outputs
-              QINTSXY_mosaic_avg(I,J) = QINTSXY_mosaic_avg(I,J) + QINTSXY_mosaic(I,mosaic_i,J)*FAREA
-              QINTRXY_mosaic_avg(I,J) = QINTRXY_mosaic_avg(I,J) + QINTRXY_mosaic(I,mosaic_i,J)*FAREA
-              QDRIPSXY_mosaic_avg(I,J) = QDRIPSXY_mosaic_avg(I,J) + QDRIPSXY_mosaic(I,mosaic_i,J)*FAREA
-              QDRIPRXY_mosaic_avg(I,J) = QDRIPRXY_mosaic_avg(I,J) + QDRIPRXY_mosaic(I,mosaic_i,J)*FAREA
-              QTHROSXY_mosaic_avg(I,J) = QTHROSXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)*FAREA
-              QTHRORXY_mosaic_avg(I,J) = QTHRORXY_mosaic_avg(I,J) + QTHRORXY_mosaic(I,mosaic_i,J)*FAREA
-              QSNSUBXY_mosaic_avg(I,J) = QSNSUBXY_mosaic_avg(I,J) + QSNSUBXY_mosaic(I,mosaic_i,J)*FAREA
-              QSNFROXY_mosaic_avg(I,J) = QSNFROXY_mosaic_avg(I,J) + QSNFROXY_mosaic(I,mosaic_i,J)*FAREA
-              QSUBCXY_mosaic_avg(I,J) = QSUBCXY_mosaic_avg(I,J) + QSUBCXY_mosaic(I,mosaic_i,J)*FAREA
-              QFROCXY_mosaic_avg(I,J) = QFROCXY_mosaic_avg(I,J) + QFROCXY_mosaic(I,mosaic_i,J)*FAREA
-              QEVACXY_mosaic_avg(I,J) = QEVACXY_mosaic_avg(I,J) + QEVACXY_mosaic(I,mosaic_i,J)*FAREA
-              QDEWCXY_mosaic_avg(I,J) = QDEWCXY_mosaic_avg(I,J) + QDEWCXY_mosaic(I,mosaic_i,J)*FAREA
-              QFRZCXY_mosaic_avg(I,J) = QFRZCXY_mosaic_avg(I,J) + QFRZCXY_mosaic(I,mosaic_i,J)*FAREA
-              QMELTCXY_mosaic_avg(I,J) = QMELTCXY_mosaic_avg(I,J) + QMELTCXY_mosaic(I,mosaic_i,J)*FAREA
-              QSNBOTXY_mosaic_avg(I,J) = QSNBOTXY_mosaic_avg(I,J) + QSNBOTXY_mosaic(I,mosaic_i,J)*FAREA
-              QMELTXY_mosaic_avg(I,J) = QMELTXY_mosaic_avg(I,J) + QMELTXY_mosaic(I,mosaic_i,J)*FAREA
-              PONDINGXY_mosaic_avg(I,J) = PONDINGXY_mosaic_avg(I,J) + PONDINGXY_mosaic(I,mosaic_i,J)*FAREA
-              PAHXY_mosaic_avg(I,J) = PAHXY_mosaic_avg(I,J) + PAHXY_mosaic(I,mosaic_i,J)*FAREA
-              PAHVXY_mosaic_avg(I,J) = PAHVXY_mosaic_avg(I,J) + PAHVXY_mosaic(I,mosaic_i,J)*FAREA
-              PAHBXY_mosaic_avg(I,J) = PAHBXY_mosaic_avg(I,J) + PAHBXY_mosaic(I,mosaic_i,J)*FAREA
-              PAHGXY_mosaic_avg(I,J) = PAHGXY_mosaic_avg(I,J) + PAHGXY_mosaic(I,mosaic_i,J)*FAREA
-              FPICEXY_mosaic_avg(I,J) = FPICEXY_mosaic_avg(I,J) + FPICEXY_mosaic(I,mosaic_i,J)*FAREA
+              QINTSXY_mosaic_avg(I,J) = QINTSXY_mosaic_avg(I,J) + QINTSXY(I,J)*FAREA
+              QINTRXY_mosaic_avg(I,J) = QINTRXY_mosaic_avg(I,J) + QINTRXY(I,J)*FAREA
+              QDRIPSXY_mosaic_avg(I,J) = QDRIPSXY_mosaic_avg(I,J) + QDRIPSXY(I,J)*FAREA
+              QDRIPRXY_mosaic_avg(I,J) = QDRIPRXY_mosaic_avg(I,J) + QDRIPRXY(I,J)*FAREA
+              QTHROSXY_mosaic_avg(I,J) = QTHROSXY_mosaic_avg(I,J) + QTHRORXY(I,J)*FAREA
+              QTHRORXY_mosaic_avg(I,J) = QTHRORXY_mosaic_avg(I,J) + QTHRORXY(I,J)*FAREA
+              QSNSUBXY_mosaic_avg(I,J) = QSNSUBXY_mosaic_avg(I,J) + QSNSUBXY(I,J)*FAREA
+              QSNFROXY_mosaic_avg(I,J) = QSNFROXY_mosaic_avg(I,J) + QSNFROXY(I,J)*FAREA
+              QSUBCXY_mosaic_avg(I,J) = QSUBCXY_mosaic_avg(I,J) + QSUBCXY(I,J)*FAREA
+              QFROCXY_mosaic_avg(I,J) = QFROCXY_mosaic_avg(I,J) + QFROCXY(I,J)*FAREA
+              QEVACXY_mosaic_avg(I,J) = QEVACXY_mosaic_avg(I,J) + QEVACXY(I,J)*FAREA
+              QDEWCXY_mosaic_avg(I,J) = QDEWCXY_mosaic_avg(I,J) + QDEWCXY(I,J)*FAREA
+              QFRZCXY_mosaic_avg(I,J) = QFRZCXY_mosaic_avg(I,J) + QFRZCXY(I,J)*FAREA
+              QMELTCXY_mosaic_avg(I,J) = QMELTCXY_mosaic_avg(I,J) + QMELTCXY(I,J)*FAREA
+              QSNBOTXY_mosaic_avg(I,J) = QSNBOTXY_mosaic_avg(I,J) + QSNBOTXY(I,J)*FAREA
+              QMELTXY_mosaic_avg(I,J) = QMELTXY_mosaic_avg(I,J) + QMELTXY(I,J)*FAREA
+              PONDINGXY_mosaic_avg(I,J) = PONDINGXY_mosaic_avg(I,J) + PONDINGXY(I,J)*FAREA
+              PAHXY_mosaic_avg(I,J) = PAHXY_mosaic_avg(I,J) + PAHXY(I,J)*FAREA
+              PAHVXY_mosaic_avg(I,J) = PAHVXY_mosaic_avg(I,J) + PAHVXY(I,J)*FAREA
+              PAHBXY_mosaic_avg(I,J) = PAHBXY_mosaic_avg(I,J) + PAHBXY(I,J)*FAREA
+              PAHGXY_mosaic_avg(I,J) = PAHGXY_mosaic_avg(I,J) + PAHGXY(I,J)*FAREA
+              FPICEXY_mosaic_avg(I,J) = FPICEXY_mosaic_avg(I,J) + FPICEXY(I,J)*FAREA
 
               ! Soil and ACC
               ACC_SSOILXY_mosaic_avg(I,J) = ACC_SSOILXY_mosaic_avg(I,J) + ACC_SSOILXY_mosaic(I,mosaic_i,J)*FAREA
               ACC_QINSURXY_mosaic_avg(I,J) = ACC_QINSURXY_mosaic_avg(I,J) + ACC_QINSURXY_mosaic(I,mosaic_i,J)*FAREA
               ACC_QSEVAXY_mosaic_avg(I,J) = ACC_QSEVAXY_mosaic_avg(I,J) + ACC_QSEVAXY_mosaic(I,mosaic_i,J)*FAREA
-              EFLXBXY_mosaic_avg(I,J) = EFLXBXY_mosaic_avg(I,J) + EFLXBXY_mosaic(I,mosaic_i,J)*FAREA
-              SOILENERGY_mosaic_avg(I,J) = SOILENERGY_mosaic_avg(I,J) + SOILENERGY_mosaic(I,mosaic_i,J)*FAREA
-              SNOWENERGY_mosaic_avg(I,J) = SNOWENERGY_mosaic_avg(I,J) + SNOWENERGY_mosaic(I,mosaic_i,J)*FAREA
-              CANHSXY_mosaic_avg(I,J) = CANHSXY_mosaic_avg(I,J) + CANHSXY_mosaic(I,mosaic_i,J)*FAREA
+              EFLXBXY_mosaic_avg(I,J) = EFLXBXY_mosaic_avg(I,J) + EFLXBXY(I,J)*FAREA
+              SOILENERGY_mosaic_avg(I,J) = SOILENERGY_mosaic_avg(I,J) + SOILENERGY(I,J)*FAREA
+              SNOWENERGY_mosaic_avg(I,J) = SNOWENERGY_mosaic_avg(I,J) + SNOWENERGY(I,J)*FAREA
+              CANHSXY_mosaic_avg(I,J) = CANHSXY_mosaic_avg(I,J) + CANHSXY(I,J)*FAREA
               ACC_DWATERXY_mosaic_avg(I,J) = ACC_DWATERXY_mosaic_avg(I,J) + ACC_DWATERXY_mosaic(I,mosaic_i,J)*FAREA
               ACC_PRCPXY_mosaic_avg(I,J) = ACC_PRCPXY_mosaic_avg(I,J) + ACC_PRCPXY_mosaic(I,mosaic_i,J)*FAREA
               ACC_ECANXY_mosaic_avg(I,J) = ACC_ECANXY_mosaic_avg(I,J) + ACC_ECANXY_mosaic(I,mosaic_i,J)*FAREA
-
+              ACC_EDIRXY_mosaic_avg(I,J) = ACC_EDIRXY_mosaic_avg(I,J) + ACC_EDIRXY_mosaic(I,mosaic_i,J)*FAREA
+              ACC_ETRANXY_mosaic_avg(I,J) = 0.
+              !ACC_ETRANXY_mosaic_avg(I,J) + ACC_ETRANXY_mosaic(I,mosaic_i,J)*FAREA
               !HUE THINGS
               RUNONSFXY_mosaic_avg(I,J) = RUNONSFXY_mosaic_avg(I,J) + RUNONSFXY_mosaic(I,mosaic_i,J)*FAREA
 
@@ -7525,13 +7810,32 @@ type(noahmp_parameters) :: parameters
               FAREA2 = 0.
 
               DO mosaic_i= 1,mosaic_cat
-                IF( (mosaic_cat_index(I,mosaic_i,J) /= ISURBAN_TABLE) .and.( mosaic_cat_index(I,mosaic_i,J) /= LCZ_1_TABLE) .and. &
-                   (mosaic_cat_index(I,mosaic_i,J) /= LCZ_2_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= LCZ_3_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= 42) .and. & 
-                   (mosaic_cat_index(I,mosaic_i,J)/= 44) .and. (IVGTYP(I,J) /= 45).and. (mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE) ) THEN
-                  
+        IF(SF_URBAN_PHYSICS == 0) THEN
+        
+            IF((mosaic_cat_index(I,mosaic_i,J) /= ISURBAN_TABLE) .and.( mosaic_cat_index(I,mosaic_i,J) /= LCZ_1_TABLE) .and. &
+                   (mosaic_cat_index(I,mosaic_i,J) /= LCZ_2_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= LCZ_3_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= 42) .and. &
+                   (mosaic_cat_index(I,mosaic_i,J) /= 44) .and. (mosaic_cat_index(I,mosaic_i,J) /= 45).and. (mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= 16)  ) THEN
+
                   FAREA2 = FAREA2 + landusef2(I,mosaic_i,J)
+                  
+                  
                 ENDIF
+         ELSE IF (SF_URBAN_PHYSICS == 1) THEN 
+            IF ((mosaic_cat_index(I,mosaic_i,J) /= 42) .and. &
+                   (mosaic_cat_index(I,mosaic_i,J) /= 44) .and. (mosaic_cat_index(I,mosaic_i,J) /= 45).and. (mosaic_cat_index(I,mosaic_i,J) /= ISBARREN_TABLE) .and. (mosaic_cat_index(I,mosaic_i,J) /= 16)  ) THEN 
+                   
+                   FAREA2 = FAREA2 + landusef2(I,mosaic_i,J)
+         
+         endif 
+         
+         endif
               END DO
+              
+            
+              IF (FAREA2 == 0.) THEN 
+                  WRITE(*,*) "Grid point I = ",I, "Grid Point J = ", J ," Has no vegetated area across mosaic values. Veg outputs to -9999"
+                  TRIGGER = 1
+              endif
               ! FAREA is now the total area that was used
               ! to average our vegetation canopy. We divide the
               ! variables that we just added by this to scale to be correct
@@ -7559,33 +7863,135 @@ type(noahmp_parameters) :: parameters
               Z0(I,J) = Z0_mosaic_avg(I,J)
               ZNT(I,J) = ZNT_mosaic_avg(I,J)
               RS(I,J) = rs_mosaic_avg(I,J)
+             
 
+              
               DO LAYER=1,NSOIL
 
                   TSLB(I,LAYER,J) = TSLB_mosaic_avg(I,LAYER,J)
                   SMOIS(I,LAYER,J) = SMOIS_mosaic_avg(I,LAYER,J)
                   SH2O(I,LAYER,J) = SH2O_mosaic_avg(I,LAYER,J)
                   SMOISEQ(I,LAYER,J) = SMOISEQ_mosaic_avg(I,LAYER,J)
-                  ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J)/FAREA2
+                  IF (TRIGGER == 0) THEN
+                      ACC_ETRANIXY(I,LAYER,J) = ACC_ETRANIXY_mosaic_avg(I,LAYER,J)/FAREA2
+                  else
+                       ACC_ETRANIXY(I,LAYER,J) = -9999.
+                  endif
+                   
               ENDDO
+              
 
               ISNOWXY(I,J) = isnowxy_mosaic_avg(I,J)/mosaic_cat
               IF(SNOWH(I,J).ne.0.0.and.QSNOWXY(I,J).eq.0.0) THEN
-              DO LAYER= 1,mosaic_cat 
+              DO LAYER= 1,mosaic_cat
                  IF ((SNOWH_MOSAIC(I,LAYER,J).ne.0.0).and.(QSNOWXY_mosaic(I,LAYER,J).eq.0.0)) THEN
                      SNOWH_mosaic(I,1:mosaic_cat,J) = 0.0
                  ENDIF
-              ENDDO 
+              ENDDO
               SNOWH(I,J) = 0.0
               ELSE
               SNOWH(I,J) = SNOWH_mosaic_avg(I,J)
-              ENDIF 
-              TVXY(I,J) = tvxy_mosaic_avg(I,J)/FAREA2
+              ENDIF
+              
+              IF (TRIGGER == 0) THEN
+                  TVXY(I,J) = tvxy_mosaic_avg(I,J)/FAREA2
+                  EAHXY(I,J) = eahxy_mosaic_avg(I,J)/FAREA2
+                  TAHXY(I,J) = tahxy_mosaic_avg(I,J)/FAREA2
+                 
+                  
+                  T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)/FAREA2
+                  Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)/FAREA2
+                  
+                  
+                  SAVXY(I,J) = savxy_mosaic_avg(I,J)/FAREA2
+                  RSSUNXY(I,J) = rssunxy_mosaic_avg(I,J)/FAREA2
+                  RSSHAXY(I,J) = rsshaxy_mosaic_avg(I,J)/FAREA2
+                  BGAPXY(I,J) = bgapxy_mosaic_avg(I,J)/FAREA2
+                  WGAPXY(I,J) = wgapxy_mosaic_avg(I,J)/FAREA2
+                  TGVXY(I,J) = tgvxy_mosaic_avg(I,J)/FAREA2
+                  CHVXY(I,J) = chvxy_mosaic_avg(I,J)/FAREA2
+                  SHGXY(I,J) = shgxy_mosaic_avg(I,J)/FAREA2
+                  SHCXY(I,J) = shcxy_mosaic_avg(I,J)/FAREA2
+                  EVGXY(I,J) = evgxy_mosaic_avg(I,J)/FAREA2
+                  EVCXY(I,J) = evcxy_mosaic_avg(I,J)/FAREA2
+                  IRGXY(I,J) = irgxy_mosaic_avg(I,J)/FAREA2
+                  IRCXY(I,J) = ircxy_mosaic_avg(I,J)/FAREA2
+                  TRXY(I,J) = trxy_mosaic_avg(I,J)/FAREA2
+                  EVCXY(I,J) = evcxy_mosaic_avg(I,J)/FAREA2
+                  CHLEAFXY(I,J) = chleafxy_mosaic_avg(I,J)/FAREA2
+                  CHUCXY(I,J) = chucxy_mosaic_avg(I,J)/FAREA2
+                  CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)/FAREA2
+              ELSE
+                  TVXY(I,J) = -9999.
+                  EAHXY(I,J) = -9999.
+                  TAHXY(I,J) = -9999.
+                 
+                  
+                  T2MVXY(I,J) = -9999.
+                  Q2MVXY(I,J) = -9999.
+                  NEEXY(I,J) = -9999.
+                  GPPXY(I,J) = -9999.
+                  
+                  
+                  SAVXY(I,J) = -9999.
+                  RSSUNXY(I,J) = -9999.
+                  RSSHAXY(I,J) = -9999.
+                  BGAPXY(I,J) = -9999.
+                  WGAPXY(I,J) = -9999.
+                  TGVXY(I,J) = -9999.
+                  CHVXY(I,J) = -9999.
+                  SHGXY(I,J) = -9999.
+                  SHCXY(I,J) = -9999.
+                  EVGXY(I,J) = -9999.
+                  EVCXY(I,J) = -9999.
+                  IRGXY(I,J) = -9999.
+                  IRCXY(I,J) = -9999.
+                  TRXY(I,J) = -9999.
+                  EVCXY(I,J) = -9999.
+                  CHLEAFXY(I,J) = -9999.
+                  CHUCXY(I,J) = -9999.
+                  CHV2XY(I,J) = -9999.
+                  
+                  ! Set trigger back to 0
+                  TRIGGER = 0
+             ENDIF 
+ 
+              LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)
+              RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)
+              STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)
+              WOODXY(I,J) = woodxy_mosaic_avg(I,J)
+              STBLCPXY(I,J) = stblcpxy_mosaic_avg(I,J)
+              FASTCPXY(I,J) = fastcpxy_mosaic_avg(I,J)
+              XLAIXY(I,J) = xlai_mosaic_avg(I,J)
+              XSAIXY(I,J) = xsaixy_mosaic_avg(I,J)
+              
+              NEEXY(I,J) = neexy_mosaic_avg(I,J)
+              GPPXY(I,J) = gppxy_mosaic_avg(I,J)
+              NPPXY(I,J) = nppxy_mosaic_avg(I,J)
+              FVEGXY(I,J) = fvegxy_mosaic_avg(I,J)
+              ECANXY(I,J) = ecanxy_mosaic_avg(I,J)
+              EDIRXY(I,J) = edirxy_mosaic_avg(I,J)
+              ETRANXY(I,J) = etranxy_mosaic_avg(I,J)
+              
+              APARXY(I,J) = aparxy_mosaic_avg(I,J)
+              PSNXY(I,J) = psnxy_mosaic_avg(I,J)
+              
+             
+              EVBXY(I,J) = evbxy_mosaic_avg(I,J)
+             
+              
+              IRGXY(I,J) = irgxy_mosaic_avg(I,J)
+              IRCXY(I,J) = ircxy_mosaic_avg(I,J)
+              
+              
+ 
+              
+              
               TGXY(I,J) = tgxy_mosaic_avg(I,J)
               CANICEXY(I,J) = canicexy_mosaic_avg(I,J)
               CANLIQXY(I,J) = canliqxy_mosaic_avg(I,J)
-              EAHXY(I,J) = eahxy_mosaic_avg(I,J)/FAREA2
-              TAHXY(I,J) = tahxy_mosaic_avg(I,J)/FAREA2
+              
+              
               CMXY(I,J) = cmxy_mosaic_avg(I,J)
               CHXY(I,J) = chxy_mosaic_avg(I,J)
               FWETXY(I,J) = fwetxy_mosaic_avg(I,J)
@@ -7597,66 +8003,34 @@ type(noahmp_parameters) :: parameters
               ZWTXY(I,J) = zwtxy_mosaic_avg(I,J)
               WAXY(I,J) = waxy_mosaic_avg(I,J)
               WTXY(I,J) = wtxy_mosaic_avg(I,J)
-              LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)/FAREA2
-              RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)/FAREA2
-              STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)/FAREA2
-              WOODXY(I,J) = woodxy_mosaic_avg(I,J)/FAREA2
-              GRAINXY(I,J) = grainxy_mosaic_avg(I,J)/FAREA2
-              GDDXY(I,J) = gddxy_mosaic_avg(I,J)/FAREA2
-              PGSXY(I,J) = pgsxy_mosaic_avg(I,J)/FAREA2
-              STBLCPXY(I,J) = stblcpxy_mosaic_avg(I,J)/FAREA2
-              FASTCPXY(I,J) = fastcpxy_mosaic_avg(I,J)/FAREA2
-              XLAIXY(I,J) = xlai_mosaic_avg(I,J)/FAREA2
-              XSAIXY(I,J) = xsaixy_mosaic_avg(I,J)/FAREA2
+              
               TAUSSXY(I,J) = taussxy_mosaic_avg(I,J)
               SMCWTDXY(I,J) = smcwtdxy_mosaic_avg(I,J)
               DEEPRECHXY(I,J) = deeprechxy_mosaic_avg(I,J)
               RECHXY(I,J) = rechxy_mosaic_avg(I,J)
 
               !out variables only
-              T2MVXY(I,J) = t2mvxy_mosaic_avg(I,J)/FAREA2
+              
               T2MBXY(I,J) = t2mbxy_mosaic_avg(I,J)
-              Q2MVXY(I,J) = q2mvxy_mosaic_avg(I,J)/FAREA2
+              
               Q2MBXY(I,J) = q2mbxy_mosaic_avg(I,J)
               TRADXY(I,J) = tradxy_mosaic_avg(I,J)
-              NEEXY(I,J) = neexy_mosaic_avg(I,J)/FAREA2
-              GPPXY(I,J) = gppxy_mosaic_avg(I,J)/FAREA2
-              NPPXY(I,J) = nppxy_mosaic_avg(I,J)/FAREA2
-              FVEGXY(I,J) = fvegxy_mosaic_avg(I,J)/FAREA2
+              
               RUNSFXY(I,J) = runsfxy_mosaic_avg(I,J)
               RUNSBXY(I,J) = runsbxy_mosaic_avg(I,J)
-              ECANXY(I,J) = ecanxy_mosaic_avg(I,J)/FAREA2
-              EDIRXY(I,J) = edirxy_mosaic_avg(I,J)/FAREA2
-              ETRANXY(I,J) = etranxy_mosaic_avg(I,J)/FAREA2
+              
               FSAXY(I,J) = fsaxy_mosaic_avg(I,J)
               FIRAXY(I,J) = firaxy_mosaic_avg(I,J)
-              APARXY(I,J) = aparxy_mosaic_avg(I,J)/FAREA2
-              PSNXY(I,J) = psnxy_mosaic_avg(I,J)/FAREA2
-              SAVXY(I,J) = savxy_mosaic_avg(I,J)/FAREA2
               SAGXY(I,J) = sagxy_mosaic_avg(I,J)
-              RSSUNXY(I,J) = rssunxy_mosaic_avg(I,J)/FAREA2
-              RSSHAXY(I,J) = rsshaxy_mosaic_avg(I,J)/FAREA2
-              BGAPXY(I,J) = bgapxy_mosaic_avg(I,J)/FAREA2
-              WGAPXY(I,J) = wgapxy_mosaic_avg(I,J)/FAREA2
-              TGVXY(I,J) = tgvxy_mosaic_avg(I,J)/FAREA2
               TGBXY(I,J) = tgbxy_mosaic_avg(I,J)
-              CHVXY(I,J) = chvxy_mosaic_avg(I,J)/FAREA2
               CHBXY(I,J) = chbxy_mosaic_avg(I,J)
-              SHBXY(I,J) = shbxy_mosaic_avg(I,J)/FAREA2
-              SHCXY(I,J) = shcxy_mosaic_avg(I,J)/FAREA2
-              SHGXY(I,J) = shbxy_mosaic_avg(I,J)
-              EVGXY(I,J) = evgxy_mosaic_avg(I,J)/FAREA2
-              EVBXY(I,J) = evbxy_mosaic_avg(I,J)/FAREA2
+              
+              
+              SHBXY(I,J) = shbxy_mosaic_avg(I,J)
               GHVXY(I,J) = ghvxy_mosaic_avg(I,J)
               GHBXY(I,J) = ghbxy_mosaic_avg(I,J)
-              IRGXY(I,J) = irgxy_mosaic_avg(I,J)/FAREA2
-              IRCXY(I,J) = ircxy_mosaic_avg(I,J)/FAREA2
+             
               IRBXY(I,J) = irbxy_mosaic_avg(I,J)
-              TRXY(I,J) = trxy_mosaic_avg(I,J)/FAREA2
-              EVCXY(I,J) = evcxy_mosaic_avg(I,J)/FAREA2
-              CHLEAFXY(I,J) = chleafxy_mosaic_avg(I,J)/FAREA2
-              CHUCXY(I,J) = chucxy_mosaic_avg(I,J)/FAREA2
-              CHV2XY(I,J) = chv2xy_mosaic_avg(I,J)/FAREA2
               CHB2XY(I,J) = chb2xy_mosaic_avg(I,J)
 
 
@@ -7708,11 +8082,13 @@ type(noahmp_parameters) :: parameters
               ACC_DWATERXY(I,J) = ACC_DWATERXY_mosaic_avg(I,J)
               ACC_PRCPXY(I,J) = ACC_PRCPXY_mosaic_avg(I,J)
               ACC_ECANXY(I,J) = ACC_ECANXY_mosaic_avg(I,J)
+              ACC_EDIRXY(I,J) = ACC_EDIRXY_mosaic_avg(I,J)
+              ACC_ETRANXY(I,J) = ACC_ETRANXY_mosaic_avg(I,J)
 
                DO LAYER=1,3
-                      TSNOXY(I, LAYER-3,J) = tsnoxy_mosaic_avg(I, LAYER,J) 
+                      TSNOXY(I, LAYER-3,J) = tsnoxy_mosaic_avg(I, LAYER,J)
                       snicexy(I,LAYER-3,J) = snicexy_mosaic_avg(I,LAYER,J)
-                      snliqxy(I,LAYER-3,J) = SNLIQXY_mosaic_avg(I,LAYER,J) 
+                      snliqxy(I,LAYER-3,J) = SNLIQXY_mosaic_avg(I,LAYER,J)
                ENDDO
 
                DO LAYER=1,7
@@ -7720,12 +8096,9 @@ type(noahmp_parameters) :: parameters
                ENDDO
               !HUE THINGS
               RUNONSFXY(I,J) = RUNONSFXY_mosaic_avg(I,J)
-
-
-
-
+             
             ENDIF ! End of the Soil-Water_ice If else statement
-
+           
            ENDDO ILOOP !END of the I LOOP
            ENDDO JLOOP !END of the J LOOP
 

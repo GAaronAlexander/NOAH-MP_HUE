@@ -626,7 +626,7 @@ use module_wrf_error
 
 ! Glotfelty, 2012/07/05, NUDAPT Modification
 
- if(mh_urb.gt.0.0)THEN 
+ if(mh_urb.lt.0.0)THEN 
   !write(mesg,*) 'Mean Height NUDAPT',mh_urb
   !WRITE_MESSAGE(mesg)
   !write(mesg,*) 'Mean Height Table',ZR

@@ -1300,7 +1300,7 @@ if (IOPT_MOSAIC.eq.1) then
 endif
 
 if (IOPT_HUE.eq.1) then
-  if (IOPT_MOSAIC.eq.0) then
+  if (IOPT_MOSAIC.eq.1) then
      write(*, *)
      write(*, '(" ***** Namelist error: ******************************************************")')
      write(*, '(" ***** ")')
@@ -2077,7 +2077,7 @@ IF(IOPT_MOSAIC == 1) THEN
 
   ALLOCATE ( RUNONSFXY (XSTART:XEND,  YSTART:YEND) )
   ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
-!IF (IOPT_HUE.eq.1) THEN
+IF (IOPT_HUE.eq.1) THEN
 
   !ALLOCATE ( RUNONSFXY (XSTART:XEND,  YSTART:YEND) )
   !ALLOCATE ( RUNONSFXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,YSTART:YEND) )
@@ -2086,7 +2086,7 @@ IF(IOPT_MOSAIC == 1) THEN
   ALLOCATE ( VOL_FLUX_RUNONXY_mosaic (XSTART:XEND,1:number_mosaic_catagories,  YSTART:YEND) )
   ALLOCATE ( VOL_FLUX_SMXY_mosaic (XSTART:XEND,1:NSOIL*number_mosaic_catagories,  YSTART:YEND) )
 
-!end if
+end if
 
 END IF
 !------------------------------------------------------------------------
@@ -2350,12 +2350,12 @@ IF(SF_URBAN_PHYSICS > 0 )  THEN  ! any urban model
   lb_urb2d   = undefined_real
   hgt_urb2d  = undefined_real
   ust        = undefined_real
-  cmr_sfcdif = 0.
-  chr_sfcdif = 0.
-  cmc_sfcdif = 0.
-  chc_sfcdif = 0.
-  cmgr_sfcdif= 0.
-  chgr_sfcdif= 0.
+  cmr_sfcdif = undefined_real
+  chr_sfcdif = undefined_real
+  cmc_sfcdif = undefined_real
+  chc_sfcdif = undefined_real
+  cmgr_sfcdif= undefined_real
+  chgr_sfcdif= undefined_real
   tr_urb2d   = undefined_real
   tb_urb2d   = undefined_real
   tg_urb2d   = undefined_real
@@ -2456,9 +2456,9 @@ IF(SF_URBAN_PHYSICS > 0 )  THEN  ! any urban model
 
 ENDIF
 
-!IF (IOPT_HUE.eq.1) THEN
+IF (IOPT_HUE.eq.1) THEN
   RUNONSFXY = undefined_real
-!END IF
+END IF
 
   XLAND          = 1.0   ! water = 2.0, land = 1.0
   XICE           = 0.0   ! fraction of grid that is seaice
@@ -4290,7 +4290,7 @@ ENDIF ! End mosaic if else swap
               !call add_to_output(APARXY     , "APAR"    , "Photosynthesis active energy by canopy" , "W m{-2}"             )
         IF (IOPT_MOSAIC.eq.1) then
 
-              call add_to_output(TSK_mosaic , "TRAD_mos", "Surface Radiative Temperature mosaic",       "K", "MOS1"             )
+              call add_to_output(TRADXY_mosaic , "TRAD_mos", "Surface Radiative Temperature mosaic",       "K", "MOS1"             )
               call add_to_output(TSLB_mosaic , "SOIL_T_mos", "soil temperature mosaic",       "K", "MOS2"             )
               call add_to_output(SMOIS_mosaic , "SOIL_M_mos", "Volumetric Soil Moisture mosaic",       "m{3} m{-3}", "MOS2"             )
               call add_to_output(SH2O_mosaic , "SOIL_W_mos", "Volumetric Soil Moisture mosaic",       "m{3} m{-3}", "MOS2"             )
@@ -4300,7 +4300,6 @@ ENDIF ! End mosaic if else swap
               call add_to_output(SNOWC_mosaic , "FSNO_mos", "snow-cover-fraction on ground mosaic",       "", "MOS1"             )
               call add_to_output(LANDUSEF2(:,1:number_mosaic_catagories,:), "FRAC_LND", "Mosaic Land Use Weights, add up to 1", "[-]", "MOS1")
               call add_to_output(mosaic_cat_index(:,1:number_mosaic_catagories,:), "MOSAIC_CATS", "Mosaic Catagories for Fractional Land-Use", "[-]", "MOS1")
-              call add_to_output(LH_mosaic, "LH_mos", "things","w ^-2", "MOS1")
         END IF ! end if mosaic
         IF (IOPT_HUE.eq.1) THEN
               call add_to_output(RUNONSFXY  , "SFCRNON", "Accumulatetd surface runon grid averaged"          , "mm"                    )
