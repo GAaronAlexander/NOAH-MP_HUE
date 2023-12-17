@@ -6,7 +6,7 @@
  COMPILERF90    =       mpif90
  MPPFLAG        =       YES
  FREESOURCE     =       -free
- F90FLAGS       =       -convert big_endian -g -O0 -fpe0 -traceback
+ F90FLAGS       =       -convert big_endian -g -O5 -fpe0 -traceback
  MODFLAG        =       -I ../MPP
  HYDRO_LIB      =       ../MPP/mpp_land.o ../MPP/CPL_WRF.o
  LDFLAGS        =

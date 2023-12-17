@@ -1558,7 +1558,6 @@ ENDIF   ! CROPTYPE == 0
 ! average interception and throughfall
       IF((ELAI+ ESAI) .GT. 0.0) THEN
          QINTR  = FVEG * RAIN * FP  ! interception capability
-         WRITE(*,*) RAIN, DT, MAXLIQ,QINTR ,ELAI ,ESAI ,parameters%CH2OP,VEGTYP
          QINTR  = MIN(QINTR, (MAXLIQ - CANLIQ)/DT * (1.0-EXP(-RAIN*DT/MAXLIQ)) )
          QINTR  = MAX(QINTR, 0.0)
          QDRIPR = FVEG * RAIN - QINTR

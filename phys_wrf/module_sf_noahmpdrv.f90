@@ -6148,12 +6148,7 @@ type(noahmp_parameters) :: parameters
 
                ! We need to move from our 3D data to the 2D data sets
                !These are the IN/Out values that have an LSM equivelant
-               WRITE(*,*) mosaic_cat_index(I,:,J)
                IVGTYP(I,J) = mosaic_cat_index(I,mosaic_i,J)
-               WRITE(*,*) IVGTYP(i,J),landusef2(I,mosaic_i,J)
-               if (IVGTYP(I,J) == 0) then 
-                       continue
-               endif
                TSK(I,J) = TSK_mosaic(I,mosaic_i,J)
                HFX(I,J) = HFX_mosaic(I,mosaic_i,J)
                QFX(I,J) = QFX_mosaic(I,mosaic_i,J)
@@ -7248,7 +7243,7 @@ type(noahmp_parameters) :: parameters
           !    QSFC(I,J)     = Q1/(1.0-Q1)
                              QSFC(I,J)= FRC_URB2D(I,J)*QS_URB+(1-FRC_URB2D(I,J))*QSFC(I,J)               !!   QSFC(I,J)=QSFC1D
               UST(I,J)      = FRC_URB2D(I,J) * UST_URB + (1-FRC_URB2D(I,J)) * UST(I,J)     ![m/s]
-              ZNT(I,J)= EXP(FRC_URB2D(I,J)*ALOG(ZNT_URB)+(1-FRC_URB2D(I,J))* ALOG(ZNT(I,J)))   ! ADD BY DAN
+           ZNT(I,J)= EXP(FRC_URB2D(I,J)*ALOG(ZNT_URB)+(1-FRC_URB2D(I,J))* ALOG(ZNT(I,J)))   ! ADD BY DAN
           ! Renew Urban State Variables
 
               TR_URB2D(I,J) = TR_URB
@@ -7582,8 +7577,8 @@ type(noahmp_parameters) :: parameters
               ACSNOW_mosaic_avg(I,J) = ACSNOW_mosaic_avg(I,J) +  ACSNOW_mosaic(I,mosaic_i,J)*FAREA
               EMISS_mosaic_avg(I,J) = EMISS_mosaic_avg(I,J) + EMISS_mosaic(I,mosaic_i,J)*FAREA
               QSFC_mosaic_avg(I,J) = QSFC_mosaic_avg(I,J) + QSFC_mosaic(I,mosaic_i,J)*FAREA
-              Z0_mosaic_avg(I,J) = Z0_mosaic_avg(i,j)+ALOG(Z0_mosaic(i,mosaic_i,j))*FAREA
-              ZNT_mosaic_avg(I,J) = ZNT_mosaic_avg(i,j)+ALOG(ZNT_mosaic(i,mosaic_i,j))*FAREA
+              Z0_mosaic_avg(I,J) =Z0_mosaic_avg(i,j)+ALOG(Z0_mosaic(i,mosaic_i,j))*FAREA
+              ZNT_mosaic_avg(I,J) =ZNT_mosaic_avg(i,j)+ALOG(ZNT_mosaic(i,mosaic_i,j))*FAREA
               rs_mosaic_avg(I,J) = rs_mosaic_avg(I,J) + rs_mosaic(I,mosaic_i,J)*FAREA
 
               DO LAYER=1,NSOIL
@@ -7787,8 +7782,8 @@ type(noahmp_parameters) :: parameters
               ACSNOW(I,J) = ACSNOW_mosaic_avg(I,J)
               EMISS(I,J) = EMISS_mosaic_avg(I,J)
               QSFC(I,J) = QSFC_mosaic_avg(I,J)
-              Z0(I,J) =  EXP(Z0_mosaic_avg(i,j)/FAREA_mosaic_avg(i,j))
-              ZNT(I,J) =  EXP(ZNT_mosaic_avg(i,j)/FAREA_mosaic_avg(i,j))
+              Z0(I,J) = EXP(Z0_mosaic_avg(i,j))
+              ZNT(I,J) =  EXP(ZNT_mosaic_avg(i,j))
               RS(I,J) = rs_mosaic_avg(I,J)
 
               
