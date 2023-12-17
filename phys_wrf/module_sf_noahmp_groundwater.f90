@@ -9,8 +9,6 @@
 
 
 
-
-
 MODULE module_sf_noahmp_groundwater
 !===============================================================================
 ! Module to calculate lateral groundwater flow and the flux between groundwater and rivers

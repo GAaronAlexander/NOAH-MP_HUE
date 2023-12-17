@@ -9,8 +9,6 @@
 
 
 
-
-
 !
 ! An attempt to mimic the GFDL code without requiring all the unnecessary extras.
 

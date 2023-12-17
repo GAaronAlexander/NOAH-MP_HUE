@@ -9,8 +9,6 @@
 
 
 
-
-
 MODULE module_sf_bem
 ! -----------------------------------------------------------------------
 !  Variables and constants used in the BEM module

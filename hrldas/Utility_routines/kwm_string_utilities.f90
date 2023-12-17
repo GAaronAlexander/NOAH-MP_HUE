@@ -9,8 +9,6 @@
 
 
 
-
-
 module kwm_string_utilities
 
 contains

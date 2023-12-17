@@ -1557,7 +1557,7 @@ ENDIF   ! CROPTYPE == 0
       IF((ELAI+ ESAI) .GT. 0.0) THEN
          QINTR  = FVEG * RAIN * FP  ! interception capability
          
-
+         WRITE(*,*) DT, RAIN, MAXLIQ
          QINTR  = MIN(QINTR, (MAXLIQ - CANLIQ)/DT * (1.0-EXP(-RAIN*DT/MAXLIQ)) )
          QINTR  = MAX(QINTR, 0.0)
          QDRIPR = FVEG * RAIN - QINTR

@@ -9,8 +9,6 @@
 
 
 
-
-
 MODULE NOAHMP_GLACIER_GLOBALS
 
   implicit none

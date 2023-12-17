@@ -4343,38 +4343,40 @@ END SUBROUTINE noahmp_urban
             ! check to see if these are still negavitve. If they aren't, we can
             ! re-organize
 
-            if ((index_41.gt.0).and.(index_47.gt.0) ) then !we can reorganize
+             if ((index_41.gt.0).and.(index_47.gt.0) ) then !we can reorganize
+!              if ((LANDUSEF2(i,index_41,j).gt.0.).and.(LANDUSEF2(i,index_47,j).gt.0.)) THEN
 
-              if ( index_41.lt.index_47 ) then !means that we are 41.....47, move together
+                  if ( index_41.lt.index_47 ) then !means that we are 41.....47, move together
 
-                temp_master_index= mosaic_cat_index(i,index_47,j)
-                mosaic_cat_index(i,index_41+2:index_47+1,j) = mosaic_cat_index(i,index_41+1:index_47,j)
-                mosaic_cat_index(i,index_41+1,j) = temp_master_index
+                    temp_master_index= mosaic_cat_index(i,index_47,j)
+                    mosaic_cat_index(i,index_41+2:index_47,j) = mosaic_cat_index(i,index_41+1:index_47-1,j)
+                    mosaic_cat_index(i,index_41+1,j) = temp_master_index
 
-                temp_master_LUF = LANDUSEF2(i,index_47,j)
-                LANDUSEF2(i,index_41+2:index_47+1,j) = LANDUSEF2(i,index_41+1:index_47,j)
-                LANDUSEF2(i,index_41+1,j) = temp_master_LUF
-              ELSE !This means we are ordered 47 .... 41, so we need to move and then swap
+                    temp_master_LUF = LANDUSEF2(i,index_47,j)
+                    LANDUSEF2(i,index_41+2:index_47,j) = LANDUSEF2(i,index_41+1:index_47-1,j)
+                    LANDUSEF2(i,index_41+1,j) = temp_master_LUF
+                  ELSE !This means we are ordered 47 .... 41, so we need to move and then swap
 
-                temp_master_index = mosaic_cat_index(i,index_41,j)
-                mosaic_cat_index(i,index_47+2:index_41+1,j) = mosaic_cat_index(i,index_47+1:index_41,j)
-                mosaic_cat_index(i,index_47+1,j) = temp_master_index
+                    temp_master_index = mosaic_cat_index(i,index_41,j)
+                    mosaic_cat_index(i,index_47+2:index_41,j) = mosaic_cat_index(i,index_47+1:index_41-1,j)
+                    mosaic_cat_index(i,index_47+1,j) = temp_master_index
 
-                temp_master_LUF = LANDUSEF2(i,index_41,j)
-                LANDUSEF2(i,index_47+2:index_41+1,j) = LANDUSEF2(i,index_41+1:index_47,j)
-                LANDUSEF2(i,index_47+1,j) = temp_master_LUF
+                    temp_master_LUF = LANDUSEF2(i,index_41,j)
+                    LANDUSEF2(i,index_47+2:index_41,j) = LANDUSEF2(i,index_47+1:index_41-1,j)
+                    LANDUSEF2(i,index_47+1,j) = temp_master_LUF
+                    ! now swap so it goes 41 47 instead of 47 41
 
-                ! now swap so it goes 41 47 instead of 47 41
+                    temp_master_index = mosaic_cat_index(i,index_47,j)
+                    mosaic_cat_index(i,index_47,j) = mosaic_cat_index(i,index_47+1,j)
+                    mosaic_cat_index(i,index_47+1,j) = temp_master_index
 
-                temp_master_index = mosaic_cat_index(i,index_47,j)
-                mosaic_cat_index(i,index_47,j) = mosaic_cat_index(i,index_47+1,j)
-                mosaic_cat_index(i,index_47+1,j) = temp_master_index
+                    temp_master_LUF = LANDUSEF2(i,index_47,j)
+                    LANDUSEF2(i,index_47,j) = LANDUSEF2(i,index_47+1,j)
+                    LANDUSEF2(i,index_47+1,j) = temp_master_LUF
 
-                temp_master_LUF = LANDUSEF2(i,index_47,j)
-                LANDUSEF2(i,index_47,j) = LANDUSEF2(i,index_47+1,j)
-                LANDUSEF2(i,index_47+1,j) = temp_master_LUF
+                  end if
 
-              end if
+
 
             end if ! end the urban tree loop
 
@@ -4394,26 +4396,27 @@ END SUBROUTINE noahmp_urban
 
             ! check to see if these are still negavitve. If they aren't, we can
             ! re-organize
+           if ((index_42.gt.0).and.(index_43.gt.0) ) then !we can reorganize
 
-            if ((index_42.gt.0).and.(index_43.gt.0) ) then !we can reorganize
+            if ((LANDUSEF2(i,index_42,j).gt.0.).and.(LANDUSEF2(i,index_43,j).gt.0.)) THEN
 
-              if ( index_42.lt.index_43 ) then !means that we are 42.....43, move together
+               if ( index_42.lt.index_43 ) then !means that we are 42.....43, move together
 
                 temp_master_index= mosaic_cat_index(i,index_43,j)
-                mosaic_cat_index(i,index_42+2:index_43+1,j) = mosaic_cat_index(i,index_42+1:index_43,j)
+                mosaic_cat_index(i,index_42+2:index_43,j) = mosaic_cat_index(i,index_42+1:index_43-1,j)
                 mosaic_cat_index(i,index_42+1,j) = temp_master_index
 
                 temp_master_LUF = LANDUSEF2(i,index_43,j)
-                LANDUSEF2(i,index_42+2:index_43+1,j) = LANDUSEF2(i,index_42+1:index_43,j)
+                LANDUSEF2(i,index_42+2:index_43,j) = LANDUSEF2(i,index_42+1:index_43-1,j)
                 LANDUSEF2(i,index_42+1,j) = temp_master_LUF
               ELSE !This means we are ordered 43 .... 42, so we need to move and then swap
 
                 temp_master_index = mosaic_cat_index(i,index_42,j)
-                mosaic_cat_index(i,index_43+2:index_42+1,j) = mosaic_cat_index(i,index_43+1:index_42,j)
+                mosaic_cat_index(i,index_43+2:index_42,j) = mosaic_cat_index(i,index_43+1:index_42-1,j)
                 mosaic_cat_index(i,index_43+1,j) = temp_master_index
 
                 temp_master_LUF = LANDUSEF2(i,index_42,j)
-                LANDUSEF2(i,index_43+2:index_42+1,j) = LANDUSEF2(i,index_43+1:index_42,j)
+                LANDUSEF2(i,index_43+2:index_42,j) = LANDUSEF2(i,index_43+1:index_42-1,j)
                 LANDUSEF2(i,index_43+1,j) = temp_master_LUF
 
                 ! now swap so it goes 42 43 instead of 43 42
@@ -4426,7 +4429,30 @@ END SUBROUTINE noahmp_urban
                 LANDUSEF2(i,index_43,j) = LANDUSEF2(i,index_43+1,j)
                 LANDUSEF2(i,index_43+1,j) = temp_master_LUF
 
-              end if
+               end if
+
+            else !make sure that if HUE is active but not all of the new 
+                if ((LANDUSEF2(i,index_42,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_42,j)
+                     mosaic_cat_index(i,index_42:NLCAT-1,j) = mosaic_cat_index(i,index_42+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_42,j)
+                    LANDUSEF2(i,index_42:NLCAT-1,j) = LANDUSEF2(i,index_42+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+
+                else if  ((LANDUSEF2(i,index_43,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_43,j)
+                     mosaic_cat_index(i,index_43:NLCAT-1,j) = mosaic_cat_index(i,index_43+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_43,j)
+                    LANDUSEF2(i,index_43:NLCAT-1,j) = LANDUSEF2(i,index_43+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                endif
+
+            end if
+
 
             end if ! end urban disconnection to turfgrass
 
@@ -4446,42 +4472,66 @@ END SUBROUTINE noahmp_urban
 
               ! check to see if these are still negavitve. If they aren't, we can
               ! re-organize
+             if ((index_45.gt.0).and.(index_44.gt.0) ) then !we can reorganize
 
-              if ((index_45.gt.0).and.(index_44.gt.0) ) then !we can reorganize
+               if ((LANDUSEF2(i,index_45,j).gt.0.).and.(LANDUSEF2(i,index_44,j).gt.0.)) THEN
 
-                if ( index_45.lt.index_44) then !means that we are 45.....44, move together
+                    if ( index_45.lt.index_44) then !means that we are 45.....44, move together
 
-                  temp_master_index= mosaic_cat_index(i,index_44,j)
-                  mosaic_cat_index(i,index_45+2:index_44+1,j) = mosaic_cat_index(i,index_45+1:index_44,j)
-                  mosaic_cat_index(i,index_45+1,j) = temp_master_index
+                      temp_master_index= mosaic_cat_index(i,index_44,j)
+                      mosaic_cat_index(i,index_45+2:index_44,j) = mosaic_cat_index(i,index_45+1:index_44-1,j)
+                      mosaic_cat_index(i,index_45+1,j) = temp_master_index
 
-                  temp_master_LUF = LANDUSEF2(i,index_44,j)
-                  LANDUSEF2(i,index_45+2:index_44+1,j) = LANDUSEF2(i,index_45+1:index_44,j)
-                  LANDUSEF2(i,index_45+1,j) = temp_master_LUF
+                      temp_master_LUF = LANDUSEF2(i,index_44,j)
+                      LANDUSEF2(i,index_45+2:index_44,j) = LANDUSEF2(i,index_45+1:index_44-1,j)
+                      LANDUSEF2(i,index_45+1,j) = temp_master_LUF
 
-                ELSE !This means we are ordered 44 .... 45, so we need to move and then swap
+                    ELSE !This means we are ordered 44 .... 45, so we need to move and then swap
 
-                  temp_master_index = mosaic_cat_index(i,index_45,j)
-                  mosaic_cat_index(i,index_44+2:index_45+1,j) = mosaic_cat_index(i,index_44+1:index_45,j)
-                  mosaic_cat_index(i,index_44+1,j) = temp_master_index
+                      temp_master_index = mosaic_cat_index(i,index_45,j)
+                      mosaic_cat_index(i,index_44+2:index_45,j) = mosaic_cat_index(i,index_44+1:index_45-1,j)
+                      mosaic_cat_index(i,index_44+1,j) = temp_master_index
 
-                  temp_master_LUF = LANDUSEF2(i,index_45,j)
-                  LANDUSEF2(i,index_44+2:index_45+1,j) = LANDUSEF2(i,index_44+1:index_45,j)
-                  LANDUSEF2(i,index_44+1,j) = temp_master_LUF
+                      temp_master_LUF = LANDUSEF2(i,index_45,j)
+                      LANDUSEF2(i,index_44+2:index_45,j) = LANDUSEF2(i,index_44+1:index_45-1,j)
+                      LANDUSEF2(i,index_44+1,j) = temp_master_LUF
 
-                  ! now swap so it goes 45 44 instead of 44 45
+                      ! now swap so it goes 45 44 instead of 44 45
 
-                  temp_master_index = mosaic_cat_index(i,index_44,j)
-                  mosaic_cat_index(i,index_44,j) = mosaic_cat_index(i,index_44+1,j)
-                  mosaic_cat_index(i,index_44+1,j) = temp_master_index
 
-                  temp_master_LUF = LANDUSEF2(i,index_44,j)
-                  LANDUSEF2(i,index_44,j) = LANDUSEF2(i,index_44+1,j)
-                  LANDUSEF2(i,index_44+1,j) = temp_master_LUF
+                      temp_master_index = mosaic_cat_index(i,index_44,j)
+                      mosaic_cat_index(i,index_44,j) = mosaic_cat_index(i,index_44+1,j)
+                      mosaic_cat_index(i,index_44+1,j) = temp_master_index
 
-                end if
+                      temp_master_LUF = LANDUSEF2(i,index_44,j)
+                      LANDUSEF2(i,index_44,j) = LANDUSEF2(i,index_44+1,j)
+                      LANDUSEF2(i,index_44+1,j) = temp_master_LUF
 
-              end if ! end urban to permeable pavements
+                    end if
+
+             else !make sure that if HUE is active but not all of the new 
+                if ((LANDUSEF2(i,index_44,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_44,j)
+                     mosaic_cat_index(i,index_44:NLCAT-1,j) = mosaic_cat_index(i,index_44+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_44,j)
+                    LANDUSEF2(i,index_44:NLCAT-1,j) = LANDUSEF2(i,index_44+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+
+                else if  ((LANDUSEF2(i,index_45,j).eq.0.)) then
+                     temp_master_index = mosaic_cat_index(i,index_45,j)
+                     mosaic_cat_index(i,index_45:NLCAT-1,j) = mosaic_cat_index(i,index_45+1:NLCAT,j)
+                    mosaic_cat_index(i,NLCAT,j) = temp_master_index
+
+                    temp_master_LUF = LANDUSEF2(i,index_45,j)
+                    LANDUSEF2(i,index_45:NLCAT-1,j) = LANDUSEF2(i,index_45+1:NLCAT,j)
+                    LANDUSEF2(i,NLCAT,j) = temp_master_LUF
+                endif
+            end if
+          end if ! end urban to permeable pavements
+
+              
       ENDDO
       ENDDO
       ENDIF !end hue noahmp sort
@@ -5960,7 +6010,6 @@ type(noahmp_parameters) :: parameters
 
                IVGTYP_dominant(I,J)=IVGTYP(I,J)                            ! SAVE THE DOMINANT Vegitation
 
-
                ! INITIALIZE THE AREA-AVERAGED variables (all average variables thtat I added)
                TSK_mosaic_avg(i,j) = 0.0
                HFX_mosaic_avg(i,j) = 0.0
@@ -6138,11 +6187,15 @@ type(noahmp_parameters) :: parameters
 
                ! These are needed for the
 
-               MOSAIC_LOOP : DO mosaic_i = mosaic_cat, 1, -1 !looping from the nth mosaic catagory to the largest mosaic catagory
+               MOSAIC_LOOP : DO mosaic_i = 1, mosaic_cat !looping from the nth mosaic catagory to the largest mosaic catagory
 
                ! We need to move from our 3D data to the 2D data sets
                !These are the IN/Out values that have an LSM equivelant
                IVGTYP(I,J) = mosaic_cat_index(I,mosaic_i,J)
+               WRITE(*,*) IVGTYP(i,J),landusef2(I,mosaic_i,J)
+               if ((IVGTYP(I,J) == 0).or.(LANDUSEF2(I,mosaic_i,J)==0)) then 
+                       exit
+               endif
                TSK(I,J) = TSK_mosaic(I,mosaic_i,J)
                HFX(I,J) = HFX_mosaic(I,mosaic_i,J)
                QFX(I,J) = QFX_mosaic(I,mosaic_i,J)

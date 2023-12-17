@@ -9,8 +9,6 @@
 
 
 
-
-
 module module_hrldas_netcdf_io
   use module_date_utilities
   use netcdf
@@ -2412,6 +2410,11 @@ contains
       integer nf_float
       integer nf_real
       integer nf_double
+      integer nf_ubyte
+      integer nf_ushort
+      integer nf_uint
+      integer nf_int64
+      integer nf_uint64
 
       parameter (nf_byte = 1)
       parameter (nf_int1 = nf_byte)
@@ -2422,6 +2425,11 @@ contains
       parameter (nf_float = 5)
       parameter (nf_real = nf_float)
       parameter (nf_double = 6)
+      parameter (nf_ubyte = 7)
+      parameter (nf_ushort = 8)
+      parameter (nf_uint = 9)
+      parameter (nf_int64 = 10)
+      parameter (nf_uint64 = 11)
 
 !
 ! default fill values:
@@ -2458,10 +2466,15 @@ contains
       integer nf_lock
       integer nf_share
       integer nf_64bit_offset
+      integer nf_64bit_data
+      integer nf_cdf5
       integer nf_sizehint_default
       integer nf_align_chunk
       integer nf_format_classic
       integer nf_format_64bit
+      integer nf_format_64bit_offset
+      integer nf_format_64bit_data
+      integer nf_format_cdf5
       integer nf_diskless
       integer nf_mmap
 
@@ -2474,10 +2487,15 @@ contains
       parameter (nf_lock = 1024)
       parameter (nf_share = 2048)
       parameter (nf_64bit_offset = 512)
+      parameter (nf_64bit_data = 32)
+      parameter (nf_cdf5 = nf_64bit_data)
       parameter (nf_sizehint_default = 0)
       parameter (nf_align_chunk = -1)
       parameter (nf_format_classic = 1)
       parameter (nf_format_64bit = 2)
+      parameter (nf_format_64bit_offset = nf_format_64bit)
+      parameter (nf_format_64bit_data = 5)
+      parameter (nf_format_cdf5 = nf_format_64bit_data)
       parameter (nf_diskless = 8)
       parameter (nf_mmap = 16)
 
@@ -2910,6 +2928,22 @@ contains
 !                          character(*)        name,
 !                          integer             ivals(1))
       external        nf_get_att_int
+
+      integer         nf_put_att_int64
+!                         (integer             ncid,
+!                          integer             varid,
+!                          character(*)        name,
+!                          integer             xtype,
+!                          integer             len,
+!                          nf_int8_t           i8vals(1))
+      external        nf_put_att_int64
+
+      integer         nf_get_att_int64
+!                         (integer             ncid,
+!                          integer             varid,
+!                          character(*)        name,
+!                          nf_int8_t           i8vals(1))
+      external        nf_get_att_int64
 
       integer         nf_put_att_real
 !                         (integer             ncid,
@@ -3514,6 +3548,28 @@ contains
 !                          doubleprecision     dvals(1))
       external        nf_get_varm_double
 
+!     64-bit int functions.
+      integer nf_put_var1_int64
+      external nf_put_var1_int64
+      integer nf_put_vara_int64
+      external nf_put_vara_int64
+      integer nf_put_vars_int64
+      external nf_put_vars_int64
+      integer nf_put_varm_int64
+      external nf_put_varm_int64
+      integer nf_put_var_int64
+      external nf_put_var_int64
+      integer nf_get_var1_int64
+      external nf_get_var1_int64
+      integer nf_get_vara_int64
+      external nf_get_vara_int64
+      integer nf_get_vars_int64
+      external nf_get_vars_int64
+      integer nf_get_varm_int64
+      external nf_get_varm_int64
+      integer nf_get_var_int64
+      external nf_get_var_int64
+
 
 !     NetCDF-4.
 !     This is part of netCDF-4. Copyright 2006, UCAR, See COPYRIGHT
@@ -3524,22 +3580,12 @@ contains
 !     $Id: netcdf4.inc,v 1.28 2010/05/25 13:53:02 ed Exp $
 
 !     New netCDF-4 types.
-      integer nf_ubyte
-      integer nf_ushort
-      integer nf_uint
-      integer nf_int64
-      integer nf_uint64
       integer nf_string
       integer nf_vlen
       integer nf_opaque
       integer nf_enum
       integer nf_compound
 
-      parameter (nf_ubyte = 7)
-      parameter (nf_ushort = 8)
-      parameter (nf_uint = 9)
-      parameter (nf_int64 = 10)
-      parameter (nf_uint64 = 11)
       parameter (nf_string = 12)
       parameter (nf_vlen = 13)
       parameter (nf_opaque = 14)
@@ -3587,6 +3633,8 @@ contains
       parameter (nf_chunked = 0)
       integer nf_contiguous
       parameter (nf_contiguous = 1)
+      integer nf_compact
+      parameter (nf_compact = 2)
 
 !     For NF_DEF_VAR_FLETCHER32
       integer nf_nochecksum
@@ -3619,6 +3667,12 @@ contains
       parameter (nf_independent = 0)
       integer nf_collective
       parameter (nf_collective = 1)
+
+!     For NF_DEF_VAR_QUANTIZE.
+      integer nf_noquantize
+      parameter (nf_noquantize = 0)
+      integer nf_quantize_bitgroom
+      parameter (nf_quantize_bitgroom = 1)
 
 !     New error codes.
       integer nf_ehdferr        ! Error at HDF5 layer. 
@@ -3671,6 +3725,40 @@ contains
       parameter (nf_edimscale = -124)
       integer nf_enogrp       ! No group found.
       parameter (nf_enogrp = -125)
+      integer nf_estorage ! Can't specify both contiguous and chunking. 
+      parameter (nf_estorage = -126)    
+      integer nf_ebadchunk ! Bad chunksize. 
+      parameter (nf_ebadchunk = -127)    
+      integer nf_enotbuilt       ! NetCDF feature not built.
+      parameter (nf_enotbuilt = -128)
+      integer nf_ediskless ! Error in using diskless  access. 
+      parameter (nf_ediskless = -129)    
+      integer nf_ecantextend ! Attempt to extend dataset during ind. I/O operation. 
+      parameter (nf_ecantextend = -130)    
+      integer nf_empi ! MPI operation failed. 
+      parameter (nf_empi = -131)    
+      integer nf_efilter ! Filter operation failed. 
+      parameter (nf_efilter = -132)    
+      integer nf_ercfile ! RC file failure 
+      parameter (nf_ercfile = -133)    
+      integer nf_enullpad ! Header Bytes not Null-Byte padded 
+      parameter (nf_enullpad = -134)    
+      integer nf_einmemory ! In-memory file error 
+      parameter (nf_einmemory = -135)    
+      integer nf_enofilter ! Filter not defined on variable. 
+      parameter (nf_enofilter = -136)    
+      integer nf_enczarr ! Error at NCZarr layer. 
+      parameter (nf_enczarr = -137)    
+      integer nf_es3 ! Generic S3 error 
+      parameter (nf_es3 = -138)    
+      integer nf_eempty ! Attempt to read empty NCZarr map key 
+      parameter (nf_eempty = -139)    
+      integer nf_eobject ! Some object exists when it should not 
+      parameter (nf_eobject = -140)    
+      integer nf_enoobject ! Some object not found 
+      parameter (nf_enoobject = -141)    
+      integer nf_eplugin ! Unclassified failure in accessing a dynamically loaded plugin> 
+      parameter (nf_eplugin = -142)    
 
 
 !     New functions.
@@ -3731,6 +3819,24 @@ contains
       integer nf_inq_var_deflate
       external nf_inq_var_deflate
 
+      integer nf_def_var_zstandard
+      external nf_def_var_zstandard
+
+      integer nf_inq_var_zstandard
+      external nf_inq_var_zstandard
+
+      integer nf_def_var_szip
+      external nf_def_var_szip
+
+      integer nf_inq_var_szip
+      external nf_inq_var_szip
+
+      integer nf_def_var_quantize
+      external nf_def_var_quantize
+
+      integer nf_inq_var_quantize
+      external nf_inq_var_quantize
+
       integer nf_def_var_fletcher32
       external nf_def_var_fletcher32
 
@@ -3754,6 +3860,12 @@ contains
 
       integer nf_inq_var_endian
       external nf_inq_var_endian
+
+      integer nf_def_var_filter
+      external nf_def_var_filter
+
+      integer nf_inq_var_filter
+      external nf_inq_var_filter
 
 !     User defined types.
       integer nf_inq_typeids
@@ -3869,28 +3981,6 @@ contains
       external nf_get_vara
       integer nf_get_vars
       external nf_get_vars
-
-!     64-bit int functions.
-      integer nf_put_var1_int64
-      external nf_put_var1_int64
-      integer nf_put_vara_int64
-      external nf_put_vara_int64
-      integer nf_put_vars_int64
-      external nf_put_vars_int64
-      integer nf_put_varm_int64
-      external nf_put_varm_int64
-      integer nf_put_var_int64
-      external nf_put_var_int64
-      integer nf_get_var1_int64
-      external nf_get_var1_int64
-      integer nf_get_vara_int64
-      external nf_get_vara_int64
-      integer nf_get_vars_int64
-      external nf_get_vars_int64
-      integer nf_get_varm_int64
-      external nf_get_varm_int64
-      integer nf_get_var_int64
-      external nf_get_var_int64
 
 !     For helping F77 users with VLENs.
       integer nf_get_vlen_element
@@ -4135,6 +4225,10 @@ contains
       parameter (fillong = -2147483647)
       parameter (filfloat = 9.9692099683868690e+36)
       parameter (fildoub = 9.9692099683868690e+36)
+
+!     This is to turn on netCDF internal logging.
+      integer nf_set_log_level
+      external nf_set_log_level
 
     character(len=*),                         intent(in) :: outdir
     character(len=*),                         intent(in) :: version
@@ -4807,6 +4901,11 @@ contains
       integer nf_float
       integer nf_real
       integer nf_double
+      integer nf_ubyte
+      integer nf_ushort
+      integer nf_uint
+      integer nf_int64
+      integer nf_uint64
 
       parameter (nf_byte = 1)
       parameter (nf_int1 = nf_byte)
@@ -4817,6 +4916,11 @@ contains
       parameter (nf_float = 5)
       parameter (nf_real = nf_float)
       parameter (nf_double = 6)
+      parameter (nf_ubyte = 7)
+      parameter (nf_ushort = 8)
+      parameter (nf_uint = 9)
+      parameter (nf_int64 = 10)
+      parameter (nf_uint64 = 11)
 
 !
 ! default fill values:
@@ -4853,10 +4957,15 @@ contains
       integer nf_lock
       integer nf_share
       integer nf_64bit_offset
+      integer nf_64bit_data
+      integer nf_cdf5
       integer nf_sizehint_default
       integer nf_align_chunk
       integer nf_format_classic
       integer nf_format_64bit
+      integer nf_format_64bit_offset
+      integer nf_format_64bit_data
+      integer nf_format_cdf5
       integer nf_diskless
       integer nf_mmap
 
@@ -4869,10 +4978,15 @@ contains
       parameter (nf_lock = 1024)
       parameter (nf_share = 2048)
       parameter (nf_64bit_offset = 512)
+      parameter (nf_64bit_data = 32)
+      parameter (nf_cdf5 = nf_64bit_data)
       parameter (nf_sizehint_default = 0)
       parameter (nf_align_chunk = -1)
       parameter (nf_format_classic = 1)
       parameter (nf_format_64bit = 2)
+      parameter (nf_format_64bit_offset = nf_format_64bit)
+      parameter (nf_format_64bit_data = 5)
+      parameter (nf_format_cdf5 = nf_format_64bit_data)
       parameter (nf_diskless = 8)
       parameter (nf_mmap = 16)
 
@@ -5305,6 +5419,22 @@ contains
 !                          character(*)        name,
 !                          integer             ivals(1))
       external        nf_get_att_int
+
+      integer         nf_put_att_int64
+!                         (integer             ncid,
+!                          integer             varid,
+!                          character(*)        name,
+!                          integer             xtype,
+!                          integer             len,
+!                          nf_int8_t           i8vals(1))
+      external        nf_put_att_int64
+
+      integer         nf_get_att_int64
+!                         (integer             ncid,
+!                          integer             varid,
+!                          character(*)        name,
+!                          nf_int8_t           i8vals(1))
+      external        nf_get_att_int64
 
       integer         nf_put_att_real
 !                         (integer             ncid,
@@ -5909,6 +6039,28 @@ contains
 !                          doubleprecision     dvals(1))
       external        nf_get_varm_double
 
+!     64-bit int functions.
+      integer nf_put_var1_int64
+      external nf_put_var1_int64
+      integer nf_put_vara_int64
+      external nf_put_vara_int64
+      integer nf_put_vars_int64
+      external nf_put_vars_int64
+      integer nf_put_varm_int64
+      external nf_put_varm_int64
+      integer nf_put_var_int64
+      external nf_put_var_int64
+      integer nf_get_var1_int64
+      external nf_get_var1_int64
+      integer nf_get_vara_int64
+      external nf_get_vara_int64
+      integer nf_get_vars_int64
+      external nf_get_vars_int64
+      integer nf_get_varm_int64
+      external nf_get_varm_int64
+      integer nf_get_var_int64
+      external nf_get_var_int64
+
 
 !     NetCDF-4.
 !     This is part of netCDF-4. Copyright 2006, UCAR, See COPYRIGHT
@@ -5919,22 +6071,12 @@ contains
 !     $Id: netcdf4.inc,v 1.28 2010/05/25 13:53:02 ed Exp $
 
 !     New netCDF-4 types.
-      integer nf_ubyte
-      integer nf_ushort
-      integer nf_uint
-      integer nf_int64
-      integer nf_uint64
       integer nf_string
       integer nf_vlen
       integer nf_opaque
       integer nf_enum
       integer nf_compound
 
-      parameter (nf_ubyte = 7)
-      parameter (nf_ushort = 8)
-      parameter (nf_uint = 9)
-      parameter (nf_int64 = 10)
-      parameter (nf_uint64 = 11)
       parameter (nf_string = 12)
       parameter (nf_vlen = 13)
       parameter (nf_opaque = 14)
@@ -5982,6 +6124,8 @@ contains
       parameter (nf_chunked = 0)
       integer nf_contiguous
       parameter (nf_contiguous = 1)
+      integer nf_compact
+      parameter (nf_compact = 2)
 
 !     For NF_DEF_VAR_FLETCHER32
       integer nf_nochecksum
@@ -6014,6 +6158,12 @@ contains
       parameter (nf_independent = 0)
       integer nf_collective
       parameter (nf_collective = 1)
+
+!     For NF_DEF_VAR_QUANTIZE.
+      integer nf_noquantize
+      parameter (nf_noquantize = 0)
+      integer nf_quantize_bitgroom
+      parameter (nf_quantize_bitgroom = 1)
 
 !     New error codes.
       integer nf_ehdferr        ! Error at HDF5 layer. 
@@ -6066,6 +6216,40 @@ contains
       parameter (nf_edimscale = -124)
       integer nf_enogrp       ! No group found.
       parameter (nf_enogrp = -125)
+      integer nf_estorage ! Can't specify both contiguous and chunking. 
+      parameter (nf_estorage = -126)    
+      integer nf_ebadchunk ! Bad chunksize. 
+      parameter (nf_ebadchunk = -127)    
+      integer nf_enotbuilt       ! NetCDF feature not built.
+      parameter (nf_enotbuilt = -128)
+      integer nf_ediskless ! Error in using diskless  access. 
+      parameter (nf_ediskless = -129)    
+      integer nf_ecantextend ! Attempt to extend dataset during ind. I/O operation. 
+      parameter (nf_ecantextend = -130)    
+      integer nf_empi ! MPI operation failed. 
+      parameter (nf_empi = -131)    
+      integer nf_efilter ! Filter operation failed. 
+      parameter (nf_efilter = -132)    
+      integer nf_ercfile ! RC file failure 
+      parameter (nf_ercfile = -133)    
+      integer nf_enullpad ! Header Bytes not Null-Byte padded 
+      parameter (nf_enullpad = -134)    
+      integer nf_einmemory ! In-memory file error 
+      parameter (nf_einmemory = -135)    
+      integer nf_enofilter ! Filter not defined on variable. 
+      parameter (nf_enofilter = -136)    
+      integer nf_enczarr ! Error at NCZarr layer. 
+      parameter (nf_enczarr = -137)    
+      integer nf_es3 ! Generic S3 error 
+      parameter (nf_es3 = -138)    
+      integer nf_eempty ! Attempt to read empty NCZarr map key 
+      parameter (nf_eempty = -139)    
+      integer nf_eobject ! Some object exists when it should not 
+      parameter (nf_eobject = -140)    
+      integer nf_enoobject ! Some object not found 
+      parameter (nf_enoobject = -141)    
+      integer nf_eplugin ! Unclassified failure in accessing a dynamically loaded plugin> 
+      parameter (nf_eplugin = -142)    
 
 
 !     New functions.
@@ -6126,6 +6310,24 @@ contains
       integer nf_inq_var_deflate
       external nf_inq_var_deflate
 
+      integer nf_def_var_zstandard
+      external nf_def_var_zstandard
+
+      integer nf_inq_var_zstandard
+      external nf_inq_var_zstandard
+
+      integer nf_def_var_szip
+      external nf_def_var_szip
+
+      integer nf_inq_var_szip
+      external nf_inq_var_szip
+
+      integer nf_def_var_quantize
+      external nf_def_var_quantize
+
+      integer nf_inq_var_quantize
+      external nf_inq_var_quantize
+
       integer nf_def_var_fletcher32
       external nf_def_var_fletcher32
 
@@ -6149,6 +6351,12 @@ contains
 
       integer nf_inq_var_endian
       external nf_inq_var_endian
+
+      integer nf_def_var_filter
+      external nf_def_var_filter
+
+      integer nf_inq_var_filter
+      external nf_inq_var_filter
 
 !     User defined types.
       integer nf_inq_typeids
@@ -6264,28 +6472,6 @@ contains
       external nf_get_vara
       integer nf_get_vars
       external nf_get_vars
-
-!     64-bit int functions.
-      integer nf_put_var1_int64
-      external nf_put_var1_int64
-      integer nf_put_vara_int64
-      external nf_put_vara_int64
-      integer nf_put_vars_int64
-      external nf_put_vars_int64
-      integer nf_put_varm_int64
-      external nf_put_varm_int64
-      integer nf_put_var_int64
-      external nf_put_var_int64
-      integer nf_get_var1_int64
-      external nf_get_var1_int64
-      integer nf_get_vara_int64
-      external nf_get_vara_int64
-      integer nf_get_vars_int64
-      external nf_get_vars_int64
-      integer nf_get_varm_int64
-      external nf_get_varm_int64
-      integer nf_get_var_int64
-      external nf_get_var_int64
 
 !     For helping F77 users with VLENs.
       integer nf_get_vlen_element
@@ -6530,6 +6716,10 @@ contains
       parameter (fillong = -2147483647)
       parameter (filfloat = 9.9692099683868690e+36)
       parameter (fildoub = 9.9692099683868690e+36)
+
+!     This is to turn on netCDF internal logging.
+      integer nf_set_log_level
+      external nf_set_log_level
 
     character(len=*),                      intent(in) :: outdir
     character(len=*),                      intent(in) :: version

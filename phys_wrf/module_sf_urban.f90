@@ -9,8 +9,6 @@
 
 
 
-
-
 MODULE module_sf_urban
 use module_wrf_error
 

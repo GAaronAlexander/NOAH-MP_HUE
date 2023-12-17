@@ -9,8 +9,6 @@
 
 
 
-
-
 MODULE module_sf_bep_bem
 use module_wrf_error
 !USE module_model_constants

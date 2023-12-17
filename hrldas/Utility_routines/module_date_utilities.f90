@@ -9,8 +9,6 @@
 
 
 
-
-
 module Module_Date_utilities
 contains
   subroutine geth_newdate (ndate, odate, idt)

@@ -9,8 +9,6 @@
 
 
 
-
-
 !WRF:DRIVER_LAYER:DOMAIN_OBJECT
 
 MODULE module_domain

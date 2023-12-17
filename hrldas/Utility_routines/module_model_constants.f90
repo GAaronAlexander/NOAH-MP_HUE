@@ -9,8 +9,6 @@
 
 
 
-
-
 !WRF:MODEL_LAYER:CONSTANTS
 !
 

@@ -9,8 +9,6 @@
 
 
 
-
-
 !***********************************************************************
 !*                   GECROS for early and late covering crops          *
 !*     Genotype-by-Environment interaction on CROp growth Simulator    *
