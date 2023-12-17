@@ -5790,7 +5790,7 @@ type(noahmp_parameters) :: parameters
       REAL, DIMENSION( ims:ime, jms:jme ) :: TSK_mosaic_avg, HFX_mosaic_avg, QFX_mosaic_avg, LH_mosaic_avg,  & ! These are in and out LSM options
             GRDFLX_mosaic_avg, SFCRUNOFF_mosaic_sum, UDRUNOFF_mosaic_sum, ALBEDO_mosaic_avg,                 &
             SNOWC_mosaic_avg, CANWAT_mosaic_avg, SNOW_mosaic_avg, SNOWH_mosaic_avg, ACSNOM_mosaic_avg,       &
-            ACSNOW_mosaic_avg, EMISS_mosaic_avg, QSFC_mosaic_avg, Z0_mosaic_avg, ZNT_mosaic_avg
+            ACSNOW_mosaic_avg, EMISS_mosaic_avg, QSFC_mosaic_avg,Z0_mosaic_avg, ZNT_mosaic_avg,FAREA_mosaic_avg
 
       REAL, DIMENSION( ims:ime, jms:jme ) :: tvxy_mosaic_avg, tgxy_mosaic_avg, canicexy_mosaic_avg,             &
             canliqxy_mosaic_avg, eahxy_mosaic_avg, tahxy_mosaic_avg, cmxy_mosaic_avg, chxy_mosaic_avg,          &
@@ -5980,7 +5980,7 @@ type(noahmp_parameters) :: parameters
                Z0_mosaic_avg(i,j) = 0.0
                ZNT_mosaic_avg(i,j) = 0.0
 
-
+               FAREA_mosaic_avg(i,j) = 0.0
                isnowxy_mosaic_avg(i,j) = 0
                tvxy_mosaic_avg(i,j) = 0.0
                tgxy_mosaic_avg(i,j) = 0.0
@@ -7254,7 +7254,7 @@ type(noahmp_parameters) :: parameters
           !    QSFC(I,J)     = Q1/(1.0-Q1)
                              QSFC(I,J)= FRC_URB2D(I,J)*QS_URB+(1-FRC_URB2D(I,J))*QSFC(I,J)               !!   QSFC(I,J)=QSFC1D
               UST(I,J)      = FRC_URB2D(I,J) * UST_URB + (1-FRC_URB2D(I,J)) * UST(I,J)     ![m/s]
-
+              ZNT(I,J)= EXP(FRC_URB2D(I,J)*ALOG(ZNT_URB)+(1-FRC_URB2D(I,J))* ALOG(ZNT(I,J)))   ! ADD BY DAN
           ! Renew Urban State Variables
 
               TR_URB2D(I,J) = TR_URB
@@ -7570,9 +7570,9 @@ type(noahmp_parameters) :: parameters
                ENDIF
 
 
-              !TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
-              TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + TSK_mosaic(I,mosaic_i,J)*FAREA
-              
+              TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + (EMISS_mosaic(I,mosaic_i,J)*TSK_mosaic(I,mosaic_i,J)**4)*FAREA  ! Conserve the longwave radiation
+              !TSK_mosaic_avg(I,J) = TSK_mosaic_avg(I,J) + TSK_mosaic(I,mosaic_i,J)*FAREA
+              FAREA_mosaic_avg(I,J) = FAREA_mosaic_avg(I,J) + FAREA
               HFX_mosaic_avg(I,J) = HFX_mosaic_avg(I,J) + HFX_mosaic(I,mosaic_i,J)*FAREA
               QFX_mosaic_avg(I,J) = QFX_mosaic_avg(I,J) + QFX_mosaic(I,mosaic_i,J)*FAREA
               LH_mosaic_avg(I,J) =  LH_mosaic_avg(I,J)  + LH_mosaic(I,mosaic_i,J)*FAREA
@@ -7588,8 +7588,8 @@ type(noahmp_parameters) :: parameters
               ACSNOW_mosaic_avg(I,J) = ACSNOW_mosaic_avg(I,J) +  ACSNOW_mosaic(I,mosaic_i,J)*FAREA
               EMISS_mosaic_avg(I,J) = EMISS_mosaic_avg(I,J) + EMISS_mosaic(I,mosaic_i,J)*FAREA
               QSFC_mosaic_avg(I,J) = QSFC_mosaic_avg(I,J) + QSFC_mosaic(I,mosaic_i,J)*FAREA
-              Z0_mosaic_avg(I,J) = Z0_mosaic_avg(I,J) + Z0_mosaic(I,mosaic_i,J)*FAREA
-              ZNT_mosaic_avg(I,J) = ZNT_mosaic_avg(I,J) + ZNT_mosaic(I,mosaic_i,J)*FAREA
+              Z0_mosaic_avg(I,J) = Z0_mosaic_avg(i,j)+ALOG(Z0_mosaic(i,mosaic_i,j))*FAREA
+              ZNT_mosaic_avg(I,J) = ZNT_mosaic_avg(i,j)+ALOG(ZNT_mosaic(i,mosaic_i,j))*FAREA
               rs_mosaic_avg(I,J) = rs_mosaic_avg(I,J) + rs_mosaic(I,mosaic_i,J)*FAREA
 
               DO LAYER=1,NSOIL
@@ -7777,7 +7777,7 @@ type(noahmp_parameters) :: parameters
               ! into its final place to be written out
 
               IVGTYP(I,J) = IVGTYP_dominant(I,J) !dominant vegetation catagory
-              TSK(I,J) = TSK_mosaic_avg(I,J)
+              TSK(I,J) = (TSK_mosaic_avg(I,J)/EMISS_mosaic_avg(I,J))**(0.25) 
               HFX(I,J) = HFX_mosaic_avg(I,J)
               QFX(I,J) = QFX_mosaic_avg(I,J)
               LH(I,J) = LH_mosaic_avg(I,J)
@@ -7793,8 +7793,8 @@ type(noahmp_parameters) :: parameters
               ACSNOW(I,J) = ACSNOW_mosaic_avg(I,J)
               EMISS(I,J) = EMISS_mosaic_avg(I,J)
               QSFC(I,J) = QSFC_mosaic_avg(I,J)
-              Z0(I,J) = Z0_mosaic_avg(I,J)
-              ZNT(I,J) = ZNT_mosaic_avg(I,J)
+              Z0(I,J) =  EXP(Z0_mosaic_avg(i,j)/FAREA_mosaic_avg(i,j))
+              ZNT(I,J) =  EXP(ZNT_mosaic_avg(i,j)/FAREA_mosaic_avg(i,j))
               RS(I,J) = rs_mosaic_avg(I,J)
 
               

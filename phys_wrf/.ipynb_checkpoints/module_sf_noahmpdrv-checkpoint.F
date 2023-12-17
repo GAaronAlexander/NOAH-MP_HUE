@@ -790,7 +790,8 @@ CONTAINS
 	 PRCPOTHR  = MAX(0.0,PRCPOTHR)
 	 PRCPNONC  = PRCPNONC + PRCPOTHR
          PRCPSNOW  = PRCPSNOW + SR(I,J)  * PRCPOTHR
-       ELSE
+       ELSE 
+         !if((I.eq.1).and.(J.eq.1)) write(*,*) 'PRCP = ', PRCP
          PRCPCONV  = 0.
          PRCPNONC  = PRCP
          PRCPSHCV  = 0.
@@ -4614,17 +4615,29 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
                 !add qualifer for the mosaic croptpes
             ZNT_mosaic(i,mosaic_i,j)=Z0(i,j) !roughness following Dan Li in Noah model
             Z0_mosaic(i,mosaic_i,j)=Z0(i,j) !roughness following Dan LI in Noah Model
+            
+            IF (ALL(TSK_mosaic .EQ. 0)) THEN ! warm season coupling of restart. Add the rest later!! aarona
+               TSK_mosaic(i,mosaic_i,j)=TSK(i,j)
+               CANWAT_mosaic(i,mosaic_i,j)=CANWAT(i,j)
+               canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
+               canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j) 
 
-            TSK_mosaic(i,mosaic_i,j)=TSK(i,j)
-            CANWAT_mosaic(i,mosaic_i,j)=CANWAT(i,j)
+              DO soil_k=1,num_soil_layers
+
+              TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+              SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+              SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+
+              ENDDO
+           ENDIF
             SNOW_mosaic(i,mosaic_i,j)=SNOW(i,j)
             SNOWH_mosaic(i,mosaic_i,j)=SNOWH(i,j)
 
             tvxy_mosaic(i,mosaic_i,j)=tvxy(i,j)
             tgxy_mosaic(i,mosaic_i,j)=tgxy(i,j)
 
-            canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
-            canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j)
+            !canicexy_mosaic(i,mosaic_i,j)=canicexy(i,j)
+            !canliqxy_mosaic(i,mosaic_i,j)=canliqxy(i,j)
 
             eahxy_mosaic(i,mosaic_i,j)=eahxy(i,j)
             tahxy_mosaic(i,mosaic_i,j)=tahxy(i,j)
@@ -4653,13 +4666,13 @@ IF(.not.restart)THEN !! only do these if this is a restart, otherwise,we have
             lai_mosaic(i,mosaic_i,j)=lai(i,j)
 
 
-              DO soil_k=1,num_soil_layers
+             ! DO soil_k=1,num_soil_layers
 
-              TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
-              SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
-              SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
+              !TSLB_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=TSLB(i,soil_k,j)
+              !SMOIS_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SMOIS(i,soil_k,j)
+              !SH2O_mosaic(i,num_soil_layers*(mosaic_i-1)+soil_k,j)=SH2O(i,soil_k,j)
 
-              ENDDO
+              !ENDDO
 
               IF (IOPT_HUE.eq.1) THEN
                 DETENTION_STORAGEXY_mosaic(i,mosaic_i,J) = 0.
@@ -8000,7 +8013,8 @@ type(noahmp_parameters) :: parameters
                   
                   ! Set trigger back to 0
                   TRIGGER = 0
-              
+             ENDIF 
+ 
               LFMASSXY(I,J) = lfmassxy_mosaic_avg(I,J)
               RTMASSXY(I,J) = rtmassxy_mosaic_avg(I,J)
               STMASSXY(I,J) = stmassxy_mosaic_avg(I,J)
@@ -8143,7 +8157,7 @@ type(noahmp_parameters) :: parameters
               RUNONSFXY(I,J) = RUNONSFXY_mosaic_avg(I,J)
              
             ENDIF ! End of the Soil-Water_ice If else statement
-
+           
            ENDDO ILOOP !END of the I LOOP
            ENDDO JLOOP !END of the J LOOP
 

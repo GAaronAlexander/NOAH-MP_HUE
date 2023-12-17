@@ -3552,10 +3552,10 @@ if(IOPT_MOSAIC.eq.0) then !this check looks and sees if we are going to be doing
 
                 ids,ide, jds,jde, kds,kde,                      &
                 ims,ime, jms,jme, kms,kme,                      &
-                its,ite, jts,jte, kts,kte,        &
+                its,ite, jts,jte, kts,kte)!,        &
 ! variables below are optional
-                MP_RAINC =  RAINCV, MP_RAINNC =    RAINNCV, MP_SHCV = RAINSHV,&
-		MP_SNOW  = SNOWNCV, MP_GRAUP  = GRAUPELNCV, MP_HAIL = HAILNCV )
+                 !MP_RAINC =  RAINCV, MP_RAINNC =    RAINNCV, MP_SHCV = RAINSHV,&
+		!MP_SNOW  = SNOWNCV, MP_GRAUP  = GRAUPELNCV, MP_HAIL = HAILNCV )
 
           call system_clock(count=count_after_sflx, count_rate=clock_rate)
           sflx_count_sum = sflx_count_sum + ( count_after_sflx - count_before_sflx )
@@ -3931,10 +3931,9 @@ IF (ITIME > 0) THEN
                        mh_urb2d,     stdh_urb2d,       lf_urb2d,                             & !SLUCM
                        theta_urban,      rho_urban,    p_urban,        ust,                  & !I multi-layer urban
                        gmt,                                                                  & !I multi-layer urban MODIFIED BY AARON A.
-                       RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic,&
-                       RAINCV, RAINNCV, RAINSHV,        &
-                       SNOWNCV, GRAUPELNCV, HAILNCV)
-
+                       RUNONSFXY,RUNONSFXY_mosaic,DETENTION_STORAGEXY,DETENTION_STORAGEXY_mosaic, VOL_FLUX_RUNONXY_mosaic, VOL_FLUX_SMXY_mosaic )
+                !MP_RAINC =  RAINCV, MP_RAINNC =    RAINNCV, MP_SHCV = RAINSHV,&
+                !MP_SNOW  = SNOWNCV, MP_GRAUP  = GRAUPELNCV, MP_HAIL = HAILNCV )
 
 
     call system_clock(count=count_after_sflx, count_rate=clock_rate)
